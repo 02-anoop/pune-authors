@@ -6921,15 +6921,19 @@ const totalAuthorsBase = eventRegistrations.length;
       if (eventDate >= now) return false;
 
       if (eventGraphFilter === "All") return true;
-      if (eventGraphFilter === "Literary Event")
-        return e.eventType?.toLowerCase().includes("literary");
-      if (eventGraphFilter === "Book Fair")
-        return e.eventType?.toLowerCase().includes("fair");
-      if (eventGraphFilter === "Meet the Authors / Other")
-        return (
-          !e.eventType?.toLowerCase().includes("literary") &&
-          !e.eventType?.toLowerCase().includes("fair")
-        );
+      // Format filters
+      if (eventGraphFilter === "Meet the Authors")
+        return e.eventType === "Meet the Authors";
+      if (eventGraphFilter === "Stall") return e.eventType === "Stall";
+      // Category filters
+      if (eventGraphFilter === "Housing Society")
+        return e.category === "Housing Society";
+      if (eventGraphFilter === "Corporate Office")
+        return e.category === "Corporate Office";
+      if (eventGraphFilter === "College") return e.category === "College";
+      if (eventGraphFilter === "University") return e.category === "University";
+      if (eventGraphFilter === "Book Fair") return e.category === "Book Fair";
+
       return true;
     });
 
