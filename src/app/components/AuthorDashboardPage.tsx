@@ -823,9 +823,27 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
     { name: 'Support Queries', count: data.queries?.length || 0 }
   ];
 
-  const completedOrders = authorOrders.filter((o: any) => o.status === 'Completed' || o.status === 'Delivered');
+  const completedOrders = authorOrders.filter((o: any) => o.status === 'Completed' || o.status === 'Delivered' || o.orderStatus === 'Completed' || o.orderStatus === 'Delivered');
   const webSalesAmount = completedOrders.reduce((acc: number, curr: any) => acc + curr.amount, 0);
-  const posSalesAmount = (data.posOrders || []).reduce((acc: number, o: any) => acc + (o.totalAmount || 0), 0);
+  
+  let posSalesAmount = (data.posOrders || []).reduce((acc: number, o: any) => acc + (o.totalAmount || 0), 0);
+
+  (data.eventInvites || []).forEach((ea: any) => {
+    if (ea.optInStatus === 'Registered' || ea.optInStatus === 'Approved') {
+      if (ea.manualTotalSold > 0 || ea.manualTotalRevenue > 0) {
+        posSalesAmount += (ea.manualTotalRevenue || 0);
+      } else {
+        const eventBooks = (data.listedBooks || []).filter((lb: any) => lb.eventId === ea.eventId);
+        eventBooks.forEach((eb: any) => {
+          if (eb.soldStock > 0) {
+            const price = eb.overrideMrp || authorBooks.find((b: any) => b.id === eb.bookId)?.mrp || 0;
+            posSalesAmount += (eb.soldStock * price);
+          }
+        });
+      }
+    }
+  });
+
   const grossSales = webSalesAmount + posSalesAmount;
 
   const lowStockCount = authorBooks.filter((b: any) => b.stock < 5).length;
@@ -1360,61 +1378,6 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
         ))}
       </div>
 
-      {/* ── Royalty & Bank Payout Reconciliation ── */}
-      <div className="dash-panel mb-8">
-        <div className="dash-panel-header">
-          <h3 className="dash-panel-title">Royalty & Bank Payout Reconciliation</h3>
-        </div>
-        <div className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">Gross Sales</p>
-              <h4 className="text-xl font-bold text-gray-900">₹{grossSales.toFixed(0)}</h4>
-            </div>
-            <div className="bg-red-50 rounded-xl p-4 border border-red-100 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-red-500 mb-1">Platform Commission</p>
-              <h4 className="text-xl font-bold text-red-600">-₹{(grossSales * (data?.authorProfile?.extraData?.commissionRate || 0.20)).toFixed(0)}</h4>
-            </div>
-            <div className="bg-orange-50 rounded-xl p-4 border border-orange-100 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500 mb-1">Total Fees Offset</p>
-              <h4 className="text-xl font-bold text-orange-600">-₹{totalFeesPaid.toFixed(0)}</h4>
-            </div>
-            <div className="bg-green-50 rounded-xl p-4 border border-green-100 text-center shadow-sm">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-green-600 mb-1">Net Payable Royalty</p>
-              <h4 className="text-2xl font-black text-green-700">₹{Math.max(0, grossSales - (grossSales * (data?.authorProfile?.extraData?.commissionRate || 0.20)) - totalFeesPaid).toFixed(0)}</h4>
-            </div>
-          </div>
-          
-          <div className="mt-6 border-t border-gray-100 pt-6">
-            <h4 className="text-sm font-bold uppercase tracking-wider text-paa-navy mb-4">Recent Bank Payouts</h4>
-            {data?.authorProfile?.extraData?.payouts && data.authorProfile.extraData.payouts.length > 0 ? (
-              <div className="space-y-3">
-                {data.authorProfile.extraData.payouts.map((payout: any, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                        <Check size={16} className="text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">Transfer ID: {payout.transactionId}</p>
-                        <p className="text-xs text-gray-500">{new Date(payout.date).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-green-600">₹{payout.amount}</p>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Processed</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center p-6 bg-gray-50 rounded-xl border border-gray-200 border-dashed">
-                <p className="text-sm text-gray-500">No bank payouts have been processed yet.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* ── Library Donations KPI Cards ── */}
       {data?.activeDonations?.length > 0 || donationRegistrations.length > 0 ? (
