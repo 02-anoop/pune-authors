@@ -1482,19 +1482,43 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       bookSalesMap[bookTitle].units += item.quantity;
     });
 
-    const salesByAuthor = Object.values(salesByAuthorMap).sort((a, b) => b.revenue - a.revenue);
-    const salesByGenre = Object.values(salesByGenreMap).sort((a, b) => b.revenue - a.revenue);
-    const topSellingBooks = Object.values(bookSalesMap).sort((a, b) => b.units - a.units).slice(0, 10);
 
-    // 5. Event Sales
+    // 5. Event Sales (POS and Manual)
+    const eventSalesMap = {};
+
     const posItems = await prisma.posOrderItem.findMany({
       where: { posOrder: { paymentStatus: 'CONFIRMED' } },
       select: {
         quantity: true,
+        price: true,
+        book: {
+          select: { title: true, genre: true, mrp: true, author: { select: { name: true } } }
+        },
         posOrder: { select: { event: { select: { name: true } } } }
       }
     });
-    const eventSalesMap = {};
+    
+    posItems.forEach(item => {
+      if (item.book) {
+        const authorName = item.book.author?.name || 'Unknown';
+        const genre = item.book.genre || 'Other';
+        const bookTitle = item.book.title;
+        const itemRev = item.quantity * (item.price || item.book.mrp || 0);
+
+        if (!salesByAuthorMap[authorName]) salesByAuthorMap[authorName] = { name: authorName, revenue: 0, units: 0 };
+        salesByAuthorMap[authorName].revenue += itemRev;
+        salesByAuthorMap[authorName].units += item.quantity;
+
+        if (!salesByGenreMap[genre]) salesByGenreMap[genre] = { name: genre, revenue: 0, units: 0 };
+        salesByGenreMap[genre].revenue += itemRev;
+        salesByGenreMap[genre].units += item.quantity;
+
+        if (!bookSalesMap[bookTitle]) bookSalesMap[bookTitle] = { title: bookTitle, author: authorName, revenue: 0, units: 0 };
+        bookSalesMap[bookTitle].revenue += itemRev;
+        bookSalesMap[bookTitle].units += item.quantity;
+      }
+    });
+
     posItems.forEach(item => {
       if (!item.posOrder || !item.posOrder.event) return;
       const eventName = item.posOrder.event.name;
@@ -1504,14 +1528,65 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
 
     const manualSalesBooks = await prisma.eventAuthor.findMany({
       where: { manualTotalSold: { gt: 0 } },
-      select: { manualTotalSold: true, event: { select: { name: true } } }
+      select: { manualTotalSold: true, manualTotalRevenue: true, author: { select: { name: true } }, event: { select: { name: true } } }
     });
     manualSalesBooks.forEach(item => {
+      if (item.author) {
+        const authorName = item.author.name;
+        if (!salesByAuthorMap[authorName]) salesByAuthorMap[authorName] = { name: authorName, revenue: 0, units: 0 };
+        salesByAuthorMap[authorName].units += item.manualTotalSold;
+        salesByAuthorMap[authorName].revenue += (item.manualTotalRevenue || 0);
+      }
+      
       if (!item.event) return;
       const eventName = item.event.name;
       if (!eventSalesMap[eventName]) eventSalesMap[eventName] = { name: eventName, booksSold: 0 };
       eventSalesMap[eventName].booksSold += item.manualTotalSold;
     });
+
+    const soldEventBooks = await prisma.eventBook.findMany({
+      where: { soldStock: { gt: 0 } },
+      select: {
+        soldStock: true,
+        overrideMrp: true,
+        book: { select: { title: true, genre: true, mrp: true, author: { select: { name: true } } } },
+        event: { select: { name: true } },
+        authorId: true,
+        eventId: true
+      }
+    });
+
+    soldEventBooks.forEach(item => {
+      if (!item.book) return;
+      const qty = item.soldStock;
+      const price = item.overrideMrp || item.book.mrp || 0;
+      const itemRev = qty * price;
+      const authorName = item.book.author?.name || 'Unknown';
+      const genre = item.book.genre || 'Other';
+      const bookTitle = item.book.title;
+
+      if (!salesByAuthorMap[authorName]) salesByAuthorMap[authorName] = { name: authorName, revenue: 0, units: 0 };
+      salesByAuthorMap[authorName].revenue += itemRev;
+      salesByAuthorMap[authorName].units += qty;
+
+      if (!salesByGenreMap[genre]) salesByGenreMap[genre] = { name: genre, revenue: 0, units: 0 };
+      salesByGenreMap[genre].revenue += itemRev;
+      salesByGenreMap[genre].units += qty;
+
+      if (!bookSalesMap[bookTitle]) bookSalesMap[bookTitle] = { title: bookTitle, author: authorName, revenue: 0, units: 0 };
+      bookSalesMap[bookTitle].revenue += itemRev;
+      bookSalesMap[bookTitle].units += qty;
+
+      if (item.event) {
+        const eventName = item.event.name;
+        if (!eventSalesMap[eventName]) eventSalesMap[eventName] = { name: eventName, booksSold: 0 };
+        eventSalesMap[eventName].booksSold += qty;
+      }
+    });
+
+    const salesByAuthor = Object.values(salesByAuthorMap).sort((a, b) => b.units - a.units);
+    const salesByGenre = Object.values(salesByGenreMap).sort((a, b) => b.units - a.units);
+    const topSellingBooks = Object.values(bookSalesMap).sort((a, b) => b.units - a.units).slice(0, 10);
     const allEvents = await prisma.event.findMany({ select: { name: true } });
     allEvents.forEach(evt => {
       if (!eventSalesMap[evt.name]) eventSalesMap[evt.name] = { name: evt.name, booksSold: 0 };

@@ -118,24 +118,9 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     });
     const latestEventRate = last3Events.length > 0 ? last3Events[0].rate : 0;
 
-    const categorySalesMap: Record<string, number> = {};
-    orders.forEach((o: any) => {
-      if (o.status === 'Completed' || o.status === 'Dispatched') {
-        o.items?.forEach((item: any) => {
-          const book = books.find((b: any) => b.title === item.title || b.id === item.bookId);
-          const catName = book && book.category ? book.category : 'Unknown';
-          const genreName = book && book.genre ? book.genre : '';
-          const cat = genreName || catName;
-          if (cat && cat !== 'Unknown') {
-            categorySalesMap[cat] = (categorySalesMap[cat] || 0) + (item.qty || 1);
-          }
-        });
-      }
-    });
-    const categoryChartData = Object.entries(categorySalesMap)
-      .filter(([name]) => name !== 'Others' && name !== 'Uncategorized' && name !== 'N/A' && name !== 'Unknown')
-      .map(([name, sales]) => ({ name, sales }))
-      .sort((a, b) => b.sales - a.sales)
+    const categoryChartData = (stats?.salesByGenre || [])
+      .filter((g: any) => g.name !== 'Others' && g.name !== 'Uncategorized' && g.name !== 'N/A' && g.name !== 'Unknown')
+      .map((g: any) => ({ name: g.name, sales: g.units }))
       .slice(0, 6);
 
     // Chart Data 2: Order Status
@@ -147,40 +132,12 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     const orderStatusData = Object.entries(orderStatusMap).map(([name, value]) => ({ name, value }));
 
     // Chart Data 3: Top Authors and Books
-    const authorSalesMap: Record<string, number> = {};
-    const bookSalesMap: Record<string, number> = {};
-    orders.forEach((o: any) => {
-      if (o.status === 'Completed' || o.status === 'Dispatched') {
-        o.items?.forEach((it: any) => {
-          const aName = it.authorName || 'Unknown Author';
-          const bTitle = it.title || 'Unknown Book';
-          authorSalesMap[aName] = (authorSalesMap[aName] || 0) + (it.qty || 1);
-          bookSalesMap[bTitle] = (bookSalesMap[bTitle] || 0) + (it.qty || 1);
-        });
-      }
-    });
-
-    let totalDeliveryTime = 0;
-    let deliveredCount = 0;
-    orders.forEach((o: any) => {
-      o.items?.forEach((it: any) => {
-        if (it.status === 'Delivered' && it.dispatchedAt && it.deliveredAt) {
-          const time = new Date(it.deliveredAt).getTime() - new Date(it.dispatchedAt).getTime();
-          totalDeliveryTime += time;
-          deliveredCount++;
-        }
-      });
-    });
-    const avgDeliveryDays = deliveredCount > 0 ? (totalDeliveryTime / deliveredCount / (1000 * 3600 * 24)).toFixed(1) : 0;
-
-    const topAuthorsData = Object.entries(authorSalesMap)
-      .map(([name, sales]) => ({ name, sales }))
-      .sort((a, b) => b.sales - a.sales)
+    const topAuthorsData = (stats?.salesByAuthor || [])
+      .map((a: any) => ({ name: a.name, sales: a.units }))
       .slice(0, 5);
 
-    const topBooksData = Object.entries(bookSalesMap)
-      .map(([name, sales]) => ({ name, sales }))
-      .sort((a, b) => b.sales - a.sales)
+    const topBooksData = (stats?.topSellingBooks || [])
+      .map((b: any) => ({ name: b.title, sales: b.units }))
       .slice(0, 5);
 
     // Chart Data 4: Revenue Trend
@@ -378,44 +335,36 @@ const insights = [
                   )}
                 </div>
               </div>
-              <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm">
+              <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm col-span-2">
                 <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
                   <PieChart className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Order Status Distribution
                 </h3>
-                <div className="h-48 w-full">
+                <div className="h-48 w-full flex items-center">
                   {orderStatusData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                        <Pie data={orderStatusData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} dataKey="value">
-                          {orderStatusData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
+                    <>
+                      <div className="w-1/2 h-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsPieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                            <Pie data={orderStatusData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} dataKey="value">
+                              {orderStatusData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                          </RechartsPieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="w-1/2 flex flex-col justify-center gap-2 pl-4 border-l border-gray-100">
+                        {orderStatusData.map((entry, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-[10px] font-bold text-gray-600">
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
+                            {entry.name} ({entry.value})
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400 text-xs">No orders.</div>
-                  )}
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm">
-                <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-                  <PieChart className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Event Participation
-                </h3>
-                <div className="h-48 w-full">
-                  {participationChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={participationChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                        <XAxis dataKey="name" fontSize={10} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                        <YAxis fontSize={10} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                        <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                        <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Authors" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400 text-xs">No participation data.</div>
+                    <div className="h-full flex items-center justify-center text-gray-400 text-xs w-full">No orders.</div>
                   )}
                 </div>
               </div>
