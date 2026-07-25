@@ -1361,21 +1361,83 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
         </div>
       ))}
 
-      {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-4">
-        {[
-          { label: 'Event Participation', value: `${data?.authorProfile?.aggParticipatedEvents || 0}/${data?.authorProfile?.aggEligibleEvents || 0}`, colorClass: 'green' },
-          { label: 'Total Titles', value: authorBooks.length, colorClass: 'blue' },
-          { label: 'Gross Sales', value: '\u20b9' + grossSales.toFixed(0), colorClass: 'amber' },
-          { label: 'Total Fees Paid', value: '\u20b9' + totalFeesPaid, colorClass: 'red' },
-          { label: 'Web Sales', value: '\u20b9' + webSalesAmount.toFixed(0), colorClass: 'blue' },
-          { label: 'POS/Event Sales', value: '\u20b9' + posSalesAmount.toFixed(0), colorClass: 'amber' },
-        ].map((kpi, i) => (
-          <div key={i} className={`dash-kpi-card ${kpi.colorClass}`}>
-            <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">{kpi.label}</p>
-            <h3 className="text-2xl font-bold text-paa-navy">{kpi.value}</h3>
+      {/* ════ Pending Actions — Full Width Strip Above KPIs ════ */}
+      <div className="bg-white rounded-2xl border border-paa-navy/5 shadow-sm px-6 py-5 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <AlertCircle className="w-5 h-5 text-amber-500 animate-pulse" aria-hidden="true" />
+          <h3 className="text-base font-serif font-semibold text-paa-navy">Pending Actions</h3>
+          {actionItems.length > 0 && actionItems[0].id !== 'act-none' && (
+            <span className="ml-1 text-xs font-bold bg-amber-100 text-amber-700 rounded-full px-2.5 py-0.5">{actionItems.length}</span>
+          )}
+        </div>
+        {actionItems.length === 0 || actionItems[0].id === 'act-none' ? (
+          <p className="text-sm text-paa-gray-text py-1">✓ All caught up — no pending actions.</p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {actionItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => { if (item.link) navigate(item.link); }}
+                  className={`group relative flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${item.bg} ${item.color.replace('text-', 'border-').replace('600', '200')}`}
+                >
+                  <Icon size={18} aria-hidden="true" className={item.color} />
+                  <div className="leading-tight pr-2">
+                    <p className="text-sm font-bold whitespace-nowrap">{item.text}</p>
+                  </div>
+                  <button
+                    aria-label={`Dismiss ${item.text}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const next = [...dismissedActions, item.id];
+                      setDismissedActions(next);
+                      localStorage.setItem('paa_author_dismissed', JSON.stringify(next));
+                    }}
+                    className="ml-1 p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/10 transition-all"
+                  >
+                    <X size={13} aria-hidden="true" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
-        ))}
+        )}
+      </div>
+
+      {/* ── KPI Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+        <div className="dash-kpi-card green">
+          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">Event Participation</p>
+          <h3 className="text-2xl font-bold text-paa-navy">{`${data?.authorProfile?.aggParticipatedEvents || 0}/${data?.authorProfile?.aggEligibleEvents || 0}`}</h3>
+        </div>
+        <div className="dash-kpi-card blue">
+          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">Total Titles</p>
+          <h3 className="text-2xl font-bold text-paa-navy">{authorBooks.length}</h3>
+        </div>
+        
+        <div className="dash-kpi-card amber lg:col-span-2 flex flex-col justify-center">
+          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">Total Sales</p>
+          <div className="flex items-end gap-3 mb-2">
+            <h3 className="text-2xl font-bold text-paa-navy leading-none">₹{grossSales.toFixed(0)}</h3>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <button onClick={() => navigate('/dashboard/orders')} className="text-[9px] font-bold text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 uppercase tracking-widest bg-blue-50/50 px-2.5 py-1 rounded-md transition-colors shadow-sm">
+              Web Orders: ₹{webSalesAmount.toFixed(0)}
+            </button>
+            <button onClick={() => navigate('/dashboard/events')} className="text-[9px] font-bold text-amber-600 hover:text-white hover:bg-amber-500 border border-amber-200 uppercase tracking-widest bg-amber-50/50 px-2.5 py-1 rounded-md transition-colors shadow-sm">
+              Event/Fair Sales: ₹{posSalesAmount.toFixed(0)}
+            </button>
+          </div>
+        </div>
+
+        <button onClick={() => navigate('/dashboard/payments')} className="dash-kpi-card red text-left cursor-pointer hover:shadow-md hover:border-red-200 transition-all relative group">
+          <div className="flex justify-between items-start">
+            <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">Total Fees Paid</p>
+            <span className="text-red-400 bg-red-50 group-hover:bg-red-100 transition-colors p-1 rounded-full"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg></span>
+          </div>
+          <h3 className="text-2xl font-bold text-paa-navy">₹{totalFeesPaid}</h3>
+        </button>
       </div>
 
 
@@ -1404,42 +1466,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
 
 
 
-      {/* ── Pending Actions ── */}
-      <div className="dash-panel flex flex-col mb-6">
-        <div className="dash-panel-header">
-          <h3 className="dash-panel-title">Pending Actions</h3>
-        </div>
-        <div className="p-5 space-y-5 overflow-auto max-h-[300px]">
-          {actionItems.map((action) => {
-            const Icon = action.icon;
-            return (
-              <div key={action.id} className="flex gap-4 items-center group">
-                <div className="flex-1 flex items-center gap-4 cursor-pointer" onClick={() => { if (action.link) navigate(action.link); }}>
-                  <div className={`w-10 h-10 flex items-center justify-center shrink-0 ${action.bg} ${action.color} border border-paa-navy/5 rounded-full transition-transform group-hover:scale-110`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-paa-navy group-hover:underline">{action.text}</p>
-                  </div>
-                  {action.id !== 'act-none' && (
-                    <ChevronDown className="w-4 h-4 text-paa-gray-text -rotate-90 group-hover:text-paa-navy transition-colors mr-2" />
-                  )}
-                </div>
-                {action.id !== 'act-none' && (
-                  <button onClick={(e) => {
-                    e.stopPropagation();
-                    const next = [...dismissedActions, action.id];
-                    setDismissedActions(next);
-                    localStorage.setItem('paa_author_dismissed', JSON.stringify(next));
-                  }} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Dismiss">
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
+
 
       {/* ── Genre Filter Pills ── */}
       <div className="flex items-center gap-2 mb-5 flex-wrap">
