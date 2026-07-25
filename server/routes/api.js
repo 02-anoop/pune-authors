@@ -2063,7 +2063,17 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
       console.error('Error calculating participation:', e);
     }
 
-    const result = { authorProfile, authorOrders, dynamicFields, eventInvites, listedBooks, posOrders, notifications, activeDonations };
+    let totalWebAndBulkSales = 0;
+    let totalWebSales = 0;
+    let totalBulkSales = 0;
+    if (authorOrders.length > 0) {
+      const completed = authorOrders.filter(o => o.status === 'Completed' || o.status === 'Delivered' || o.orderStatus === 'Completed' || o.orderStatus === 'Delivered');
+      totalWebAndBulkSales = completed.reduce((sum, o) => sum + (o.amount || 0), 0);
+      totalWebSales = completed.filter(o => !o.isBulk).reduce((sum, o) => sum + (o.amount || 0), 0);
+      totalBulkSales = completed.filter(o => o.isBulk).reduce((sum, o) => sum + (o.amount || 0), 0);
+    }
+
+    const result = { authorProfile, authorOrders, dynamicFields, eventInvites, listedBooks, posOrders, notifications, activeDonations, totalWebAndBulkSales, totalWebSales, totalBulkSales };
     setCache(cacheKey, result, 20 * 1000); // 20s cache for dashboard
     res.json(result);
   } catch (err) {
