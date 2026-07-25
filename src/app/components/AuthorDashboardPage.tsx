@@ -6737,7 +6737,7 @@ function AuthorSalesReport({ data, onRefresh }: { data: any, onRefresh: () => vo
           <div className="flex justify-center gap-4 mt-4 flex-wrap">
             <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500/85"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Web</span></div>
             <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Events</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-white0"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Fairs</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Fairs</span></div>
           </div>
         </div>
 
