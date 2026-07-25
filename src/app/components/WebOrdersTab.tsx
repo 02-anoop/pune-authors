@@ -123,8 +123,8 @@ function WebOrdersTab({
       if (ord.isArchived) return false;
       if (statFilter !== 'All') {
         const statusText = getAggregateStatus(ord).text;
-        if (statFilter === 'Pending' && !['Pending Verification', 'Pending', 'Bulk Request Pending', 'Approved - Pending Payment'].includes(statusText)) return false;
-        if (statFilter === 'Accepted' && !['Accepted', 'Payment Confirmed'].includes(statusText)) return false;
+        if (statFilter === 'Pending' && !['Pending Verification', 'Pending', 'Bulk Req Pending', 'Pending Payment'].includes(statusText)) return false;
+        if (statFilter === 'Accepted' && !['Accepted', 'Payment Confirmed', 'Payment Verified'].includes(statusText)) return false;
         if (statFilter === 'Dispatched' && statusText !== 'Dispatched') return false;
         if (statFilter === 'Completed' && statusText !== 'Delivered') return false;
         if (statFilter === 'Cancelled' && !['Cancelled', 'Rejected', 'Payment Failed'].includes(statusText)) return false;
@@ -157,7 +157,7 @@ function WebOrdersTab({
   const successfulOrders = successfulWeb + successfulBulk;
 
   const toApproveWeb = webOrders.filter((o: any) => ['Pending Verification', 'Pending'].includes(getAggregateStatus(o).text)).length;
-  const toApproveBulk = bulkOrders.filter((o: any) => ['Bulk Request Pending', 'Approved - Pending Payment'].includes(getAggregateStatus(o).text)).length;
+  const toApproveBulk = bulkOrders.filter((o: any) => ['Bulk Req Pending', 'Pending Payment'].includes(getAggregateStatus(o).text)).length;
   const toApproveOrders = toApproveWeb + toApproveBulk;
 
   const underDeliveryWeb = webOrders.filter((o: any) => getAggregateStatus(o).text === 'Dispatched').length;
@@ -365,8 +365,8 @@ function WebOrdersTab({
                 {['All', 'Pending', 'Accepted', 'Dispatched', 'Completed'].map((st) => {
                   const tabCount = st === 'All' ? section.data.length : section.data.filter((ord: any) => {
                     const statusText = getAggregateStatus(ord).text;
-                    if (st === 'Pending' && ['Pending Verification', 'Pending', 'Bulk Request Pending', 'Approved - Pending Payment'].includes(statusText)) return true;
-                    if (st === 'Accepted' && ['Accepted', 'Payment Confirmed'].includes(statusText)) return true;
+                    if (st === 'Pending' && ['Pending Verification', 'Pending', 'Bulk Req Pending', 'Pending Payment'].includes(statusText)) return true;
+                    if (st === 'Accepted' && ['Accepted', 'Payment Confirmed', 'Payment Verified'].includes(statusText)) return true;
                     if (st === 'Dispatched' && statusText === 'Dispatched') return true;
                     if (st === 'Completed' && statusText === 'Delivered') return true;
                     return false;

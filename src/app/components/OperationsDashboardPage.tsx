@@ -1028,6 +1028,7 @@ export function OperationsDashboardPage() {
   const [selectedEventBreakdown, setSelectedEventBreakdown] =
     useState<any>(null);
   const [hasGranularData, setHasGranularData] = useState(false);
+  const [pendingQueriesCount, setPendingQueriesCount] = useState(0);
   const [authorSearch, setAuthorSearch] = useState("");
   const [expandedAuthorId, setExpandedAuthorId] = useState<number | null>(null);
   const [expandedEventIndex, setExpandedEventIndex] = useState<number | null>(
@@ -1035,9 +1036,13 @@ export function OperationsDashboardPage() {
   );
   const [eventSearch, setEventSearch] = useState("");
   const [createEventDate, setCreateEventDate] = useState("");
-  const [createDateType, setCreateDateType] = useState<"exact" | "tentative">(
-    "exact",
-  );
+  const [createDateType, setCreateDateType] = useState<"exact" | "tentative">("exact");
+  const [lastAdminVisit] = useState<number>(() => {
+    const saved = localStorage.getItem('lastAdminVisit');
+    const time = saved ? parseInt(saved) : Date.now() - (24 * 60 * 60 * 1000); // default to 24h ago
+    localStorage.setItem('lastAdminVisit', Date.now().toString());
+    return time;
+  });
   const [createTentativeDate, setCreateTentativeDate] = useState("");
   const [createEventStatus, setCreateEventStatus] = useState("Upcoming");
   const [manageAuthorBooks, setManageAuthorBooks] = useState<any[]>([]);
@@ -1560,6 +1565,7 @@ export function OperationsDashboardPage() {
       const c = res.data.filter((q: any) => q.status === "Pending").length;
       if (c > prevCountsRef.current.queries)
         setPendingAlerts((prev) => ({ ...prev, queries: true }));
+      setPendingQueriesCount(c);
       prevCountsRef.current.queries = c;
     } catch (err) {}
   };
@@ -10462,7 +10468,8 @@ const totalAuthorsBase = eventRegistrations.length;
                   orders={orders}
                   events={events}
                   stats={stats}
-                  prevQueries={prevCountsRef.current?.queries || 0}
+                  lastAdminVisit={lastAdminVisit}
+                  prevQueries={pendingQueriesCount}
                   API={API}
                   setActiveTab={setActiveTab}
                   setAuthorStatusFilter={setAuthorStatusFilter}

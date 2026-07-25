@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Users, Activity, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit } from 'lucide-react';
+import { Users, Activity, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit, CheckCircle } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, LabelList } from 'recharts';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -8,7 +8,7 @@ import { getAuthorParticipationStats } from './OperationsDashboardPage';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, orders, events, stats, prevQueries, setActiveTab, setAuthorStatusFilter, API }: any) => {
+export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, orders, events, stats, prevQueries, lastAdminVisit, setActiveTab, setAuthorStatusFilter, API }: any) => {
 
     const [localDismissed, setLocalDismissed] = useState<string[]>(() => {
       const saved = localStorage.getItem('paa_dismissed_actions');
@@ -31,7 +31,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     
     // Memoize heavy calculations to prevent layout thrashing and high main-thread execution time
     const { 
-      lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, pendingOrders, pendingQueries, pendingFines,
+      lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries, pendingFines,
       orderCompletionRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
       orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
       completedOrders
@@ -54,13 +54,41 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
 
 
 
-    // KPIs & Insights
+    const getAggregateStatusText = (ord: any) => {
+      const { status: ordStatus, items } = ord;
+      if (ordStatus === 'Cancelled') return 'Cancelled';
+      if (ordStatus === 'Payment Not Received') return 'Payment Failed';
+      if (items && items.length > 0) {
+        if (items.every((it: any) => it.status === 'Completed' || it.status === 'Delivered')) return 'Delivered';
+        if (items.some((it: any) => it.status === 'Dispatched' || it.status === 'Completed' || it.status === 'Delivered')) return 'Dispatched';
+        if (items.some((it: any) => it.status === 'Accepted')) return 'Accepted';
+        if (items.some((it: any) => it.status === 'Rejected')) return 'Rejected';
+      }
+      if (ord.isBulk) {
+        if (ordStatus === 'Bulk Request Pending') return 'Bulk Req Pending';
+        if (ordStatus === 'Approved - Pending Payment') return 'Pending Payment';
+        if (ordStatus === 'Payment Verified') return 'Payment Verified';
+        if (ordStatus === 'Dispatched') return 'Dispatched';
+        if (ordStatus === 'Delivered' || ordStatus === 'Completed') return 'Delivered';
+      }
+      if (ordStatus === 'Pending Verification' || ordStatus === 'Pending') return 'Pending Verification';
+      return ordStatus || 'Pending';
+    };
+
     const pendingAuthors = authors.filter((a: any) => a.status === 'Pending').length;
     const pendingEdits = authors.filter((a: any) => { const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData) } catch(e) { return {} } })() : (a.extraData || {}); return a.status === 'Edited' || ed?.hasPendingEdits; }).length;
-    const pendingEvents = authors.filter((a: any) => a.eventParticipation && a.eventParticipation.length > 0 && a.eventParticipation.some((e: any) => e.status === 'Pending')).length;
-    const pendingOrders = orders.filter((o: any) => o.status === 'Pending Verification' || o.status === 'Processing').length;
+    const pendingEvents = authors.filter((a: any) => a.eventParticipation && a.eventParticipation.length > 0 && a.eventParticipation.some((e: any) => e.status === 'Pending Approval')).length;
+    
+    const newWebOrders = orders.filter((o: any) => !o.isArchived && !o.isBulk && ['Pending Verification', 'Pending'].includes(getAggregateStatusText(o))).length;
+    const pendingBulkOrders = orders.filter((o: any) => !o.isArchived && o.isBulk && ['Bulk Req Pending', 'Pending Payment'].includes(getAggregateStatusText(o))).length;
+    
+    const recentDispatchedOrders = lastAdminVisit ? orders.filter((o: any) => !o.isArchived && o.items?.some((it: any) => it.dispatchedAt && new Date(it.dispatchedAt).getTime() > lastAdminVisit)).length : 0;
+    const recentDeliveredOrders = lastAdminVisit ? orders.filter((o: any) => !o.isArchived && o.items?.some((it: any) => it.deliveredAt && new Date(it.deliveredAt).getTime() > lastAdminVisit)).length : 0;
     const pendingQueries = prevQueries || 0;
-    const pendingFines = authors.filter((a: any) => { const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData) } catch(e) { return {} } })() : (a.extraData || {}); return ed?.fineStatus === 'Pending Verification' || (!ed?.fineStatus && ed?.finePaymentScreenshot); }).length;
+    const pendingFines = authors.filter((a: any) => { 
+        const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData) } catch(e) { return {} } })() : (a.extraData || {}); 
+        return (ed?.fineStatus === 'Pending Verification' || (!ed?.fineStatus && ed?.finePaymentScreenshot)) && ed?.finePaymentScreenshot; 
+    }).length;
 
     const totalOrders = orders.length;
     const completedOrders = orders.filter((o: any) => o.status === 'Completed' || o.status === 'Dispatched').length;
@@ -177,12 +205,12 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
 
     
       return {
-        lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, pendingOrders, pendingQueries: prevQueries, pendingFines,
+        lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries: prevQueries, pendingFines,
         orderCompletionRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
         orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
         completedOrders: orders.filter((o: any) => o.status === 'Completed' || o.status === 'Dispatched').length
       };
-    }, [books, authors, orders, events, stats, localDismissed, notifiedBooks, prevQueries]);
+    }, [books, authors, orders, events, stats, localDismissed, notifiedBooks, prevQueries, lastAdminVisit]);
 
     const handleNotifyAllLowStock = async () => {
       setNotifiedBooks((prev: any) => {
@@ -225,7 +253,10 @@ const insights = [
       { id: 'authors', show: !localDismissed.includes('authors') && pendingAuthors > 0, icon: Users, color: 'bg-blue-50 text-blue-600 border-blue-200', label: 'Approve New Authors', count: pendingAuthors, unit: 'waiting', tab: 'authors', filter: null },
       { id: 'edits', show: !localDismissed.includes('edits') && pendingEdits > 0, icon: Edit, color: 'bg-orange-50 text-orange-600 border-orange-200', label: 'Profile Edits', count: pendingEdits, unit: 'pending', tab: 'authors', filter: 'Edited' },
       { id: 'events', show: !localDismissed.includes('events') && pendingEvents > 0, icon: CalendarIcon, color: 'bg-amber-50 text-amber-600 border-amber-200', label: 'Event Registrations', count: pendingEvents, unit: 'pending', tab: 'events', filter: null },
-      { id: 'orders', show: !localDismissed.includes('orders') && pendingOrders > 0, icon: ShoppingCart, color: 'bg-emerald-50 text-emerald-600 border-emerald-200', label: 'Web Orders', count: pendingOrders, unit: 'to fulfill', tab: 'web_orders', filter: null },
+      { id: 'web_orders', show: !localDismissed.includes('web_orders') && newWebOrders > 0, icon: ShoppingCart, color: 'bg-emerald-50 text-emerald-600 border-emerald-200', label: 'New Web Orders', count: newWebOrders, unit: 'new orders', tab: 'web_orders', filter: null },
+      { id: 'bulk_orders', show: !localDismissed.includes('bulk_orders') && pendingBulkOrders > 0, icon: Package, color: 'bg-cyan-50 text-cyan-600 border-cyan-200', label: 'Pending Bulk Orders', count: pendingBulkOrders, unit: 'to process', tab: 'web_orders', filter: null },
+      { id: 'dispatched_orders', show: !localDismissed.includes('dispatched_orders') && recentDispatchedOrders > 0, icon: Package, color: 'bg-blue-50 text-blue-600 border-blue-200', label: 'Dispatched Orders', count: recentDispatchedOrders, unit: 'recently', tab: 'web_orders', filter: null },
+      { id: 'delivered_orders', show: !localDismissed.includes('delivered_orders') && recentDeliveredOrders > 0, icon: CheckCircle, color: 'bg-green-50 text-green-600 border-green-200', label: 'Delivered Orders', count: recentDeliveredOrders, unit: 'recently', tab: 'web_orders', filter: null },
       { id: 'fines', show: !localDismissed.includes('fines') && pendingFines > 0, icon: AlertCircle, color: 'bg-red-50 text-red-600 border-red-200', label: 'Fine Payments', count: pendingFines, unit: 'received', tab: 'late_authors', filter: null },
       { id: 'helpdesk', show: !localDismissed.includes('helpdesk') && pendingQueries > 0, icon: MessageSquare, color: 'bg-purple-50 text-purple-600 border-purple-200', label: 'Author Queries', count: pendingQueries, unit: 'unread', tab: 'helpdesk', filter: null },
     ].filter(a => a.show);
