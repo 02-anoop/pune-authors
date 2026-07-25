@@ -133,8 +133,9 @@ router.delete('/api/admin/libraries/:id/banner', verifyToken, isAdmin, async (re
 // Delete library
 router.delete('/api/admin/libraries/:id', verifyToken, isAdmin, async (req, res) => {
   try {
-    await prisma.library.delete({
-      where: { id: parseInt(req.params.id) }
+    await prisma.library.update({
+      where: { id: parseInt(req.params.id) },
+      data: { isArchived: true, status: 'Archived' }
     });
     res.json({ success: true });
   } catch (err) {
@@ -372,9 +373,10 @@ router.delete('/api/author/donation-registrations/:id', verifyToken, async (req,
       }
     }
 
-    // Delete the registration
-    await prisma.donationRegistration.delete({
-      where: { id: registration.id }
+    // Soft delete the registration
+    await prisma.donationRegistration.update({
+      where: { id: registration.id },
+      data: { isArchived: true, status: 'Cancelled' }
     });
 
     res.json({ message: 'Registration deleted successfully' });

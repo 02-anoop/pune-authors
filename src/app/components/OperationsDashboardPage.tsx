@@ -10672,7 +10672,9 @@ const totalAuthorsBase = eventRegistrations.length;
                                 <CalendarIcon className="w-3 h-3" />{" "}
                                 {(() => {
                                   const d = new Date(doc.createdAt);
-                                  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+                                  const dateStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+                                  const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                                  return `${dateStr} ${timeStr}`;
                                 })()}
                                 {doc.isServerFile && " (Last updated)"}
                               </span>

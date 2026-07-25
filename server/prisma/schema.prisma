@@ -351,6 +351,7 @@ model EventAuthor {
   investment         Float?   @default(0)
   rejectionReason    String?
   manualDailySales   Json?
+  isArchived         Boolean  @default(false)
   author             Author   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   event              Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
@@ -366,6 +367,7 @@ model EventBook {
   createdAt     DateTime @default(now())
   overrideMrp   Float?
   manualDailySales Json?
+  isArchived    Boolean  @default(false)
   author        Author   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   book          Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
   event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -422,6 +424,7 @@ model Library {
   status          String                 @default("Active")
   createdAt       DateTime               @default(now())
   bannerUrl       String?
+  isArchived      Boolean                @default(false)
   announcements   DonationAnnouncement[]
   logs            DonationLog[]
   galleryEvent    GalleryEvent?
@@ -480,6 +483,7 @@ model DonationRegistration {
   globalRemarks       String?
   broadcastStatus     String               @default("Draft")
   createdAt           DateTime             @default(now())
+  isArchived          Boolean              @default(false)
   books               DonationBook[]
   announcement        DonationAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
   author              Author               @relation(fields: [authorId], references: [id], onDelete: Cascade)

@@ -96,7 +96,7 @@ router.get('/api/books', async (req, res) => {
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
 
-  const where = { status: 'Approved' };
+  const where = { status: 'Approved', isArchived: false };
   if (genre) where.genre = genre;
 
   const books = await prisma.book.findMany({
@@ -597,8 +597,9 @@ router.put('/api/author/edit-profile-full', verifyToken, upload.any(), async (re
     });
 
     const incomingBookIds = booksArray.map(b => parseInt(b.id)).filter(id => !isNaN(id));
-    await prisma.book.deleteMany({
-      where: { authorId: author.id, id: { notIn: incomingBookIds } }
+    await prisma.book.updateMany({
+      where: { authorId: author.id, id: { notIn: incomingBookIds } },
+      data: { isArchived: true, status: 'Archived' }
     });
 
     for (let i = 0; i < booksArray.length; i++) {
@@ -736,8 +737,9 @@ router.put('/api/author/reapply-full', verifyToken, upload.any(), async (req, re
     });
 
     const incomingBookIds = booksArray.map(b => parseInt(b.id)).filter(id => !isNaN(id));
-    await prisma.book.deleteMany({
-      where: { authorId: author.id, id: { notIn: incomingBookIds } }
+    await prisma.book.updateMany({
+      where: { authorId: author.id, id: { notIn: incomingBookIds } },
+      data: { isArchived: true, status: 'Archived' }
     });
 
     for (let i = 0; i < booksArray.length; i++) {
@@ -1053,8 +1055,9 @@ router.put('/api/admin/authors/:id/full-update-and-approve', verifyToken, isAdmi
     });
 
     const incomingBookIds = booksArray.map(b => parseInt(b.id)).filter(id => !isNaN(id));
-    await prisma.book.deleteMany({
-      where: { authorId: author.id, id: { notIn: incomingBookIds } }
+    await prisma.book.updateMany({
+      where: { authorId: author.id, id: { notIn: incomingBookIds } },
+      data: { isArchived: true, status: 'Archived' }
     });
 
     for (let i = 0; i < booksArray.length; i++) {
@@ -1213,8 +1216,9 @@ router.post('/api/admin/authors/:id/reject-edits', verifyToken, isAdmin, async (
         const currentBooks = await prisma.book.findMany({ where: { authorId: id } });
         const originalBookIds = originalBooks.map(b => b.id);
 
-        await prisma.book.deleteMany({
-          where: { authorId: id, id: { notIn: originalBookIds } }
+        await prisma.book.updateMany({
+          where: { authorId: id, id: { notIn: originalBookIds } },
+          data: { isArchived: true, status: 'Archived' }
         });
 
         for (const ob of originalBooks) {
@@ -1608,7 +1612,8 @@ router.get('/api/admin/books', verifyToken, isAdmin, async (req, res) => {
       where: {
         author: {
           status: 'Active'
-        }
+        },
+        isArchived: false
       },
       include: { author: true, orderItems: { include: { order: true } } }
     });
@@ -4672,32 +4677,55 @@ router.post('/api/author/events/:eventId/opt-in', verifyToken, upload.single('pa
         });
       }
 
-      // ── STEP 4: Remove old EventBook records and recreate ──
-      await tx.eventBook.deleteMany({ where: { eventId, authorId: author.id } });
+      // ── STEP 4: Archive removed EventBook records ──
+      const incomingBookIds = booksToLink ? booksToLink.map(b => parseInt(b.bookId)) : [];
+      await tx.eventBook.updateMany({ 
+        where: { eventId, authorId: author.id, bookId: { notIn: incomingBookIds } }, 
+        data: { isArchived: true } 
+      });
 
-      // ── STEP 5: Deduct new listedStock from Book.stock and create EventBook records ──
+      // ── STEP 5: Deduct new listedStock from Book.stock and update/create EventBook records ──
       const lowStockBooksAfterEvent = [];
       if (booksToLink && booksToLink.length > 0) {
         for (const b of booksToLink) {
           const requested = parseInt(b.stock);
+          const bookId = parseInt(b.bookId);
+
+          const existingEb = await tx.eventBook.findFirst({
+            where: { eventId, authorId: author.id, bookId }
+          });
+
+          if (existingEb) {
+            await tx.eventBook.update({
+              where: { id: existingEb.id },
+              data: { 
+                listedStock: { increment: requested },
+                isArchived: false
+              }
+            });
+          } else {
+            await tx.eventBook.create({
+              data: {
+                eventId,
+                authorId: author.id,
+                bookId,
+                listedStock: requested,
+                overrideMrp: b.overrideMrp || null
+              }
+            });
+          }
+
           // Deduct listed stock from Book.stock
           const bookAfterDeduct = await tx.book.update({
-            where: { id: parseInt(b.bookId) },
+            where: { id: bookId },
             data: { stock: { decrement: requested } },
             include: { author: true }
           });
-          // Collect books that fall below threshold for post-transaction alerting
+          
           if (bookAfterDeduct.stock < 10) {
             lowStockBooksAfterEvent.push(bookAfterDeduct);
           }
         }
-        const eventBooksData = booksToLink.map((b) => ({
-          eventId,
-          authorId: author.id,
-          bookId: parseInt(b.bookId),
-          listedStock: parseInt(b.stock)
-        }));
-        await tx.eventBook.createMany({ data: eventBooksData });
       }
       // Store for post-transaction processing (transactions cannot use external I/O)
       author._lowStockBooksAfterEvent = lowStockBooksAfterEvent;
@@ -6967,6 +6995,8 @@ router.get('/api/admin/inventory', verifyToken, isAdmin, async (req, res) => {
         { author: { name: { contains: search } } }
       ];
     }
+    
+    whereClause.isArchived = false;
 
     if (lowStock === 'true') {
       whereClause.stock = { lt: 10 };
@@ -7584,7 +7614,7 @@ router.get('/api/public/authors', async (req, res) => {
     const authors = await prisma.author.findMany({
       where: { status: 'Active' },
       include: {
-        books: { where: { status: 'Approved' } },
+        books: { where: { status: 'Approved', isArchived: false } },
         eventAuthors: { include: { event: true } }
       },
       orderBy: { name: 'asc' }
@@ -7603,7 +7633,7 @@ router.get('/api/public/authors/:id', async (req, res) => {
     const author = await prisma.author.findUnique({
       where: { id },
       include: {
-        books: { where: { status: 'Approved' } },
+        books: { where: { status: 'Approved', isArchived: false } },
         eventAuthors: { include: { event: true } }
       }
     });
