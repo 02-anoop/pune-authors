@@ -10616,7 +10616,8 @@ const totalAuthorsBase = eventRegistrations.length;
                   const otherServerDocs = serverFiles
                     .filter((f: any) => {
                       const lowerUrl = f.url.toLowerCase();
-                      return lowerUrl !== "/uploads/catalogue.pdf" && !notificationUrls.has(lowerUrl);
+                      const isUserUpload = /^\\d{13}-\\d+-/.test(f.name);
+                      return lowerUrl !== "/uploads/catalogue.pdf" && !notificationUrls.has(lowerUrl) && !isUserUpload;
                     })
                     .map((f: any) => ({
                       id: `sf-${f.name}`,
