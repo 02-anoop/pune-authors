@@ -5797,11 +5797,17 @@ router.put('/api/author/events/:id/settle', verifyToken, async (req, res) => {
 router.delete('/api/admin/events/:id', verifyToken, isAdmin, async (req, res) => {
   try {
     const eventId = parseInt(req.params.id);
-    await prisma.event.update({ where: { id: eventId }, data: { isArchived: true } });
-    res.json({ success: true });
+    const { hard } = req.query;
+    if (hard === 'true') {
+      await prisma.event.delete({ where: { id: eventId } });
+      return res.json({ success: true, message: 'Event permanently deleted' });
+    } else {
+      await prisma.event.update({ where: { id: eventId }, data: { isArchived: true } });
+      return res.json({ success: true, message: 'Event archived' });
+    }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to archive event' });
+    res.status(500).json({ error: 'Failed to process event deletion' });
   }
 });
 
@@ -5897,11 +5903,17 @@ router.post('/api/admin/notifications', verifyToken, isAdmin, upload.single('doc
 router.delete('/api/admin/notifications/:id', verifyToken, isAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await prisma.notification.update({ where: { id }, data: { isArchived: true } });
-    res.json({ success: true });
+    const { hard } = req.query;
+    if (hard === 'true') {
+      await prisma.notification.delete({ where: { id } });
+      return res.json({ success: true, message: 'Notification permanently deleted' });
+    } else {
+      await prisma.notification.update({ where: { id }, data: { isArchived: true } });
+      return res.json({ success: true, message: 'Notification archived' });
+    }
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to archive notification' });
+    res.status(500).json({ error: 'Failed to process notification deletion' });
   }
 });
 

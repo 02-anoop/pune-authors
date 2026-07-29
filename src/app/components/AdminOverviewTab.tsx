@@ -239,11 +239,11 @@ const insights = [
                   <div
                     key={item.id}
                     onClick={() => { if (item.filter) { setActiveTab(item.tab); setAuthorStatusFilter(item.filter); } else setActiveTab(item.tab); }}
-                    className={`group relative flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${item.color}`}
+                    className={`group relative flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 w-full sm:w-auto ${item.color}`}
                   >
                     <Icon size={18} aria-hidden="true" />
-                    <div className="leading-tight">
-                      <p className="text-sm font-bold whitespace-nowrap">{item.label}</p>
+                    <div className="leading-tight flex-1 min-w-0">
+                      <p className="text-sm font-bold text-wrap break-words">{item.label}</p>
                       <p className="text-xs opacity-70">{item.count} {item.unit}</p>
                     </div>
                     <button

@@ -77,6 +77,7 @@ import {
   Upload,
   Truck,
   PackageCheck,
+  Archive,
 } from "lucide-react";
 import {
   AreaChart,
@@ -1416,6 +1417,19 @@ export function OperationsDashboardPage() {
     }
   };
 
+  const handleHardDeleteEvent = async (id: number) => {
+    if (!window.confirm("Are you sure you want to PERMANENTLY DELETE this event? This action cannot be undone.")) return;
+    try {
+      await axios.delete(`${API}/api/admin/events/${id}?hard=true`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      toast.success("Event permanently deleted");
+      fetchEvents();
+    } catch (err) {
+      toast.error("Failed to delete event");
+    }
+  };
+
   const handleRestoreEvent = async (id: number) => {
     if (!window.confirm("Are you sure you want to restore this event?")) return;
     try {
@@ -2113,6 +2127,30 @@ export function OperationsDashboardPage() {
     } catch (err) {
       console.error(err);
       toast.error("Failed to archive");
+    }
+  };
+
+  const handleHardDeleteNotification = async (id: number) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to PERMANENTLY DELETE this document/notification? This action cannot be undone.",
+      )
+    )
+      return;
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/notifications/${id}?hard=true`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      setNotifications(notifications.filter((n) => n.id !== id));
+      toast.success("Permanently deleted successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete permanently");
     }
   };
 
@@ -8233,16 +8271,28 @@ const totalAuthorsBase = eventRegistrations.length;
                                     Restore
                                   </button>
                                 ) : (
-                                  <button
-                                    title="Archive Event"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteEvent(evt.id);
-                                    }}
-                                    className="p-2 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white border border-red-200 rounded-lg shadow-sm transition-colors"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
+                                  <>
+                                    <button
+                                      title="Archive Event"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteEvent(evt.id);
+                                      }}
+                                      className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-200 rounded-lg shadow-sm transition-colors"
+                                    >
+                                      <Archive className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      title="Permanently Delete Event"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleHardDeleteEvent(evt.id);
+                                      }}
+                                      className="p-2 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white border border-red-200 rounded-lg shadow-sm transition-colors"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </>
                                 )}
                               </>
                             )}
@@ -10419,19 +10469,36 @@ const totalAuthorsBase = eventRegistrations.length;
                               • {new Date(n.createdAt).toLocaleDateString()}
                             </p>
                           </div>
-                          <button
-                            onClick={() => handleDeleteNotification(n.id)}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              cursor: "pointer",
-                              padding: 2,
-                              color: "#ef4444",
-                              opacity: 0.5,
-                            }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleDeleteNotification(n.id)}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                padding: 2,
+                                color: "#d97706",
+                                opacity: 0.7,
+                              }}
+                              title="Archive"
+                            >
+                              <Archive className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => handleHardDeleteNotification(n.id)}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                padding: 2,
+                                color: "#ef4444",
+                                opacity: 0.5,
+                              }}
+                              title="Permanent Delete"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                   </div>
@@ -10518,13 +10585,22 @@ const totalAuthorsBase = eventRegistrations.length;
                               </span>
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleDeleteNotification(n.id)}
-                            className="p-2.5 text-red-500 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors shadow-sm shrink-0"
-                            title="Delete Broadcast"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleDeleteNotification(n.id)}
+                              className="p-2.5 text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 rounded-xl transition-colors shadow-sm shrink-0"
+                              title="Archive Broadcast"
+                            >
+                              <Archive className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleHardDeleteNotification(n.id)}
+                              className="p-2.5 text-red-500 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors shadow-sm shrink-0"
+                              title="Delete Broadcast"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                   </div>
@@ -10712,13 +10788,22 @@ const totalAuthorsBase = eventRegistrations.length;
                                   Restore
                                 </button>
                               ) : (
-                                <button
-                                  onClick={() => handleDeleteNotification(doc.id)}
-                                  className="p-2.5 text-red-500 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors shadow-sm shrink-0"
-                                  title="Archive Document"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleDeleteNotification(doc.id)}
+                                    className="p-2.5 text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 rounded-xl transition-colors shadow-sm shrink-0"
+                                    title="Archive Document"
+                                  >
+                                    <Archive className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleHardDeleteNotification(doc.id)}
+                                    className="p-2.5 text-red-500 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors shadow-sm shrink-0"
+                                    title="Permanently Delete Document"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </>
                               )}
                             </>
                           )}

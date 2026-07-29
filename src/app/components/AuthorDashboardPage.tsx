@@ -1380,11 +1380,11 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
                 <div
                   key={item.id}
                   onClick={() => { if (item.link) navigate(item.link); }}
-                  className={`group relative flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${item.bg} ${item.color.replace('text-', 'border-').replace('600', '200')}`}
+                  className={`group relative flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 w-full sm:w-auto ${item.bg} ${item.color.replace('text-', 'border-').replace('600', '200')}`}
                 >
                   <Icon size={18} aria-hidden="true" className={item.color} />
-                  <div className="leading-tight pr-2">
-                    <p className="text-sm font-bold whitespace-nowrap">{item.text}</p>
+                  <div className="leading-tight pr-2 flex-1 min-w-0">
+                    <p className="text-sm font-bold text-wrap break-words">{item.text}</p>
                   </div>
                   <button
                     aria-label={`Dismiss ${item.text}`}
