@@ -7570,17 +7570,21 @@ const totalAuthorsBase = eventRegistrations.length;
                           position="top"
                           content={(props: any) => {
                             const { x, y, value, index } = props;
-                            if (value === undefined || value === 0) return null;
+                            if (value === undefined) return null;
                             
-                            // Only show labels for top 6 points to avoid clutter
-                            const topIndices = [...chartData]
-                              .map((d, i) => ({ v: d.booksSold || 0, i }))
-                              .sort((a, b) => b.v - a.v)
-                              .slice(0, 6)
-                              .map((item) => item.i);
+                            const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+                            if (isMobile) {
+                              if (value === 0) return null;
                               
-                            if (!topIndices.includes(index)) return null;
-
+                              const topIndices = [...chartData]
+                                .map((d, i) => ({ v: d.booksSold || 0, i }))
+                                .sort((a, b) => b.v - a.v)
+                                .slice(0, 6)
+                                .map((item) => item.i);
+                                
+                              if (!topIndices.includes(index)) return null;
+                            }
+                            
                             const prev = chartData[index - 1]?.booksSold;
                             const next = chartData[index + 1]?.booksSold;
                             let yPos = y - 12;

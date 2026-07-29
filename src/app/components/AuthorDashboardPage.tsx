@@ -3039,6 +3039,30 @@ function AuthorOrders({ orders, onRefresh, dashboardData }: { orders: any[], onR
   const [editingStatusOrderId, setEditingStatusOrderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const totalSalesAmount = dashboardData?.totalWebAndBulkSales !== undefined 
+    ? dashboardData.totalWebAndBulkSales 
+    : (orders || []).reduce((sum: number, o: any) => {
+        const isCompleted = o.status === 'Completed' || o.status === 'Delivered' || 
+                            o.orderStatus === 'Completed' || o.orderStatus === 'Delivered';
+        return isCompleted ? sum + (o.amount || 0) : sum;
+      }, 0);
+
+  const webSalesAmount = dashboardData?.totalWebSales !== undefined
+    ? dashboardData.totalWebSales
+    : (orders || []).reduce((sum: number, o: any) => {
+        const isCompleted = o.status === 'Completed' || o.status === 'Delivered' || 
+                            o.orderStatus === 'Completed' || o.orderStatus === 'Delivered';
+        return (isCompleted && !o.isBulk) ? sum + (o.amount || 0) : sum;
+      }, 0);
+
+  const bulkSalesAmount = dashboardData?.totalBulkSales !== undefined
+    ? dashboardData.totalBulkSales
+    : (orders || []).reduce((sum: number, o: any) => {
+        const isCompleted = o.status === 'Completed' || o.status === 'Delivered' || 
+                            o.orderStatus === 'Completed' || o.orderStatus === 'Delivered';
+        return (isCompleted && o.isBulk) ? sum + (o.amount || 0) : sum;
+      }, 0);
+
   const ORDER_REJECTION_REASONS = [
     'Item out of stock',
     'Inventory is damaged',
@@ -3720,6 +3744,25 @@ function AuthorOrders({ orders, onRefresh, dashboardData }: { orders: any[], onR
         
         {/* KPI Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 h-max">
+          <div className="bg-[#FFFBEB] rounded-xl shadow-sm border border-amber-200 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-amber-300 transition-colors col-span-2 md:col-span-3">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-white text-amber-600 flex items-center justify-center shrink-0 shadow-sm border border-amber-100">
+                <TrendingUp size={18} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold tracking-widest uppercase text-gray-500 mb-0.5">TOTAL SALES</p>
+                <h3 className="text-xl font-bold text-gray-900">₹{totalSalesAmount.toLocaleString()}</h3>
+              </div>
+            </div>
+            <div className="flex flex-row items-center gap-2">
+              <span className="px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE] whitespace-nowrap">
+                WEB ORDERS: ₹{webSalesAmount.toLocaleString()}
+              </span>
+              <span className="px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] whitespace-nowrap">
+                BULK ORDERS: ₹{bulkSalesAmount.toLocaleString()}
+              </span>
+            </div>
+          </div>
           <div className="bg-white rounded-xl shadow-sm border border-paa-navy/5 p-4 flex items-center gap-4 hover:border-green-500/30 transition-colors">
             <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center shrink-0">
               <Check size={18} />
@@ -6694,7 +6737,7 @@ function AuthorSalesReport({ data, onRefresh }: { data: any, onRefresh: () => vo
           <div className="flex justify-center gap-4 mt-4 flex-wrap">
             <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500/85"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Web</span></div>
             <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Events</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-white0"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Fairs</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Fairs</span></div>
           </div>
         </div>
 
