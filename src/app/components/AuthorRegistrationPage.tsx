@@ -81,6 +81,13 @@ function WizardAboutStep() {
 
 function WizardEventsStep() {
   const [currentPastEventIndex, setCurrentPastEventIndex] = useState(0);
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/impact-stats`)
+      .then(res => setStats(res.data))
+      .catch(console.error);
+  }, []);
 
   const nextPastEvent = () => setCurrentPastEventIndex((prev) => (prev + 1) % pastEvents.length);
   const prevPastEvent = () => setCurrentPastEventIndex((prev) => (prev - 1 + pastEvents.length) % pastEvents.length);
@@ -88,14 +95,14 @@ function WizardEventsStep() {
   const fairs = pastEvents.filter(e => e.name.toLowerCase().includes("fair"));
   const literaryEvents = pastEvents.filter(e => !e.name.toLowerCase().includes("fair"));
 
-  const totalFairs = fairs.length;
-  const totalFairsBooks = fairs.reduce((sum, e) => sum + (e.booksSold || 0), 0);
+  const totalFairs = stats ? stats.totalFairs : fairs.length;
+  const totalFairsBooks = stats ? stats.totalFairsBooks : fairs.reduce((sum, e) => sum + (e.booksSold || 0), 0);
 
-  const totalLiteraryEvents = literaryEvents.length;
-  const totalLiteraryBooks = literaryEvents.reduce((sum, e) => sum + (e.booksSold || 0), 0);
+  const totalLiteraryEvents = stats ? stats.totalLiteraryEvents : literaryEvents.length;
+  const totalLiteraryBooks = stats ? stats.totalLiteraryBooks : literaryEvents.reduce((sum, e) => sum + (e.booksSold || 0), 0);
 
-  const totalLibraries = 4;
-  const totalLibraryBooks = 450;
+  const totalLibraries = stats ? stats.totalLibraries : 4;
+  const totalLibraryBooks = stats ? stats.totalLibraryBooks : 450;
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">

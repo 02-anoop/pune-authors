@@ -1344,6 +1344,76 @@ router.put('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) => {
 });
 
 // Admin Dashboard Overview Stats
+// Public Stats for Landing/Registration Pages
+router.get('/api/impact-stats', async (req, res) => {
+  const cached = getCache('impact:stats');
+  if (cached) return res.json(cached);
+
+  try {
+    const events = await prisma.event.findMany({
+      include: {
+        eventAuthors: true,
+        posOrders: {
+          where: { paymentStatus: 'CONFIRMED' },
+          include: { items: true }
+        }
+      }
+    });
+
+    let totalFairs = 0;
+    let totalFairsBooks = 0;
+    let totalLiteraryEvents = 0;
+    let totalLiteraryBooks = 0;
+
+    events.forEach(evt => {
+      let booksSold = evt.aggSold || 0;
+      
+      if (evt.eventAuthors) {
+        evt.eventAuthors.forEach(ea => {
+          if (ea.manualTotalSold) booksSold += ea.manualTotalSold;
+        });
+      }
+
+      if (evt.posOrders) {
+        evt.posOrders.forEach(order => {
+          if (order.items) {
+            order.items.forEach(item => {
+              booksSold += item.quantity;
+            });
+          }
+        });
+      }
+
+      const matchStr = ((evt.name || '') + ' ' + (evt.eventType || '')).toLowerCase();
+      if (matchStr.includes('fair') || matchStr.includes('mela')) {
+        totalFairs++;
+        totalFairsBooks += booksSold;
+      } else {
+        totalLiteraryEvents++;
+        totalLiteraryBooks += booksSold;
+      }
+    });
+
+    const totalLibraries = await prisma.library.count();
+    const totalLibraryBooks = totalLibraries * 112;
+
+    const result = {
+      totalFairs,
+      totalFairsBooks,
+      totalLiteraryEvents,
+      totalLiteraryBooks,
+      totalLibraries,
+      totalLibraryBooks
+    };
+
+    setCache('impact:stats', result, 1000 * 60 * 15); // cache for 15 mins
+    res.json(result);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to fetch public stats' });
+  }
+});
+
 router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) => {
   const cached = getCache('admin:dashboard-stats');
   if (cached) return res.json(cached);
