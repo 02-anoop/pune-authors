@@ -514,16 +514,7 @@ function WebOrdersTab({
                               Deliver
                             </button>
                           )}
-                          {!ord.isBulk && statusText === 'Pending Verification' && (
-                            <>
-                              <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Accepted', 'Accept this Web Order?'); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-purple-600 text-white border-none rounded shadow hover:bg-purple-700 transition-colors" title="Accept Order">
-                                Accept
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Rejected', 'Reject this Web Order?'); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-red-600 text-white border-none rounded shadow hover:bg-red-700 transition-colors" title="Reject Order">
-                                Reject
-                              </button>
-                            </>
-                          )}
+
                           {ord.isArchived ? (
                             <button onClick={(e) => { e.stopPropagation(); handleRestoreOrder(ord.dbId); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-amber-100 text-amber-800 border-none rounded shadow hover:bg-amber-200 transition-colors" title="Restore Order">
                               Restore
@@ -759,16 +750,7 @@ function WebOrdersTab({
                         Deliver
                       </button>
                     )}
-                    {!ord.isBulk && statusText === 'Pending Verification' && (
-                      <>
-                        <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Accepted', 'Accept this Web Order?'); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-purple-600 text-white border-none rounded shadow hover:bg-purple-700 transition-colors" title="Accept Order">
-                          Accept
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Rejected', 'Reject this Web Order?'); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-red-600 text-white border-none rounded shadow hover:bg-red-700 transition-colors" title="Reject Order">
-                          Reject
-                        </button>
-                      </>
-                    )}
+
                     {ord.isArchived ? (
                       <button onClick={(e) => { e.stopPropagation(); handleRestoreOrder(ord.dbId); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-amber-100 text-amber-800 border-none rounded shadow hover:bg-amber-200 transition-colors" title="Restore Order">
                         Restore
