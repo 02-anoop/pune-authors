@@ -10689,20 +10689,7 @@ const totalAuthorsBase = eventRegistrations.length;
                       .map((n: any) => n.documentUrl.toLowerCase())
                   );
                   
-                  const otherServerDocs = serverFiles
-                    .filter((f: any) => {
-                      const lowerUrl = f.url.toLowerCase();
-                      const isUserUpload = /^\\d{13}-\\d+-/.test(f.name);
-                      return lowerUrl !== "/uploads/catalogue.pdf" && !notificationUrls.has(lowerUrl) && !isUserUpload;
-                    })
-                    .map((f: any) => ({
-                      id: `sf-${f.name}`,
-                      message: f.name.replace(/[-_]/g, ' ').replace(/\.pdf$/i, ''),
-                      documentName: f.name,
-                      documentUrl: f.url,
-                      createdAt: f.createdAt,
-                      isServerFile: true,
-                    }));
+
 
                   const unifiedDocs = [
                     ...(catalogueFile
@@ -10728,7 +10715,6 @@ const totalAuthorsBase = eventRegistrations.length;
                         createdAt: n.createdAt,
                         isServerFile: false,
                       })),
-                    ...otherServerDocs,
                   ];
 
                   if (unifiedDocs.length === 0) {
