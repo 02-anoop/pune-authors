@@ -790,7 +790,7 @@ export function AuthorLandingPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "1rem", background: "#1f2937", padding: "0.8rem 1.5rem", borderRadius: 50, width: "fit-content", border: "1px solid #374151" }}>
                   <Mail size={20} color={C.yellow} />
-                  <span style={{ fontSize: "1rem", color: C.white, fontWeight: 700 }}>info@puneauthorsassociation.org</span>
+                  <span style={{ fontSize: "1rem", color: C.white, fontWeight: 700 }}>info@puneauthorsassociation.com</span>
                 </div>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "1rem", background: "#1f2937", padding: "0.8rem 1.5rem", borderRadius: 50, width: "fit-content", border: "1px solid #374151" }}>
                   <Phone size={20} color={C.red} />
@@ -798,7 +798,7 @@ export function AuthorLandingPage() {
                 </div>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "1rem", background: "#1f2937", padding: "0.8rem 1.5rem", borderRadius: 50, width: "fit-content", border: "1px solid #374151" }}>
                   <MapPin size={20} color={C.blue} />
-                  <span style={{ fontSize: "1rem", color: C.white, fontWeight: 700 }}>Pune, Maharashtra, India</span>
+                  <span style={{ fontSize: "1rem", color: C.white, fontWeight: 700 }}>Cdr Shiv Mathur, 2112, Clover Highlands, NIBM, Pune 411048</span>
                 </div>
               </div>
             </div>

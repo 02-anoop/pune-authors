@@ -24,8 +24,8 @@ export function ContactPage() {
                 <MapPin size={20} color="#b44d28" />
               </div>
               <div>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: "0.2rem" }}>Headquarters</h3>
-                <p style={{ fontSize: 14, color: "#6b7280" }}>101 Literary Avenue, Koregaon Park<br/>Pune, Maharashtra 411001</p>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: "0.2rem" }}>Address</h3>
+                <p style={{ fontSize: 14, color: "#6b7280" }}>Cdr Shiv Mathur<br/>2112, Clover Highlands<br/>NIBM, Pune 411048</p>
               </div>
             </div>
             
@@ -35,7 +35,7 @@ export function ContactPage() {
               </div>
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: "0.2rem" }}>Email Us</h3>
-                <p style={{ fontSize: 14, color: "#6b7280" }}>info@puneauthorsassociation.org</p>
+                <p style={{ fontSize: 14, color: "#6b7280" }}>info@puneauthorsassociation.com</p>
               </div>
             </div>
             
