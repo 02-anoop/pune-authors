@@ -770,6 +770,11 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
   const handledTargetAction = useRef(false);
   useEffect(() => {
     if (hasInitialized.current && targetAction && !handledTargetAction.current) {
+       // If editing a book, wait for the books state to be populated
+       if (targetAction === 'edit_book' && targetBookId && books.length === 0) {
+         return;
+       }
+       
        handledTargetAction.current = true;
        if (targetAction === 'add_book' || targetAction === 'edit_book') {
           setStep(1);
