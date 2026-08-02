@@ -347,12 +347,9 @@ const insights = [
                   </button>
                 )}
               </div>
-              <div className="flex items-baseline gap-2 mb-1">
-                <h4 className="text-2xl font-black text-paa-navy tracking-tight">{lowStockBooks.length}</h4>
-                <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Low Stock</span>
-              </div>
-              <p className="text-xs font-bold text-gray-800 mb-0.5">Inventory Alert</p>
-              <p className="text-[11px] text-paa-gray-text">Books requiring restocking attention</p>
+              <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{lowStockBooks.length}</h4>
+              <p className="text-xs font-bold text-gray-800 mb-0.5">Low Stock Titles</p>
+              <p className="text-[11px] text-paa-gray-text">Titles requiring restocking</p>
             </div>
 
             <button
