@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Megaphone, MapPin, Calendar, Clock, BookOpen, CheckCircle2, Package, Upload, Download, FileText, Landmark, FileSpreadsheet, ShieldCheck, BadgeAlert, Sparkles, ChevronRight, X, User, Phone, Trash2, Search } from 'lucide-react';
+import { Megaphone, MapPin, Calendar, Clock, BookOpen, CheckCircle2, Package, Upload, Download, FileText, Landmark, FileSpreadsheet, ShieldCheck, BadgeAlert, Sparkles, ChevronRight, ChevronDown, ChevronUp, X, User, Phone, Trash2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 // exceljs and file-saver are dynamically imported inside export handlers
 import qrCode from "./data/qr_code.jpeg";
@@ -13,6 +13,7 @@ export function AuthorDonationsTab({ dashboardData, onRefresh }: { dashboardData
   const [myRegistrations, setMyRegistrations] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [historySearchTerm, setHistorySearchTerm] = useState('');
+  const [showAllCampaigns, setShowAllCampaigns] = useState(false);
   const [selectedDetailRegistration, setSelectedDetailRegistration] = useState<any | null>(null);
   
   // For donation form
@@ -455,7 +456,7 @@ export function AuthorDonationsTab({ dashboardData, onRefresh }: { dashboardData
               <p className="text-base font-semibold">{searchTerm ? 'No campaigns match your search' : 'No Active Campaigns'}</p>
               <p className="text-sm text-gray-400 mt-1">{searchTerm ? 'Try adjusting your search keywords.' : 'We will notify you here when a new donation drive is launched.'}</p>
             </div>
-          ) : filteredAnnouncements.map((ann, index) => {
+          ) : (showAllCampaigns ? filteredAnnouncements : filteredAnnouncements.slice(0, 10)).map((ann, index) => {
             const registration = myRegistrations.find((reg: any) => reg.announcementId === ann.id);
             const hasParticipated = !!registration;
             
@@ -720,6 +721,21 @@ export function AuthorDonationsTab({ dashboardData, onRefresh }: { dashboardData
             );
           })}
         </div>
+
+        {filteredAnnouncements.length > 10 && (
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={() => setShowAllCampaigns(!showAllCampaigns)}
+              className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-paa-navy font-bold rounded-full shadow-sm transition-all flex items-center gap-2 text-sm"
+            >
+              {showAllCampaigns ? (
+                <>Show Less <ChevronUp className="w-4 h-4" /></>
+              ) : (
+                <>View All Campaigns ({filteredAnnouncements.length}) <ChevronDown className="w-4 h-4" /></>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Donation History Section */}
