@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Users, Activity, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit, CheckCircle } from 'lucide-react';
+import { Users, Activity, Clock, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit, CheckCircle } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, LabelList } from 'recharts';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -32,7 +32,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     // Memoize heavy calculations to prevent layout thrashing and high main-thread execution time
     const { 
       lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries, pendingFines,
-      orderCompletionRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
+      delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
       orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
       completedOrders
     } = useMemo(() => {
@@ -90,9 +90,27 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
         return (ed?.fineStatus === 'Pending Verification' || (!ed?.fineStatus && ed?.finePaymentScreenshot)) && ed?.finePaymentScreenshot; 
     }).length;
 
-    const totalOrders = orders.length;
-    const completedOrders = orders.filter((o: any) => o.status === 'Completed' || o.status === 'Dispatched').length;
-    const orderCompletionRate = totalOrders ? Math.round((completedOrders / totalOrders) * 100) : 0;
+    const activeWebOrders = orders.filter((o: any) => !o.isArchived && !o.isBulk && o.status !== 'Cancelled');
+    const delayedOrders = activeWebOrders.filter((o: any) => {
+      if (o.status === 'Completed' || o.status === 'Dispatched' || o.status === 'Delivered') return false;
+      if (o.status === 'Delayed' || o.isDelayed) return true;
+
+      const now = Date.now();
+      const orderTime = new Date(o.createdAt || o.date).getTime();
+      const hours = (now - orderTime) / (1000 * 60 * 60);
+
+      if (o.items && o.items.length > 0) {
+        return o.items.some((it: any) => {
+          const itemTime = it.createdAt ? new Date(it.createdAt).getTime() : orderTime;
+          const itemHours = (now - itemTime) / (1000 * 60 * 60);
+          if ((it.status === 'Pending Verification' || it.status === 'Pending') && itemHours > 24) return true;
+          if (it.status === 'Accepted' && itemHours > 48) return true;
+          return false;
+        });
+      }
+      return (o.status === 'Pending' || o.status === 'Pending Verification') && hours > 24;
+    }).length;
+    const delayedOrdersRate = activeWebOrders.length ? Math.round((delayedOrders / activeWebOrders.length) * 100) : 0;
 
     let totalPercentage = 0;
     const participationBuckets = { '0-25%': 0, '26-50%': 0, '51-75%': 0, '76-100%': 0 };
@@ -158,14 +176,15 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
 
     const totalBooksSoldWeb = (stats?.globalSuccessfulOrders || 0) + (stats?.globalPendingOrders || 0);
     const totalRevenueWeb = orders.reduce((sum: number, o: any) => (o.status === 'Completed' || o.status === 'Dispatched') ? sum + (o.total || 0) : sum, 0);
-    const avgOrderValue = completedOrders > 0 ? Math.round(totalRevenueWeb / completedOrders) : 0;
+    const completedOrdersCount = orders.filter((o: any) => o.status === 'Completed' || o.status === 'Dispatched').length;
+    const avgOrderValue = completedOrdersCount > 0 ? Math.round(totalRevenueWeb / completedOrdersCount) : 0;
 
     
       return {
         lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries: prevQueries, pendingFines,
-        orderCompletionRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
+        delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
         orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
-        completedOrders: orders.filter((o: any) => o.status === 'Completed' || o.status === 'Dispatched').length
+        completedOrders: completedOrdersCount
       };
     }, [books, authors, orders, events, stats, localDismissed, notifiedBooks, prevQueries, lastAdminVisit]);
 
@@ -202,7 +221,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     };
 const insights = [
       { label: 'Event Participation', value: `${avgParticipation}%`, desc: 'Avg author participation rate', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-      { label: 'Order Completion', value: `${orderCompletionRate}%`, desc: 'Of all web orders', icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50' },
+      { label: '% Orders Delayed', value: `${delayedOrdersRate}%`, desc: 'Of all web orders', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
       { label: 'Web Orders Received', value: totalBooksSoldWeb, desc: 'Total web orders received online', icon: ShoppingCart, color: 'text-purple-600', bg: 'bg-purple-50' },
     ];
 
@@ -266,7 +285,7 @@ const insights = [
             { label: 'Total Authors', value: stats?.totalAuthors || 0, icon: Users, colorClass: 'blue' },
             { label: 'Books Listed', value: stats?.totalBooks || 0, icon: BookOpen, colorClass: 'green' },
             { label: 'No of Events', value: stats?.totalEvents || 0, icon: CalendarIcon, colorClass: 'amber' },
-            { label: 'No of Flybraries', value: stats?.totalLibraries || 0, icon: Library, colorClass: 'purple' },
+            { label: 'No of Libraries', value: stats?.totalLibraries || 0, icon: Library, colorClass: 'purple' },
             { label: 'Total Revenue', value: `₹${(stats?.totalRevenue || 0).toLocaleString()}`, icon: TrendingUp, colorClass: 'red' },
           ].map((kpi, i) => (
             <div key={i} className={`dash-kpi-card ${kpi.colorClass}`}>
