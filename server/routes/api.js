@@ -4705,6 +4705,35 @@ router.get('/api/author/book-performance', verifyToken, async (req, res) => {
       }
     });
 
+    // Add Web Orders to Performance Data
+    const webOrderItems = await prisma.orderItem.findMany({
+      where: {
+        book: { authorId: author.id },
+        status: { in: ['Pending Verification', 'Accepted', 'Dispatched', 'Completed', 'Delivered'] }
+      },
+      include: { book: true }
+    });
+
+    const webOrderMap = {};
+    webOrderItems.forEach(item => {
+      const title = item.book ? item.book.title : 'Unknown Book';
+      if (!webOrderMap[title]) {
+        webOrderMap[title] = {
+          eventId: 999999, // Dummy ID for Web Orders
+          eventName: 'Web Orders',
+          date: new Date().toISOString(),
+          bookTitle: title,
+          booksSold: 0,
+          revenue: 0,
+          investment: 0
+        };
+      }
+      webOrderMap[title].booksSold += item.quantity;
+      webOrderMap[title].revenue += (item.book?.mrp || 0) * item.quantity;
+    });
+
+    Object.values(webOrderMap).forEach(wo => performanceData.push(wo));
+
     res.json(performanceData);
   } catch (err) {
     console.error(err);
