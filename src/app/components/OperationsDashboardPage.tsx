@@ -77,6 +77,7 @@ import {
   Upload,
   Truck,
   PackageCheck,
+  Archive,
 } from "lucide-react";
 import {
   AreaChart,
@@ -984,6 +985,8 @@ export function OperationsDashboardPage() {
   const [rejectReasons, setRejectReasons] = useState<string[]>([]);
   const [otherReason, setOtherReason] = useState("");
   const [selectedAuthorIds, setSelectedAuthorIds] = useState<number[]>([]);
+  const [showArchivedEvents, setShowArchivedEvents] = useState(false);
+  const [showArchivedDocs, setShowArchivedDocs] = useState(false);
   const [editingAuthor, setEditingAuthor] = useState<any>(null);
   const [isEditAuthorModalOpen, setIsEditAuthorModalOpen] = useState(false);
 
@@ -1026,6 +1029,7 @@ export function OperationsDashboardPage() {
   const [selectedEventBreakdown, setSelectedEventBreakdown] =
     useState<any>(null);
   const [hasGranularData, setHasGranularData] = useState(false);
+  const [pendingQueriesCount, setPendingQueriesCount] = useState(0);
   const [authorSearch, setAuthorSearch] = useState("");
   const [expandedAuthorId, setExpandedAuthorId] = useState<number | null>(null);
   const [expandedEventIndex, setExpandedEventIndex] = useState<number | null>(
@@ -1033,9 +1037,13 @@ export function OperationsDashboardPage() {
   );
   const [eventSearch, setEventSearch] = useState("");
   const [createEventDate, setCreateEventDate] = useState("");
-  const [createDateType, setCreateDateType] = useState<"exact" | "tentative">(
-    "exact",
-  );
+  const [createDateType, setCreateDateType] = useState<"exact" | "tentative">("exact");
+  const [lastAdminVisit] = useState<number>(() => {
+    const saved = localStorage.getItem('lastAdminVisit');
+    const time = saved ? parseInt(saved) : Date.now() - (24 * 60 * 60 * 1000); // default to 24h ago
+    localStorage.setItem('lastAdminVisit', Date.now().toString());
+    return time;
+  });
   const [createTentativeDate, setCreateTentativeDate] = useState("");
   const [createEventStatus, setCreateEventStatus] = useState("Upcoming");
   const [manageAuthorBooks, setManageAuthorBooks] = useState<any[]>([]);
@@ -1397,15 +1405,41 @@ export function OperationsDashboardPage() {
   };
 
   const handleDeleteEvent = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this event?")) return;
+    if (!window.confirm("Are you sure you want to archive this event?")) return;
     try {
       await axios.delete(`${API}/api/admin/events/${id}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      toast.success("Event deleted successfully");
+      toast.success("Event archived successfully");
+      fetchEvents();
+    } catch (err) {
+      toast.error("Failed to archive event");
+    }
+  };
+
+  const handleHardDeleteEvent = async (id: number) => {
+    if (!window.confirm("Are you sure you want to PERMANENTLY DELETE this event? This action cannot be undone.")) return;
+    try {
+      await axios.delete(`${API}/api/admin/events/${id}?hard=true`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      toast.success("Event permanently deleted");
       fetchEvents();
     } catch (err) {
       toast.error("Failed to delete event");
+    }
+  };
+
+  const handleRestoreEvent = async (id: number) => {
+    if (!window.confirm("Are you sure you want to restore this event?")) return;
+    try {
+      await axios.put(`${API}/api/admin/events/${id}/restore`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      toast.success("Event restored successfully");
+      fetchEvents();
+    } catch (err) {
+      toast.error("Failed to restore event");
     }
   };
 
@@ -1545,6 +1579,7 @@ export function OperationsDashboardPage() {
       const c = res.data.filter((q: any) => q.status === "Pending").length;
       if (c > prevCountsRef.current.queries)
         setPendingAlerts((prev) => ({ ...prev, queries: true }));
+      setPendingQueriesCount(c);
       prevCountsRef.current.queries = c;
     } catch (err) {}
   };
@@ -2074,7 +2109,7 @@ export function OperationsDashboardPage() {
   const handleDeleteNotification = async (id: number) => {
     if (
       !window.confirm(
-        "Are you sure you want to delete this document/notification? This action cannot be undone.",
+        "Are you sure you want to archive this document/notification? This action cannot be undone.",
       )
     )
       return;
@@ -2087,11 +2122,54 @@ export function OperationsDashboardPage() {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-      setNotifications(notifications.filter((n) => n.id !== id));
-      toast.success("Deleted successfully");
+      setNotifications(notifications.map((n) => n.id === id ? { ...n, isArchived: true } : n));
+      toast.success("Archived successfully");
     } catch (err) {
       console.error(err);
-      toast.error("Failed to delete");
+      toast.error("Failed to archive");
+    }
+  };
+
+  const handleHardDeleteNotification = async (id: number) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to PERMANENTLY DELETE this document/notification? This action cannot be undone.",
+      )
+    )
+      return;
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/notifications/${id}?hard=true`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      setNotifications(notifications.filter((n) => n.id !== id));
+      toast.success("Permanently deleted successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete permanently");
+    }
+  };
+
+  const handleRestoreNotification = async (id: number) => {
+    if (!window.confirm("Are you sure you want to restore this document/notification?")) return;
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/notifications/${id}/restore`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      setNotifications(notifications.map((n) => n.id === id ? { ...n, isArchived: false } : n));
+      toast.success("Restored successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to restore");
     }
   };
 
@@ -2507,7 +2585,7 @@ export function OperationsDashboardPage() {
 
       return (
         <div className="space-y-6 animate-fade-in-up">
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6 px-6 sm:px-0">
             <div className="shrink-0">
               <h2 className="text-2xl font-serif text-paa-navy tracking-tight">
                 Late Authors System
@@ -2518,8 +2596,8 @@ export function OperationsDashboardPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3 w-full xl:w-auto overflow-hidden">
-              <div className="flex overflow-x-auto hide-scrollbar whitespace-nowrap bg-gray-100 rounded-xl p-1 w-full xl:w-auto gap-1 shrink-0 max-w-full">
+            <div className="w-full xl:w-auto">
+              <div className="flex flex-wrap bg-gray-100 rounded-xl p-1 w-full sm:w-auto gap-1">
                 <button
                   onClick={() => setActiveTable("late")}
                   className={`px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-colors rounded-lg flex items-center gap-2 shrink-0 ${activeTable === "late" ? "bg-white text-paa-navy shadow-sm" : "text-gray-500 hover:text-paa-navy"}`}
@@ -2572,10 +2650,10 @@ export function OperationsDashboardPage() {
             </div>
           </div>
 
-          {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Pending Fine Approvals ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
+          {/* --- Pending Fine Approvals --- */}
           {activeTable === "approvals" && (
-            <div className="bg-white p-6 rounded-xl border border-paa-navy/5 shadow-sm animate-fade-in-up">
-              <div className="flex justify-between items-center mb-4">
+            <div className="bg-white py-4 sm:p-6 rounded-none sm:rounded-xl border-y sm:border border-paa-navy/5 shadow-sm animate-fade-in-up">
+              <div className="flex justify-between items-center mb-4 px-6 sm:px-0">
                 <h3 className="text-lg font-serif font-semibold text-paa-navy flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-500" /> Pending
                   Fine Payment Approvals
@@ -2670,8 +2748,8 @@ export function OperationsDashboardPage() {
 
           {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Active Fines (Unpaid) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
           {activeTable === "suspended" && (
-            <div className="bg-white p-6 rounded-xl border border-paa-navy/5 shadow-sm animate-fade-in-up">
-              <div className="flex justify-between items-center mb-4">
+            <div className="bg-white py-4 sm:p-6 rounded-none sm:rounded-xl border-y sm:border border-paa-navy/5 shadow-sm animate-fade-in-up">
+              <div className="flex justify-between items-center mb-4 px-6 sm:px-0">
                 <h3 className="text-lg font-serif font-semibold text-paa-navy flex items-center gap-2">
                   <AlertCircle className="w-5 h-5 text-red-500" /> Currently
                   Fined Authors (Suspended)
@@ -2738,8 +2816,8 @@ export function OperationsDashboardPage() {
 
           {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Late Deliveries Row (Charging) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
           {activeTable === "late" && (
-            <div className="bg-white p-6 rounded-xl border border-paa-navy/5 shadow-sm animate-fade-in-up">
-              <div className="flex justify-between items-center mb-4">
+            <div className="bg-white py-4 sm:p-6 rounded-none sm:rounded-xl border-y sm:border border-paa-navy/5 shadow-sm animate-fade-in-up">
+              <div className="flex justify-between items-center mb-4 px-6 sm:px-0">
                 <h3 className="text-lg font-serif font-semibold text-paa-navy flex items-center gap-2">
                   <Clock className="w-5 h-5 text-orange-500" /> Dispatches
                   Pending &gt; 24 Hrs
@@ -3004,10 +3082,10 @@ export function OperationsDashboardPage() {
             </div>
           )}
 
-          {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Fine History ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
+          {/* ——— Fine History ——— */}
           {activeTable === "history" && (
-            <div className="bg-white p-6 rounded-xl border border-paa-navy/5 shadow-sm animate-fade-in-up">
-              <div className="flex justify-between items-center mb-4">
+            <div className="bg-white py-4 sm:p-6 rounded-none sm:rounded-xl border-y sm:border border-paa-navy/5 shadow-sm animate-fade-in-up">
+              <div className="flex justify-between items-center mb-4 px-6 sm:px-0">
                 <h3 className="text-lg font-serif font-semibold text-paa-navy flex items-center gap-2">
                   <FileText className="w-5 h-5 text-indigo-500" /> Fine Payment
                   History
@@ -3333,15 +3411,14 @@ export function OperationsDashboardPage() {
 
     return (
       <div className="bg-white border border-paa-navy/5 shadow-premium hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-500 ease-out flex flex-col">
-        <div className="p-4 border-b border-paa-navy/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#e6f2eb]">
+        <div className="p-4 border-b border-paa-navy/5 flex flex-col gap-3 bg-[#e6f2eb]">
           <div className="flex items-center gap-2">
             <h3 className="text-2xl font-serif font-semibold text-paa-navy tracking-tight">
               Book Catalogue
             </h3>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="flex bg-gray-100 rounded-3xl-2xl p-1 overflow-x-auto whitespace-nowrap">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+            <div className="flex flex-wrap sm:flex-nowrap bg-gray-100 rounded-xl p-1 gap-1 w-full sm:w-auto">
                 {["All", "Pending", "Approved", "Rejected"].map((status) => {
                   const tabCount =
                     status === "All"
@@ -3363,20 +3440,19 @@ export function OperationsDashboardPage() {
                   );
                 })}
               </div>
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-none">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-paa-gray-text" />
                 <input
                   type="text"
                   placeholder="SEARCH BOOKS/AUTHORS..."
                   value={bookSearchTerm}
                   onChange={(e) => setBookSearchTerm(e.target.value)}
-                  className="pl-9 pr-4 py-2 bg-white border border-paa-navy/20 text-xs font-bold tracking-widest uppercase outline-none focus:border-paa-navy transition-colors w-64"
+                  className="pl-9 pr-4 py-2 bg-white border border-paa-navy/20 text-xs font-bold tracking-widest uppercase outline-none focus:border-paa-navy transition-colors w-full sm:w-56"
                 />
               </div>
-            </div>
             <button
               onClick={handleExportBookCatalogue}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-paa-navy/20 text-paa-navy bg-white hover:bg-paa-navy hover:text-white shadow-sm whitespace-nowrap"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-paa-navy/20 text-paa-navy bg-white hover:bg-paa-navy hover:text-white shadow-sm whitespace-nowrap shrink-0"
             >
               <Download className="w-4 h-4" /> Export Excel
             </button>
@@ -6889,15 +6965,19 @@ const totalAuthorsBase = eventRegistrations.length;
       if (eventDate >= now) return false;
 
       if (eventGraphFilter === "All") return true;
-      if (eventGraphFilter === "Literary Event")
-        return e.eventType?.toLowerCase().includes("literary");
-      if (eventGraphFilter === "Book Fair")
-        return e.eventType?.toLowerCase().includes("fair");
-      if (eventGraphFilter === "Meet the Authors / Other")
-        return (
-          !e.eventType?.toLowerCase().includes("literary") &&
-          !e.eventType?.toLowerCase().includes("fair")
-        );
+      // Format filters
+      if (eventGraphFilter === "Meet the Authors")
+        return e.eventType === "Meet the Authors";
+      if (eventGraphFilter === "Stall") return e.eventType === "Stall";
+      // Category filters
+      if (eventGraphFilter === "Housing Society")
+        return e.category === "Housing Society";
+      if (eventGraphFilter === "Corporate Office")
+        return e.category === "Corporate Office";
+      if (eventGraphFilter === "College") return e.category === "College";
+      if (eventGraphFilter === "University") return e.category === "University";
+      if (eventGraphFilter === "Book Fair") return e.category === "Book Fair";
+
       return true;
     });
 
@@ -6944,25 +7024,29 @@ const totalAuthorsBase = eventRegistrations.length;
 
     let dateRangeString = "All Time";
     if (chartEvents.length > 0) {
-      const firstDate = new Date(
-        chartEvents[0].date || chartEvents[0].startDate,
-      );
-      const lastDate = new Date(
-        chartEvents[chartEvents.length - 1].date ||
-          chartEvents[chartEvents.length - 1].startDate,
-      );
-      const formatOpts: Intl.DateTimeFormatOptions = {
-        month: "short",
-        year: "numeric",
-      };
-      if (firstDate.getTime() === lastDate.getTime()) {
-        dateRangeString = firstDate.toLocaleDateString(undefined, formatOpts);
-      } else {
-        dateRangeString = `${firstDate.toLocaleDateString(undefined, formatOpts)} - ${lastDate.toLocaleDateString(undefined, formatOpts)}`;
+      const validDates = chartEvents
+        .map((e) => new Date(e.date || e.startDate).getTime())
+        .filter((t) => !isNaN(t))
+        .sort((a, b) => a - b);
+
+      if (validDates.length > 0) {
+        const firstDate = new Date(validDates[0]);
+        const lastDate = new Date(validDates[validDates.length - 1]);
+        const formatOpts: Intl.DateTimeFormatOptions = {
+          month: "short",
+          year: "numeric",
+        };
+        if (firstDate.getTime() === lastDate.getTime()) {
+          dateRangeString = firstDate.toLocaleDateString(undefined, formatOpts);
+        } else {
+          dateRangeString = `${firstDate.toLocaleDateString(undefined, formatOpts)} - ${lastDate.toLocaleDateString(undefined, formatOpts)}`;
+        }
       }
     }
 
     let filteredTableEvents = allCombinedEvents.filter((e: any) => {
+      if (showArchivedEvents) return e.isArchived;
+      if (e.isArchived) return false;
       if (eventGraphFilter === "All") return true;
       // Format filters
       if (eventGraphFilter === "Meet the Authors")
@@ -7468,13 +7552,13 @@ const totalAuthorsBase = eventRegistrations.length;
                       axisLine={false}
                       tickLine={false}
                       tick={{ fontSize: 10, fill: "#6B7280" }}
-                      angle={-90}
+                      angle={-45}
                       textAnchor="end"
                       dy={10}
-                      interval={0}
-                      height={100}
+                      interval="preserveStartEnd"
+                      height={90}
                       tickFormatter={(v) =>
-                        v.length > 25 ? v.substring(0, 25) + "..." : v
+                        v.length > 15 ? v.substring(0, 15) + "..." : v
                       }
                     />
                     <YAxis
@@ -7524,51 +7608,35 @@ const totalAuthorsBase = eventRegistrations.length;
                           position="top"
                           content={(props: any) => {
                             const { x, y, value, index } = props;
+                            if (value === undefined) return null;
+                            
+                            const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+                            if (isMobile) {
+                              if (value === 0) return null;
+                              
+                              const topIndices = [...chartData]
+                                .map((d, i) => ({ v: d.booksSold || 0, i }))
+                                .sort((a, b) => b.v - a.v)
+                                .slice(0, 6)
+                                .map((item) => item.i);
+                                
+                              if (!topIndices.includes(index)) return null;
+                            }
+                            
                             const prev = chartData[index - 1]?.booksSold;
                             const next = chartData[index + 1]?.booksSold;
-
                             let yPos = y - 12;
 
-                            if (
-                              prev !== undefined &&
-                              next !== undefined &&
-                              value <= prev &&
-                              value <= next
-                            ) {
+                            if (prev !== undefined && next !== undefined && value <= prev && value <= next) {
                               yPos = y + 20;
-                            } else if (
-                              prev !== undefined &&
-                              value < prev &&
-                              next === undefined
-                            ) {
+                            } else if (prev !== undefined && value < prev && next === undefined) {
                               yPos = y + 20;
                             }
 
                             return (
                               <g>
-                                <text
-                                  x={x}
-                                  y={yPos}
-                                  fill="none"
-                                  stroke="#ffffff"
-                                  strokeWidth={4}
-                                  strokeLinejoin="round"
-                                  fontSize="10px"
-                                  fontWeight="bold"
-                                  textAnchor="middle"
-                                >
-                                  {value}
-                                </text>
-                                <text
-                                  x={x}
-                                  y={yPos}
-                                  fill="#ec4899"
-                                  fontSize="10px"
-                                  fontWeight="bold"
-                                  textAnchor="middle"
-                                >
-                                  {value}
-                                </text>
+                                <text x={x} y={yPos} fill="none" stroke="#ffffff" strokeWidth={4} strokeLinejoin="round" fontSize="10px" fontWeight="bold" textAnchor="middle">{value}</text>
+                                <text x={x} y={yPos} fill="#ec4899" fontSize="10px" fontWeight="bold" textAnchor="middle">{value}</text>
                               </g>
                             );
                           }}
@@ -7723,19 +7791,19 @@ const totalAuthorsBase = eventRegistrations.length;
         {/* end two-col flex */}
 
         <div className="flex flex-col gap-4 mb-4 mt-8">
-          <div className="flex justify-between items-center w-full">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full gap-4">
             <h4 className="text-2xl font-serif font-bold text-paa-navy">
               Events Registry
             </h4>
             <input
               type="text"
               placeholder="Search events..."
-              className="border border-gray-300 rounded-lg p-2 text-sm w-64 outline-none focus:border-paa-navy shadow-sm"
+              className="border border-gray-300 rounded-lg p-2 text-sm w-full sm:w-64 outline-none focus:border-paa-navy shadow-sm"
               value={eventSearch}
               onChange={(e) => setEventSearch(e.target.value)}
             />
           </div>
-          <div className="hidden lg:flex bg-white rounded-lg p-1 border border-paa-navy/10 shadow-sm self-start">
+          <div className="hidden lg:flex flex-wrap bg-white rounded-lg p-1 border border-paa-navy/10 shadow-sm self-start gap-1">
             {[
               "All Events",
               "Pending Approval",
@@ -7781,6 +7849,16 @@ const totalAuthorsBase = eventRegistrations.length;
                 </button>
               );
             })}
+            <div className="w-[1px] h-6 bg-gray-300 mx-1 hidden sm:block"></div>
+            <div 
+              onClick={() => setShowArchivedEvents(!showArchivedEvents)}
+              className="flex items-center gap-2 cursor-pointer shrink-0 ml-1"
+            >
+              <div className={`relative w-8 h-4 rounded-full transition-colors ${showArchivedEvents ? 'bg-red-500' : 'bg-gray-300'}`}>
+                <div className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform duration-200 ${showArchivedEvents ? 'translate-x-4' : 'translate-x-0'} shadow-sm`}></div>
+              </div>
+              <span className="text-[10px] font-bold tracking-wider uppercase text-gray-600">Archived</span>
+            </div>
           </div>
         </div>
 
@@ -8164,28 +8242,58 @@ const totalAuthorsBase = eventRegistrations.length;
                             )}
                             {!evt.isProposed && (
                               <>
-                                <button
-                                  title="Edit Event"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setEditingEvent(evt);
-                                    setTimeout(
-                                      () => setIsEditEventModalOpen(true),
-                                      10,
-                                    );
-                                  }}
-                                  className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white border border-blue-200 rounded-lg shadow-sm transition-colors"
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button
-                                  title="Delete Event"
-                                  onClick={() => handleDeleteEvent(evt.id)}
-                                  className="p-2 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white border border-red-200 rounded-lg shadow-sm transition-colors"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                {!evt.isArchived && (
+                                  <button
+                                    title="Edit Event"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setEditingEvent(evt);
+                                      setTimeout(
+                                        () => setIsEditEventModalOpen(true),
+                                        10,
+                                      );
+                                    }}
+                                    className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white border border-blue-200 rounded-lg shadow-sm transition-colors"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {evt.isArchived ? (
+                                  <button
+                                    title="Restore Event"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRestoreEvent(evt.id);
+                                    }}
+                                    className="p-2 text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-200 rounded-lg shadow-sm transition-colors font-bold text-[9px] uppercase tracking-widest"
+                                  >
+                                    Restore
+                                  </button>
+                                ) : (
+                                  <>
+                                    <button
+                                      title="Archive Event"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteEvent(evt.id);
+                                      }}
+                                      className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-200 rounded-lg shadow-sm transition-colors"
+                                    >
+                                      <Archive className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      title="Permanently Delete Event"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleHardDeleteEvent(evt.id);
+                                      }}
+                                      className="p-2 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white border border-red-200 rounded-lg shadow-sm transition-colors"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
                               </>
                             )}
                           </div>
@@ -9826,7 +9934,7 @@ const totalAuthorsBase = eventRegistrations.length;
   }
 
   return (
-    <div className="min-h-screen bg-paa-cream animate-fade-in-up flex flex-col md:flex-row font-sans text-paa-navy selection:bg-paa-gold selection:text-white">
+    <div className="min-h-screen bg-paa-cream flex flex-col md:flex-row font-sans text-paa-navy selection:bg-paa-gold selection:text-white">
       {/* SIDEBAR */}
       <aside
         className={`w-64 flex flex-col shrink-0 h-screen fixed md:sticky top-0 bg-paa-cream z-50 transform transition-transform duration-300 border-r border-paa-navy/5 ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
@@ -9869,7 +9977,7 @@ const totalAuthorsBase = eventRegistrations.length;
               hasAlert: pendingAlerts.orders,
             },
             { id: "sales_report", label: "Sales Reports", icon: FileText },
-            { id: "documents", label: "Admin Documents", icon: FileText },
+            { id: "documents", label: "Policy Documents", icon: FileText },
             {
               id: "authors",
               label: "Authors Menu",
@@ -10361,19 +10469,36 @@ const totalAuthorsBase = eventRegistrations.length;
                               • {new Date(n.createdAt).toLocaleDateString()}
                             </p>
                           </div>
-                          <button
-                            onClick={() => handleDeleteNotification(n.id)}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              cursor: "pointer",
-                              padding: 2,
-                              color: "#ef4444",
-                              opacity: 0.5,
-                            }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleDeleteNotification(n.id)}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                padding: 2,
+                                color: "#d97706",
+                                opacity: 0.7,
+                              }}
+                              title="Archive"
+                            >
+                              <Archive className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => handleHardDeleteNotification(n.id)}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                padding: 2,
+                                color: "#ef4444",
+                                opacity: 0.5,
+                              }}
+                              title="Permanent Delete"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                   </div>
@@ -10390,7 +10515,7 @@ const totalAuthorsBase = eventRegistrations.length;
         {/* Scrollable Body */}
         <div
           id="admin-dashboard-scroll"
-          className="flex-1 overflow-auto p-4 sm:p-7"
+          className="flex-1 overflow-auto p-0 sm:p-7"
         >
           <Suspense
             fallback={
@@ -10414,7 +10539,8 @@ const totalAuthorsBase = eventRegistrations.length;
                   orders={orders}
                   events={events}
                   stats={stats}
-                  prevQueries={prevCountsRef.current?.queries || 0}
+                  lastAdminVisit={lastAdminVisit}
+                  prevQueries={pendingQueriesCount}
                   API={API}
                   setActiveTab={setActiveTab}
                   setAuthorStatusFilter={setAuthorStatusFilter}
@@ -10459,13 +10585,22 @@ const totalAuthorsBase = eventRegistrations.length;
                               </span>
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleDeleteNotification(n.id)}
-                            className="p-2.5 text-red-500 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors shadow-sm shrink-0"
-                            title="Delete Broadcast"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleDeleteNotification(n.id)}
+                              className="p-2.5 text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 rounded-xl transition-colors shadow-sm shrink-0"
+                              title="Archive Broadcast"
+                            >
+                              <Archive className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleHardDeleteNotification(n.id)}
+                              className="p-2.5 text-red-500 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors shadow-sm shrink-0"
+                              title="Delete Broadcast"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                   </div>
@@ -10475,7 +10610,7 @@ const totalAuthorsBase = eventRegistrations.length;
             {activeTab === "documents" && (
               <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm animate-fade-in-up">
                 <h2 className="text-xl font-serif text-paa-navy mb-6 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-indigo-500" /> Admin
+                  <FileText className="w-5 h-5 text-indigo-500" /> Policy
                   Documents
                 </h2>
 
@@ -10530,13 +10665,32 @@ const totalAuthorsBase = eventRegistrations.length;
                   </div>
                 </div>
 
-                <h3 className="text-sm font-bold uppercase tracking-widest text-paa-navy mb-4">
-                  Previously Uploaded Docs
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-paa-navy">
+                    Previously Uploaded Docs
+                  </h3>
+                  <div 
+                    onClick={() => setShowArchivedDocs(!showArchivedDocs)}
+                    className="flex items-center gap-2 cursor-pointer shrink-0 ml-1"
+                  >
+                    <div className={`relative w-8 h-4 rounded-full transition-colors ${showArchivedDocs ? 'bg-red-500' : 'bg-gray-300'}`}>
+                      <div className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform duration-200 ${showArchivedDocs ? 'translate-x-4' : 'translate-x-0'} shadow-sm`}></div>
+                    </div>
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-gray-600">Archived</span>
+                  </div>
+                </div>
                 {(() => {
                   const catalogueFile = serverFiles.find(
                     (f: any) => f.name.toLowerCase() === "catalogue.pdf"
                   );
+                  const notificationUrls = new Set(
+                    notifications
+                      .filter((n: any) => n.documentUrl)
+                      .map((n: any) => n.documentUrl.toLowerCase())
+                  );
+                  
+
+
                   const unifiedDocs = [
                     ...(catalogueFile
                       ? [
@@ -10552,6 +10706,7 @@ const totalAuthorsBase = eventRegistrations.length;
                       : []),
                     ...notifications
                       .filter((n: any) => n.documentUrl)
+                      .filter((n: any) => showArchivedDocs ? n.isArchived : !n.isArchived)
                       .map((n: any) => ({
                         id: n.id,
                         message: n.message || "No description",
@@ -10589,7 +10744,12 @@ const totalAuthorsBase = eventRegistrations.length;
                             <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
                               <span className="font-medium flex items-center gap-1">
                                 <CalendarIcon className="w-3 h-3" />{" "}
-                                {new Date(doc.createdAt).toLocaleDateString()}
+                                {(() => {
+                                  const d = new Date(doc.createdAt);
+                                  const dateStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+                                  const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                                  return `${dateStr} ${timeStr}`;
+                                })()}
                                 {doc.isServerFile && " (Last updated)"}
                               </span>
                               <a
@@ -10604,13 +10764,34 @@ const totalAuthorsBase = eventRegistrations.length;
                             </div>
                           </div>
                           {!doc.isServerFile && (
-                            <button
-                              onClick={() => handleDeleteNotification(doc.id)}
-                              className="p-2.5 text-red-500 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors shadow-sm shrink-0"
-                              title="Delete Document"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <>
+                              {doc.isArchived || showArchivedDocs ? (
+                                <button
+                                  onClick={() => handleRestoreNotification(doc.id)}
+                                  className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-xl transition-colors shadow-sm shrink-0"
+                                  title="Restore Document"
+                                >
+                                  Restore
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleDeleteNotification(doc.id)}
+                                    className="p-2.5 text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 rounded-xl transition-colors shadow-sm shrink-0"
+                                    title="Archive Document"
+                                  >
+                                    <Archive className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleHardDeleteNotification(doc.id)}
+                                    className="p-2.5 text-red-500 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors shadow-sm shrink-0"
+                                    title="Permanently Delete Document"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                            </>
                           )}
                         </div>
                       ))}
@@ -13551,7 +13732,7 @@ const HelpdeskTab = ({ refreshTrigger }: any) => {
 
   return (
     <div className="space-y-6 w-full">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 border-b border-paa-navy/5 pb-4 gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 border-b border-paa-navy/5 pb-4 gap-4 px-6 sm:px-0">
         <div className="shrink-0">
           <h3 className="text-xl font-serif font-medium text-paa-navy mb-1 flex items-center gap-2">
             <Users className="w-5 h-5" /> Messages / Queries
@@ -13560,18 +13741,18 @@ const HelpdeskTab = ({ refreshTrigger }: any) => {
             Manage author queries and contact inquiries.
           </p>
         </div>
-        <div className="flex flex-col lg:flex-row items-center gap-3 w-full lg:w-auto min-w-0 flex-1 justify-end">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-3 w-full lg:w-auto min-w-0 flex-1 justify-start px-6 sm:px-0">
           <div className="relative w-full lg:max-w-xs shrink">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               type="text"
               placeholder="Search Subject, Name, Email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="dash-input w-full pl-9 rounded-2xl bg-white border-gray-200 focus:border-paa-navy"
+              className="dash-input w-full !pl-10 rounded-2xl bg-white border-gray-200 focus:border-paa-navy"
             />
           </div>
-          <div className="flex overflow-x-auto hide-scrollbar bg-gray-100 rounded-2xl p-1 w-full lg:w-auto gap-1 shrink-0 max-w-full">
+          <div className="flex flex-wrap bg-gray-100 rounded-2xl p-1 w-full lg:w-auto gap-1">
             {[
               {
                 id: "All",

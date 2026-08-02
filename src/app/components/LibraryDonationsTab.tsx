@@ -20,6 +20,7 @@ export function LibraryDonationsTab() {
   const [driveStatusFilter, setDriveStatusFilter] = useState<'All' | 'Open' | 'Closed'>('All');
   const [graphFilter, setGraphFilter] = useState<'both' | 'books' | 'authors'>('both');
   const [donationTimeFilter, setDonationTimeFilter] = useState<string>('All');
+  const [showArchivedDrives, setShowArchivedDrives] = useState(false);
 
   // Editing States
   const [editingDrive, setEditingDrive] = useState<any>(null);
@@ -357,12 +358,21 @@ export function LibraryDonationsTab() {
   };
 
   const handleDeleteDrive = async (id: number) => {
-    if (!window.confirm('Delete this donation drive? This will also remove all registrations for this drive.')) return;
+    if (!window.confirm('Archive this donation drive?')) return;
     try {
       await axios.delete(`${API}/api/admin/donation-announcements/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-      toast.success('Donation drive deleted');
+      toast.success('Donation drive archived');
       fetchDrives();
-    } catch (err) { toast.error('Failed to delete drive'); }
+    } catch (err) { toast.error('Failed to archive drive'); }
+  };
+
+  const handleRestoreDrive = async (id: number) => {
+    if (!window.confirm('Restore this donation drive?')) return;
+    try {
+      await axios.put(`${API}/api/admin/donation-announcements/${id}/restore`, {}, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      toast.success('Donation drive restored');
+      fetchDrives();
+    } catch (err) { toast.error('Failed to restore drive'); }
   };
 
   const publishCampaign = async (id: number) => {
@@ -1135,8 +1145,8 @@ export function LibraryDonationsTab() {
     const totalDispatched = new Set(registrations.filter(r => r.dispatchStatus === 'Dispatched' || r.dispatchStatus === 'Delivered').map(r => r.authorId)).size;
 
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="flex items-center justify-between mb-6 border-b pb-4">
+      <div className="bg-white rounded-none sm:rounded-xl shadow-sm py-4 sm:p-6 border-y sm:border border-gray-200 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 border-b pb-4 gap-4 px-6 sm:px-0">
           <div>
             <h3 className="text-2xl font-serif text-paa-navy mb-1">{selectedDriveBreakdown.title}</h3>
             <p className="text-sm text-gray-500 font-medium">
@@ -1147,7 +1157,7 @@ export function LibraryDonationsTab() {
               <p className="text-sm text-gray-600 mt-2 max-w-3xl leading-relaxed">{selectedDriveBreakdown.description}</p>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button onClick={handleExportCampaignReport} className="dash-btn bg-[#ebd8c0] text-emerald-700 hover:bg-[#ebd8c0] border border-emerald-200 transition-colors shadow-sm flex items-center gap-2">
               <Download className="w-4 h-4" /> Download Report
             </button>
@@ -1161,7 +1171,7 @@ export function LibraryDonationsTab() {
         </div>
 
         {/* Event Summary Heading & Edit Stats Button */}
-        <div className="mb-2 flex justify-between items-center">
+        <div className="mb-2 flex justify-between items-center px-6 sm:px-0">
           <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Event Summary</span>
           {isEditingDriveStats ? (
             <div className="flex gap-2">
@@ -1194,7 +1204,7 @@ export function LibraryDonationsTab() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 px-6 sm:px-0">
           <div className={`bg-gray-50 border rounded-xl p-4 shadow-sm ${isEditingDriveStats ? "border-paa-navy/40 ring-1 ring-paa-navy/10" : "border-gray-200"}`}>
             <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Total Authors Registered</div>
             {isEditingDriveStats ? (
@@ -1234,7 +1244,7 @@ export function LibraryDonationsTab() {
           </div>
         </div>
 
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 px-6 sm:px-0">
           <div>
             <h4 className="font-bold text-gray-700">Author Registry</h4>
             <p className="text-xs text-gray-400 mt-0.5">Manage author registrations and dispatch details for this drive</p>
@@ -1242,7 +1252,7 @@ export function LibraryDonationsTab() {
           <input
             type="text"
             placeholder="Search authors..."
-            className="border border-gray-300 rounded-lg p-2 text-sm w-64 outline-none focus:border-paa-navy"
+            className="border border-gray-300 rounded-lg p-2 text-sm w-full md:w-64 outline-none focus:border-paa-navy"
             value={registrySearch}
             onChange={(e) => setRegistrySearch(e.target.value)}
           />
@@ -1254,7 +1264,7 @@ export function LibraryDonationsTab() {
           const uniqueNotRegisteredCount = adminAuthors.filter(a => !registrations.some(r => r.authorId === a.id)).length;
           
           return (
-            <div className="flex mb-6 bg-gray-100 p-1.5 rounded-2xl gap-2 w-max shadow-inner">
+            <div className="flex flex-wrap mb-6 bg-gray-100 p-1.5 rounded-2xl gap-2 w-[calc(100%-3rem)] sm:w-max shadow-inner mx-6 sm:mx-0">
               <button
                 onClick={() => setBreakdownTab('All')}
                 className={`py-2.5 px-6 text-xs font-extrabold rounded-xl transition-all duration-300 ${breakdownTab === 'All'
@@ -1775,6 +1785,8 @@ export function LibraryDonationsTab() {
   const closedDrivesCount = drives.filter(d => d.visibility === 'Closed').length;
 
   const filteredDrives = filteredBySearch.filter(d => {
+    if (showArchivedDrives) return d.isArchived;
+    if (d.isArchived) return false;
     if (driveStatusFilter === 'Open') return d.visibility === 'Published';
     if (driveStatusFilter === 'Closed') return d.visibility === 'Closed';
     return true;
@@ -2032,8 +2044,8 @@ export function LibraryDonationsTab() {
       {/* Drives Grid Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4 mt-8">
         <h3 className="text-xl font-bold text-paa-navy font-serif">Donation Drives Master</h3>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="flex bg-gray-100 p-1 rounded-lg">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full lg:w-auto">
+          <div className="flex flex-wrap bg-gray-100 p-1 rounded-lg gap-1">
             {['All', 'Open', 'Closed'].map((filter) => (
               <button
                 key={filter}
@@ -2046,6 +2058,16 @@ export function LibraryDonationsTab() {
                 {filter} ({filter === 'All' ? allDrivesCount : filter === 'Open' ? openDrivesCount : closedDrivesCount})
               </button>
             ))}
+            <div className="w-[1px] h-6 bg-gray-300 mx-1 hidden sm:block self-center"></div>
+            <div 
+              onClick={() => setShowArchivedDrives(!showArchivedDrives)}
+              className="flex items-center gap-2 cursor-pointer shrink-0 ml-1 self-center"
+            >
+              <div className={`relative w-8 h-4 rounded-full transition-colors ${showArchivedDrives ? 'bg-red-500' : 'bg-gray-300'}`}>
+                <div className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform duration-200 ${showArchivedDrives ? 'translate-x-4' : 'translate-x-0'} shadow-sm`}></div>
+              </div>
+              <span className="text-[10px] font-bold tracking-wider uppercase text-gray-600">Archived</span>
+            </div>
           </div>
           <input
             type="text"
@@ -2132,18 +2154,24 @@ export function LibraryDonationsTab() {
                     >
                       <Edit className="w-4 h-4" />
                     </button>
-                    {drive.visibility === 'Published' ? (
+                    {drive.visibility === 'Published' && !drive.isArchived ? (
                       <button onClick={() => unpublishCampaign(drive.id)} className="p-1.5 text-orange-600 hover:bg-orange-50 rounded border border-orange-200 transition-colors" title="Unpublish Campaign">
                         <X className="w-4 h-4" />
                       </button>
-                    ) : (
+                    ) : !drive.isArchived ? (
                       <button onClick={() => publishCampaign(drive.id)} className="p-1.5 text-emerald-600 hover:bg-[#ebd8c0] rounded border border-emerald-200 transition-colors" title="Publish to All Authors">
                         <CheckCircle className="w-4 h-4" />
                       </button>
+                    ) : null}
+                    {drive.isArchived ? (
+                      <button onClick={() => handleRestoreDrive(drive.id)} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-amber-100 text-amber-800 border-none rounded shadow hover:bg-amber-200 transition-colors" title="Restore Drive">
+                        Restore
+                      </button>
+                    ) : (
+                      <button onClick={() => handleDeleteDrive(drive.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded border border-red-200 transition-colors" title="Archive Drive">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     )}
-                    <button onClick={() => handleDeleteDrive(drive.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded border border-red-200 transition-colors" title="Delete Drive">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </td>
                 </tr>
               );

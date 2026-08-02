@@ -9,9 +9,10 @@ export const AdminAuthorsTab = React.memo(({
   authors, API, selectedAuthorIds, setSelectedAuthorIds, isDownloadingPdf, setIsDownloadingPdf,
   authorSearchTerm: searchTerm, setAuthorSearchTerm: setSearchTerm, authorStatusFilter, setAuthorStatusFilter,
   setAuthorsPage, fetchAuthors, loadingAction, handleApproveAuthor, openRejectAuthorModal,
-  handleViewEditAuthor, handleDeleteAuthor, books, authorsMeta, authorsPage,
+  handleViewEditAuthor, handleDeleteAuthor, handleRestoreAuthor, books, authorsMeta, authorsPage,
   selectedPendingAuthor, setSelectedPendingAuthor, selectedAuthor, setSelectedAuthor
 }: any) => {
+const [showArchived, setShowArchived] = useState(false);
 const handleExportAuthorsCSV = async () => {
       const ExcelJS = (await import('exceljs')).default;
       const { saveAs } = await import('file-saver');
@@ -224,8 +225,8 @@ const handleExportAuthorsCSV = async () => {
           </div>
         </div>
 
-        <div className="p-3 bg-gray-50/80 border-b border-gray-200 flex flex-row items-center justify-between gap-2 overflow-x-auto whitespace-nowrap hide-scrollbar">
-          <div className="flex flex-row gap-1.5 shrink-0">
+        <div className="p-3 bg-gray-50/80 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap sm:flex-nowrap gap-1.5">
             {(() => {
               const parseEd = (extraData: any) => typeof extraData === 'string' ? (() => { try { return JSON.parse(extraData); } catch (e) { return {}; } })() : (extraData || {});
               const counts = {
@@ -245,8 +246,18 @@ const handleExportAuthorsCSV = async () => {
                 >
                   {status === 'Reapplied' ? '🔄 Reapplied' : status} ({counts[status as keyof typeof counts]})
                 </button>
-              ));
+              ))
             })()}
+            <div className="w-[1px] h-6 bg-gray-300 mx-1 hidden sm:block"></div>
+            <div 
+              onClick={() => setShowArchived(!showArchived)}
+              className="flex items-center gap-2 cursor-pointer shrink-0 ml-1"
+            >
+              <div className={`relative w-8 h-4 rounded-full transition-colors ${showArchived ? 'bg-red-500' : 'bg-gray-300'}`}>
+                <div className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform duration-200 ${showArchived ? 'translate-x-4' : 'translate-x-0'} shadow-sm`}></div>
+              </div>
+              <span className="text-[10px] font-bold tracking-wider uppercase text-gray-600">Archived</span>
+            </div>
           </div>
           <div className="flex flex-row items-center gap-2 shrink-0">
             <button onClick={() => handleDownloadCatalogue(false)} disabled={selectedAuthorIds.length === 0 || isDownloadingPdf} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:text-[#0b1a2e] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-sm">
@@ -290,6 +301,8 @@ const handleExportAuthorsCSV = async () => {
             </thead>
             <tbody>
               {authors.filter(a => {
+                if (showArchived) return a.isArchived;
+                if (a.isArchived) return false;
                 const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData); } catch (e) { return {}; } })() : (a.extraData || {});
                 const isReapplied = ed?.isReapplied === true;
                 const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase()) || (a.email && a.email.toLowerCase().includes(searchTerm.toLowerCase())) || (a.books && a.books.some((b: any) => b.title.toLowerCase().includes(searchTerm.toLowerCase()) || (b.genre && b.genre.toLowerCase().includes(searchTerm.toLowerCase()))));
@@ -408,7 +421,7 @@ const handleExportAuthorsCSV = async () => {
                         const pendingBooksCount = books.filter(b => b.authorId === author.id && b.status === 'Pending').length;
                         const needsApproval = author.status === 'Pending' || author.status === 'Edited' || isReapplied || hasPending || pendingBooksCount > 0;
 
-                        if (needsApproval) {
+                        if (needsApproval && !author.isArchived) {
                           return (
                             <>
                               <button onClick={() => handleApproveAuthor(author.id)} className="dash-btn dash-btn-success" title="Approve">
@@ -422,12 +435,20 @@ const handleExportAuthorsCSV = async () => {
                         }
                         return null;
                       })()}
-                      <button onClick={() => handleViewEditAuthor(author)} className="dash-btn dash-btn-success dash-btn-icon" title="View / Edit Application">
-                        <Edit2 className="w-4 h-4" aria-hidden="true" />
-                      </button>
-                      <button onClick={() => handleDeleteAuthor(author.id)} className="dash-btn dash-btn-danger dash-btn-icon" title="Delete">
-                        <Trash2 className="w-4 h-4" aria-hidden="true" />
-                      </button>
+                      {!author.isArchived && (
+                        <button onClick={() => handleViewEditAuthor(author)} className="dash-btn dash-btn-success dash-btn-icon" title="View / Edit Application">
+                          <Edit2 className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                      )}
+                      {author.isArchived ? (
+                        <button onClick={() => handleRestoreAuthor && handleRestoreAuthor(author.id)} className="dash-btn !bg-amber-100 !text-amber-800 hover:!bg-amber-200 dash-btn-icon" title="Restore from Archive">
+                          Undo Archive
+                        </button>
+                      ) : (
+                        <button onClick={() => handleDeleteAuthor(author.id)} className="dash-btn dash-btn-danger dash-btn-icon" title="Archive">
+                          <Trash2 className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                      )}
                     </div>
                     {author.status === 'Rejected' && author.rejectionReason && (
                       <div className="mt-2 text-xs text-red-600 font-medium text-left leading-tight bg-red-50 p-2 rounded border border-red-100">

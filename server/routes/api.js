@@ -12,6 +12,14 @@ const { inr } = require('../utils/helpers');
 const path = require('path');
 const fs = require('fs');
 
+router.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  const url = `/uploads/${req.file.filename}`;
+  res.json({ success: true, url });
+});
+
 // --- BOOKS & AUTHORS ---
 
 // --- PUBLIC FORMS --- //
@@ -88,7 +96,7 @@ router.get('/api/books', async (req, res) => {
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
 
-  const where = { status: 'Approved' };
+  const where = { status: 'Approved', isArchived: false };
   if (genre) where.genre = genre;
 
   const books = await prisma.book.findMany({
@@ -312,9 +320,11 @@ router.post('/api/authors/register', upload.any(), async (req, res) => {
       qualificationsArray.push({ qualification, institution, subject });
     }
 
-    let photoUrl = null, paymentScreenshotUrl = null, qrCodeUrl = null, certificateUrl = null;
+    let photoUrl = req.body.photoUrl || null, paymentScreenshotUrl = req.body.paymentScreenshotUrl || null, qrCodeUrl = req.body.qrCodeUrl || null, certificateUrl = req.body.certificateUrl || null;
     let covers = {};
     let backCovers = {};
+    if (req.body.covers) try { covers = JSON.parse(req.body.covers); } catch(e){}
+    if (req.body.backCovers) try { backCovers = JSON.parse(req.body.backCovers); } catch(e){}
     if (Array.isArray(req.files)) {
       for (const file of req.files) {
         if (file.fieldname === 'photo') photoUrl = `/uploads/${file.filename}`;
@@ -587,8 +597,9 @@ router.put('/api/author/edit-profile-full', verifyToken, upload.any(), async (re
     });
 
     const incomingBookIds = booksArray.map(b => parseInt(b.id)).filter(id => !isNaN(id));
-    await prisma.book.deleteMany({
-      where: { authorId: author.id, id: { notIn: incomingBookIds } }
+    await prisma.book.updateMany({
+      where: { authorId: author.id, id: { notIn: incomingBookIds } },
+      data: { isArchived: true, status: 'Archived' }
     });
 
     for (let i = 0; i < booksArray.length; i++) {
@@ -726,8 +737,9 @@ router.put('/api/author/reapply-full', verifyToken, upload.any(), async (req, re
     });
 
     const incomingBookIds = booksArray.map(b => parseInt(b.id)).filter(id => !isNaN(id));
-    await prisma.book.deleteMany({
-      where: { authorId: author.id, id: { notIn: incomingBookIds } }
+    await prisma.book.updateMany({
+      where: { authorId: author.id, id: { notIn: incomingBookIds } },
+      data: { isArchived: true, status: 'Archived' }
     });
 
     for (let i = 0; i < booksArray.length; i++) {
@@ -827,6 +839,7 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
           groupJoiningDate: true,
           extraData: true,
           qrCodeUrl: true,
+          isArchived: true,
           books: {
             select: {
               id: true,
@@ -927,26 +940,27 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// Delete Author
+// Delete (Archive) Author
 router.delete('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) => {
   try {
     const authorId = parseInt(req.params.id);
-    // Delete related records to satisfy foreign key constraints
-    await prisma.eventRegistration.deleteMany({ where: { authorId } });
-    await prisma.formResponse.deleteMany({ where: { authorId } });
-
-    const books = await prisma.book.findMany({ where: { authorId } });
-    const bookIds = books.map(b => b.id);
-    if (bookIds.length > 0) {
-      await prisma.orderItem.deleteMany({ where: { bookId: { in: bookIds } } });
-      await prisma.book.deleteMany({ where: { authorId } });
-    }
-
-    await prisma.author.delete({ where: { id: authorId } });
+    await prisma.author.update({ where: { id: authorId }, data: { isArchived: true } });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to delete' });
+    res.status(500).json({ error: 'Failed to archive' });
+  }
+});
+
+// Restore Author
+router.put('/api/admin/authors/:id/restore', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const authorId = parseInt(req.params.id);
+    await prisma.author.update({ where: { id: authorId }, data: { isArchived: false } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to restore' });
   }
 });
 
@@ -1041,8 +1055,9 @@ router.put('/api/admin/authors/:id/full-update-and-approve', verifyToken, isAdmi
     });
 
     const incomingBookIds = booksArray.map(b => parseInt(b.id)).filter(id => !isNaN(id));
-    await prisma.book.deleteMany({
-      where: { authorId: author.id, id: { notIn: incomingBookIds } }
+    await prisma.book.updateMany({
+      where: { authorId: author.id, id: { notIn: incomingBookIds } },
+      data: { isArchived: true, status: 'Archived' }
     });
 
     for (let i = 0; i < booksArray.length; i++) {
@@ -1201,8 +1216,9 @@ router.post('/api/admin/authors/:id/reject-edits', verifyToken, isAdmin, async (
         const currentBooks = await prisma.book.findMany({ where: { authorId: id } });
         const originalBookIds = originalBooks.map(b => b.id);
 
-        await prisma.book.deleteMany({
-          where: { authorId: id, id: { notIn: originalBookIds } }
+        await prisma.book.updateMany({
+          where: { authorId: id, id: { notIn: originalBookIds } },
+          data: { isArchived: true, status: 'Archived' }
         });
 
         for (const ob of originalBooks) {
@@ -1328,6 +1344,76 @@ router.put('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) => {
 });
 
 // Admin Dashboard Overview Stats
+// Public Stats for Landing/Registration Pages
+router.get('/api/impact-stats', async (req, res) => {
+  const cached = getCache('impact:stats');
+  if (cached) return res.json(cached);
+
+  try {
+    const events = await prisma.event.findMany({
+      include: {
+        eventAuthors: true,
+        posOrders: {
+          where: { paymentStatus: 'CONFIRMED' },
+          include: { items: true }
+        }
+      }
+    });
+
+    let totalFairs = 0;
+    let totalFairsBooks = 0;
+    let totalLiteraryEvents = 0;
+    let totalLiteraryBooks = 0;
+
+    events.forEach(evt => {
+      let booksSold = evt.aggSold || 0;
+      
+      if (evt.eventAuthors) {
+        evt.eventAuthors.forEach(ea => {
+          if (ea.manualTotalSold) booksSold += ea.manualTotalSold;
+        });
+      }
+
+      if (evt.posOrders) {
+        evt.posOrders.forEach(order => {
+          if (order.items) {
+            order.items.forEach(item => {
+              booksSold += item.quantity;
+            });
+          }
+        });
+      }
+
+      const matchStr = ((evt.name || '') + ' ' + (evt.eventType || '')).toLowerCase();
+      if (matchStr.includes('fair') || matchStr.includes('mela')) {
+        totalFairs++;
+        totalFairsBooks += booksSold;
+      } else {
+        totalLiteraryEvents++;
+        totalLiteraryBooks += booksSold;
+      }
+    });
+
+    const totalLibraries = await prisma.library.count();
+    const totalLibraryBooks = totalLibraries * 112;
+
+    const result = {
+      totalFairs,
+      totalFairsBooks,
+      totalLiteraryEvents,
+      totalLiteraryBooks,
+      totalLibraries,
+      totalLibraryBooks
+    };
+
+    setCache('impact:stats', result, 1000 * 60 * 15); // cache for 15 mins
+    res.json(result);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to fetch public stats' });
+  }
+});
+
 router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) => {
   const cached = getCache('admin:dashboard-stats');
   if (cached) return res.json(cached);
@@ -1466,19 +1552,43 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       bookSalesMap[bookTitle].units += item.quantity;
     });
 
-    const salesByAuthor = Object.values(salesByAuthorMap).sort((a, b) => b.revenue - a.revenue);
-    const salesByGenre = Object.values(salesByGenreMap).sort((a, b) => b.revenue - a.revenue);
-    const topSellingBooks = Object.values(bookSalesMap).sort((a, b) => b.units - a.units).slice(0, 10);
 
-    // 5. Event Sales
+    // 5. Event Sales (POS and Manual)
+    const eventSalesMap = {};
+
     const posItems = await prisma.posOrderItem.findMany({
       where: { posOrder: { paymentStatus: 'CONFIRMED' } },
       select: {
         quantity: true,
+        price: true,
+        book: {
+          select: { title: true, genre: true, mrp: true, author: { select: { name: true } } }
+        },
         posOrder: { select: { event: { select: { name: true } } } }
       }
     });
-    const eventSalesMap = {};
+    
+    posItems.forEach(item => {
+      if (item.book) {
+        const authorName = item.book.author?.name || 'Unknown';
+        const genre = item.book.genre || 'Other';
+        const bookTitle = item.book.title;
+        const itemRev = item.quantity * (item.price || item.book.mrp || 0);
+
+        if (!salesByAuthorMap[authorName]) salesByAuthorMap[authorName] = { name: authorName, revenue: 0, units: 0 };
+        salesByAuthorMap[authorName].revenue += itemRev;
+        salesByAuthorMap[authorName].units += item.quantity;
+
+        if (!salesByGenreMap[genre]) salesByGenreMap[genre] = { name: genre, revenue: 0, units: 0 };
+        salesByGenreMap[genre].revenue += itemRev;
+        salesByGenreMap[genre].units += item.quantity;
+
+        if (!bookSalesMap[bookTitle]) bookSalesMap[bookTitle] = { title: bookTitle, author: authorName, revenue: 0, units: 0 };
+        bookSalesMap[bookTitle].revenue += itemRev;
+        bookSalesMap[bookTitle].units += item.quantity;
+      }
+    });
+
     posItems.forEach(item => {
       if (!item.posOrder || !item.posOrder.event) return;
       const eventName = item.posOrder.event.name;
@@ -1488,14 +1598,65 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
 
     const manualSalesBooks = await prisma.eventAuthor.findMany({
       where: { manualTotalSold: { gt: 0 } },
-      select: { manualTotalSold: true, event: { select: { name: true } } }
+      select: { manualTotalSold: true, manualTotalRevenue: true, author: { select: { name: true } }, event: { select: { name: true } } }
     });
     manualSalesBooks.forEach(item => {
+      if (item.author) {
+        const authorName = item.author.name;
+        if (!salesByAuthorMap[authorName]) salesByAuthorMap[authorName] = { name: authorName, revenue: 0, units: 0 };
+        salesByAuthorMap[authorName].units += item.manualTotalSold;
+        salesByAuthorMap[authorName].revenue += (item.manualTotalRevenue || 0);
+      }
+      
       if (!item.event) return;
       const eventName = item.event.name;
       if (!eventSalesMap[eventName]) eventSalesMap[eventName] = { name: eventName, booksSold: 0 };
       eventSalesMap[eventName].booksSold += item.manualTotalSold;
     });
+
+    const soldEventBooks = await prisma.eventBook.findMany({
+      where: { soldStock: { gt: 0 } },
+      select: {
+        soldStock: true,
+        overrideMrp: true,
+        book: { select: { title: true, genre: true, mrp: true, author: { select: { name: true } } } },
+        event: { select: { name: true } },
+        authorId: true,
+        eventId: true
+      }
+    });
+
+    soldEventBooks.forEach(item => {
+      if (!item.book) return;
+      const qty = item.soldStock;
+      const price = item.overrideMrp || item.book.mrp || 0;
+      const itemRev = qty * price;
+      const authorName = item.book.author?.name || 'Unknown';
+      const genre = item.book.genre || 'Other';
+      const bookTitle = item.book.title;
+
+      if (!salesByAuthorMap[authorName]) salesByAuthorMap[authorName] = { name: authorName, revenue: 0, units: 0 };
+      salesByAuthorMap[authorName].revenue += itemRev;
+      salesByAuthorMap[authorName].units += qty;
+
+      if (!salesByGenreMap[genre]) salesByGenreMap[genre] = { name: genre, revenue: 0, units: 0 };
+      salesByGenreMap[genre].revenue += itemRev;
+      salesByGenreMap[genre].units += qty;
+
+      if (!bookSalesMap[bookTitle]) bookSalesMap[bookTitle] = { title: bookTitle, author: authorName, revenue: 0, units: 0 };
+      bookSalesMap[bookTitle].revenue += itemRev;
+      bookSalesMap[bookTitle].units += qty;
+
+      if (item.event) {
+        const eventName = item.event.name;
+        if (!eventSalesMap[eventName]) eventSalesMap[eventName] = { name: eventName, booksSold: 0 };
+        eventSalesMap[eventName].booksSold += qty;
+      }
+    });
+
+    const salesByAuthor = Object.values(salesByAuthorMap).sort((a, b) => b.units - a.units);
+    const salesByGenre = Object.values(salesByGenreMap).sort((a, b) => b.units - a.units);
+    const topSellingBooks = Object.values(bookSalesMap).sort((a, b) => b.units - a.units).slice(0, 10);
     const allEvents = await prisma.event.findMany({ select: { name: true } });
     allEvents.forEach(evt => {
       if (!eventSalesMap[evt.name]) eventSalesMap[evt.name] = { name: evt.name, booksSold: 0 };
@@ -1596,7 +1757,8 @@ router.get('/api/admin/books', verifyToken, isAdmin, async (req, res) => {
       where: {
         author: {
           status: 'Active'
-        }
+        },
+        isArchived: false
       },
       include: { author: true, orderItems: { include: { order: true } } }
     });
@@ -1617,7 +1779,10 @@ router.get('/api/admin/books', verifyToken, isAdmin, async (req, res) => {
 
 router.delete('/api/admin/books/:id', verifyToken, isAdmin, async (req, res) => {
   try {
-    await prisma.book.delete({ where: { id: parseInt(req.params.id) } });
+    await prisma.book.update({ 
+      where: { id: parseInt(req.params.id) }, 
+      data: { isArchived: true, status: 'Archived' } 
+    });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed' });
@@ -1968,7 +2133,17 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
       console.error('Error calculating participation:', e);
     }
 
-    const result = { authorProfile, authorOrders, dynamicFields, eventInvites, listedBooks, posOrders, notifications, activeDonations };
+    let totalWebAndBulkSales = 0;
+    let totalWebSales = 0;
+    let totalBulkSales = 0;
+    if (authorOrders.length > 0) {
+      const completed = authorOrders.filter(o => o.status === 'Completed' || o.status === 'Delivered' || o.orderStatus === 'Completed' || o.orderStatus === 'Delivered');
+      totalWebAndBulkSales = completed.reduce((sum, o) => sum + (o.amount || 0), 0);
+      totalWebSales = completed.filter(o => !o.isBulk).reduce((sum, o) => sum + (o.amount || 0), 0);
+      totalBulkSales = completed.filter(o => o.isBulk).reduce((sum, o) => sum + (o.amount || 0), 0);
+    }
+
+    const result = { authorProfile, authorOrders, dynamicFields, eventInvites, listedBooks, posOrders, notifications, activeDonations, totalWebAndBulkSales, totalWebSales, totalBulkSales };
     setCache(cacheKey, result, 20 * 1000); // 20s cache for dashboard
     res.json(result);
   } catch (err) {
@@ -2001,7 +2176,7 @@ router.put('/api/author/inventory/:id', verifyToken, async (req, res) => {
 // Author: Update own bio / profile info
 router.put('/api/author/profile/bio', verifyToken, upload.single('photo'), async (req, res) => {
   try {
-    const { bio, phone, whatsapp, name, penName, city, state, instagram, facebook, address, aadharNumber, qualification, institution, subject, age, experience, skills, hobbies, whyJoining } = req.body;
+    const { bio, phone, whatsapp, name, penName, city, state, instagram, facebook, address, aadharNumber, qualification, institution, subject, age, experience, skills, hobbies, whyJoining, district, pincode, dob } = req.body;
     const author = await prisma.author.findUnique({ where: { email: req.user.email } });
     if (!author) return res.status(403).json({ error: 'Not an author' });
 
@@ -2454,7 +2629,20 @@ router.put('/api/orders/:id/cancel', verifyToken, async (req, res) => {
 router.post('/api/orders/bulk', optionalVerifyToken, async (req, res) => {
   try {
     const { customerName, customerEmail, customerPhone, address, amount, items } = req.body;
-    const parsedItems = Array.isArray(items) ? items : JSON.parse(items);
+    const rawItems = Array.isArray(items) ? items : JSON.parse(items);
+
+    // 1. Aggregate and Validate quantities > 0
+    const aggregatedItems = {};
+    for (const item of rawItems) {
+      const qty = parseInt(item.quantity);
+      if (isNaN(qty) || qty <= 0) {
+        return res.status(400).json({ error: 'Invalid quantity provided' });
+      }
+      const bId = parseInt(item.bookId);
+      aggregatedItems[bId] = (aggregatedItems[bId] || 0) + qty;
+    }
+
+    const parsedItems = Object.keys(aggregatedItems).map(id => ({ bookId: parseInt(id), quantity: aggregatedItems[id] }));
 
     const emailToUse = req.user ? req.user.email : (customerEmail || 'guest@example.com');
 
@@ -2472,13 +2660,13 @@ router.post('/api/orders/bulk', optionalVerifyToken, async (req, res) => {
         customerEmail: emailToUse,
         customerPhone,
         address,
-        amount: parseFloat(amount || 0),
+        amount: parseFloat(amount || 0), // Bulk orders get negotiated later, so this is just a requested baseline
         status: "Bulk Request Pending",
         isBulk: true,
         items: {
           create: parsedItems.map(item => ({
-            bookId: parseInt(item.bookId),
-            quantity: parseInt(item.quantity)
+            bookId: item.bookId,
+            quantity: item.quantity
           }))
         }
       },
@@ -2521,16 +2709,40 @@ router.post('/api/admin/orders/:id/approve-bulk', verifyToken, isAdmin, async (r
 router.post('/api/orders', optionalVerifyToken, upload.single('paymentScreenshot'), async (req, res) => {
   try {
     const { customerName, customerEmail, customerPhone, address, amount, items, transactionId } = req.body;
-    const parsedItems = Array.isArray(items) ? items : JSON.parse(items);
+    const rawItems = Array.isArray(items) ? items : JSON.parse(items);
     const paymentScreenshot = req.file ? `/uploads/${req.file.filename}` : null;
 
-    // Validate stock before allowing order placement
+    // 1. Aggregate and Validate quantities > 0
+    const aggregatedItems = {};
+    for (const item of rawItems) {
+      const qty = parseInt(item.quantity);
+      if (isNaN(qty) || qty <= 0) {
+        return res.status(400).json({ error: 'Invalid quantity provided' });
+      }
+      const bId = parseInt(item.bookId);
+      aggregatedItems[bId] = (aggregatedItems[bId] || 0) + qty;
+    }
+
+    const parsedItems = Object.keys(aggregatedItems).map(id => ({ bookId: parseInt(id), quantity: aggregatedItems[id] }));
+
+    // 2. Validate stock AND recalculate exact subtotal from DB to prevent financial spoofing
+    let calculatedSubtotal = 0;
     for (const item of parsedItems) {
-      const book = await prisma.book.findUnique({ where: { id: parseInt(item.bookId) } });
+      const book = await prisma.book.findUnique({ where: { id: item.bookId } });
       if (!book) return res.status(404).json({ error: `Book ID ${item.bookId} not found` });
-      if (book.stock < parseInt(item.quantity)) {
+      if (book.stock < item.quantity) {
         return res.status(400).json({ error: `Insufficient stock for book: ${book.title}. Available: ${book.stock}` });
       }
+      calculatedSubtotal += book.mrp * item.quantity;
+    }
+
+    const bundleDiscount = parseFloat(req.body.bundleDiscount || 0);
+    const deliveryCharges = parseFloat(req.body.deliveryCharges || 0);
+    const expectedAmount = calculatedSubtotal - bundleDiscount + deliveryCharges;
+    const requestedAmount = parseFloat(amount);
+
+    if (Math.abs(expectedAmount - requestedAmount) > 1) {
+      return res.status(400).json({ error: 'Amount mismatch detected. Financial payload may be corrupted.' });
     }
 
     const emailToUse = req.user ? req.user.email : (customerEmail || 'guest@example.com');
@@ -2546,43 +2758,55 @@ router.post('/api/orders', optionalVerifyToken, upload.single('paymentScreenshot
         }
       });
     } else if (customerName && customer.name === 'Guest') {
-      // Update guest name to actual name if provided now
       customer = await prisma.customer.update({
         where: { id: customer.id },
         data: { name: customerName, phone: customerPhone || customer.phone }
       });
     }
 
-    const order = await prisma.order.create({
-      data: {
-        customerId: customer.id,
-        customerName,
-        customerEmail: emailToUse,
-        customerPhone,
-        address,
-        amount: parseFloat(amount),
-        subtotal: parseFloat(req.body.subtotal || 0),
-        bundleDiscount: parseFloat(req.body.bundleDiscount || 0),
-        deliveryCharges: parseFloat(req.body.deliveryCharges || 0),
-        paymentScreenshot,
-        transactionId: transactionId || null,
-        items: {
-          create: parsedItems.map(item => ({
-            bookId: parseInt(item.bookId),
-            quantity: parseInt(item.quantity)
-          }))
+    // 3. Wrap Order Creation and Stock Deduction in a SINGLE Transaction to prevent zombie orders
+    const order = await prisma.$transaction(async (tx) => {
+      // Re-verify stock inside the transaction lock
+      for (const item of parsedItems) {
+        const book = await tx.book.findUnique({ where: { id: item.bookId } });
+        if (book.stock < item.quantity) {
+          throw new Error(`Insufficient stock for book ID ${item.bookId}`);
         }
-      },
-      include: { items: { include: { book: { include: { author: true, reviews: { select: { rating: true } } } } } } }
-    });
+      }
 
-    // Deduct stock immediately to prevent overselling
-    for (const item of parsedItems) {
-      await prisma.book.update({
-        where: { id: parseInt(item.bookId) },
-        data: { stock: { decrement: parseInt(item.quantity) } }
+      const newOrder = await tx.order.create({
+        data: {
+          customerId: customer.id,
+          customerName,
+          customerEmail: emailToUse,
+          customerPhone,
+          address,
+          amount: expectedAmount, // Strictly use our calculated amount
+          subtotal: calculatedSubtotal,
+          bundleDiscount,
+          deliveryCharges,
+          paymentScreenshot,
+          transactionId: transactionId || null,
+          items: {
+            create: parsedItems.map(item => ({
+              bookId: item.bookId,
+              quantity: item.quantity
+            }))
+          }
+        },
+        include: { items: { include: { book: { include: { author: true, reviews: { select: { rating: true } } } } } } }
       });
-    }
+
+      // Deduct stock safely within transaction
+      for (const item of parsedItems) {
+        await tx.book.update({
+          where: { id: item.bookId },
+          data: { stock: { decrement: item.quantity } }
+        });
+      }
+
+      return newOrder;
+    });
 
     const orderId = `PAA-${String(order.id).padStart(4, '0')}`;
     const orderDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -2696,9 +2920,7 @@ router.put('/api/order-items/:id/author-approve', verifyToken, async (req, res) 
     }
 
     // Prevent negative inventory
-    if (orderItem.book.stock < orderItem.quantity) {
-      return res.status(400).json({ error: `Insufficient stock to approve. Available: ${orderItem.book.stock}` });
-    }
+    // (Removed because stock was already deducted at checkout. The author does not need double stock to click accept)
 
     const updated = await prisma.orderItem.update({
       where: { id: orderItemId },
@@ -2920,18 +3142,21 @@ router.get('/api/admin/sales-report', verifyToken, isAdmin, async (req, res) => 
     };
 
     const processItem = (date, channel, eventName, authorName, title, qty, price, orderId) => {
-      const dateStr = date.toISOString().split('T')[0];
+      const fullDateStr = date.toISOString().split('T')[0];
+      const monthStr = date.toISOString().slice(0, 7);
+      const chartDateStr = (filterType === 'ytd' || filterType === 'lifetime') ? monthStr : fullDateStr;
+
       const rev = qty * price;
 
       totalRevenue += rev;
       totalBooksSold += qty;
 
-      if (!chartDataMap[dateStr]) chartDataMap[dateStr] = { date: dateStr, revenue: 0, books: 0 };
-      chartDataMap[dateStr].revenue += rev;
-      chartDataMap[dateStr].books += qty;
+      if (!chartDataMap[chartDateStr]) chartDataMap[chartDateStr] = { date: chartDateStr, revenue: 0, books: 0 };
+      chartDataMap[chartDateStr].revenue += rev;
+      chartDataMap[chartDateStr].books += qty;
 
       tableData.push({
-        date: dateStr,
+        date: fullDateStr,
         orderId,
         channel,
         event: eventName,
@@ -2995,11 +3220,14 @@ router.get('/api/admin/sales-report', verifyToken, isAdmin, async (req, res) => 
         if (qty > 0 || rev > 0) {
           totalRevenue += rev;
           totalBooksSold += qty;
-          const dateStr = evtDate.toISOString().split('T')[0];
+          
+          const fullDateStr = evtDate.toISOString().split('T')[0];
+          const monthStr = evtDate.toISOString().slice(0, 7);
+          const chartDateStr = (filterType === 'ytd' || filterType === 'lifetime') ? monthStr : fullDateStr;
 
-          if (!chartDataMap[dateStr]) chartDataMap[dateStr] = { date: dateStr, revenue: 0, books: 0 };
-          chartDataMap[dateStr].revenue += rev;
-          chartDataMap[dateStr].books += qty;
+          if (!chartDataMap[chartDateStr]) chartDataMap[chartDateStr] = { date: chartDateStr, revenue: 0, books: 0 };
+          chartDataMap[chartDateStr].revenue += rev;
+          chartDataMap[chartDateStr].books += qty;
 
           channelDataMap[channelName] += rev;
           kpiSplits[kpiKey].revenue += rev;
@@ -3008,7 +3236,7 @@ router.get('/api/admin/sales-report', verifyToken, isAdmin, async (req, res) => 
           totalOrders += 1;
 
           tableData.push({
-            date: dateStr,
+            date: fullDateStr,
             orderId: evt.name || `LEGACY-${evt.id}`,
             channel: channelName,
             event: evt.name,
@@ -3372,17 +3600,29 @@ router.get('/api/admin/customers', verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// Delete Order
+// Delete (Archive) Order
 router.delete('/api/admin/orders/:id', verifyToken, isAdmin, async (req, res) => {
   try {
     const orderId = parseInt(req.params.id);
-    await prisma.orderItem.deleteMany({ where: { orderId } });
-    await prisma.order.delete({ where: { id: orderId } });
+    await prisma.order.update({ where: { id: orderId }, data: { isArchived: true } });
     invalidateCache('admin:dashboard-stats');
     res.json({ success: true });
   } catch (error) {
-    console.error('Delete order error:', error);
-    res.status(500).json({ error: 'Failed to delete order' });
+    console.error('Archive order error:', error);
+    res.status(500).json({ error: 'Failed to archive order' });
+  }
+});
+
+// Restore Order
+router.put('/api/admin/orders/:id/restore', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const orderId = parseInt(req.params.id);
+    await prisma.order.update({ where: { id: orderId }, data: { isArchived: false } });
+    invalidateCache('admin:dashboard-stats');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Restore order error:', error);
+    res.status(500).json({ error: 'Failed to restore order' });
   }
 });
 
@@ -3417,6 +3657,7 @@ router.get('/api/admin/orders', verifyToken, isAdmin, async (req, res) => {
               quantity: true,
               status: true,
               createdAt: true,
+              acceptedAt: true,
               dispatchedAt: true,
               deliveredAt: true,
               trackingNumber: true,
@@ -3471,6 +3712,7 @@ router.get('/api/admin/orders', verifyToken, isAdmin, async (req, res) => {
         mrp: i.book.mrp,
         status: i.status,
         createdAt: i.createdAt,
+        acceptedAt: i.acceptedAt,
         dispatchedAt: i.dispatchedAt,
         deliveredAt: i.deliveredAt,
         trackingNumber: i.trackingNumber,
@@ -3506,10 +3748,36 @@ router.get('/api/admin/orders', verifyToken, isAdmin, async (req, res) => {
 
 router.put('/api/admin/orders/:id/status', verifyToken, isAdmin, async (req, res) => {
   try {
+    const orderId = parseInt(req.params.id);
+    const { status } = req.body;
+    
+    // Fetch current order to check previous status
+    const currentOrder = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } });
+    if (!currentOrder) return res.status(404).json({ error: 'Order not found' });
+
+    // Update the order status
     const order = await prisma.order.update({
-      where: { id: parseInt(req.params.id) },
-      data: { status: req.body.status }
+      where: { id: orderId },
+      data: { status }
     });
+
+    // If changing to Cancelled or Rejected from a valid state, we must refund stock!
+    if ((status === 'Cancelled' || status === 'Rejected') && 
+        (currentOrder.status !== 'Cancelled' && currentOrder.status !== 'Rejected')) {
+      for (const item of currentOrder.items) {
+        if (item.status !== 'Dispatched' && item.status !== 'Completed' && item.status !== 'Rejected' && item.status !== 'Cancelled') {
+          await prisma.book.update({
+            where: { id: item.bookId },
+            data: { stock: { increment: item.quantity } }
+          });
+          await prisma.orderItem.update({
+            where: { id: item.id },
+            data: { status: 'Cancelled' }
+          });
+        }
+      }
+    }
+
     res.json(order);
   } catch (err) {
     res.status(500).json({ error: 'Failed' });
@@ -3521,7 +3789,9 @@ router.put('/api/order-items/:id/status', verifyToken, async (req, res) => {
     let { status } = req.body;
 
     // Check if buyer has already submitted feedback
-    const existing = await prisma.orderItem.findUnique({ where: { id: parseInt(req.params.id) } });
+    const existing = await prisma.orderItem.findUnique({ where: { id: parseInt(req.params.id) }, include: { book: true } });
+    if (!existing) return res.status(404).json({ error: 'Order item not found' });
+
     if (status === 'Delivered' && existing.feedbackRating != null) {
       status = 'Completed';
     }
@@ -3533,6 +3803,15 @@ router.put('/api/order-items/:id/status', verifyToken, async (req, res) => {
       updateData.acceptedAt = new Date();
     } else if (status === 'Dispatched') {
       updateData.dispatchedAt = new Date();
+    }
+
+    // Refund stock if cancelled/rejected by admin manually
+    if ((status === 'Cancelled' || status === 'Rejected') && 
+        (existing.status !== 'Cancelled' && existing.status !== 'Rejected')) {
+       await prisma.book.update({
+          where: { id: existing.bookId },
+          data: { stock: { increment: existing.quantity } }
+       });
     }
 
     const orderItem = await prisma.orderItem.update({
@@ -3605,9 +3884,7 @@ router.put('/api/order-items/:id/accept', verifyToken, async (req, res) => {
       }
     }
 
-    if (existing.book.stock < existing.quantity) {
-      return res.status(400).json({ error: 'Insufficient stock' });
-    }
+    // Removed existing.book.stock < existing.quantity check. Stock was already deducted at order creation.
 
     const orderItem = await prisma.orderItem.update({
       where: { id: parseInt(req.params.id) },
@@ -4555,32 +4832,55 @@ router.post('/api/author/events/:eventId/opt-in', verifyToken, upload.single('pa
         });
       }
 
-      // ── STEP 4: Remove old EventBook records and recreate ──
-      await tx.eventBook.deleteMany({ where: { eventId, authorId: author.id } });
+      // ── STEP 4: Archive removed EventBook records ──
+      const incomingBookIds = booksToLink ? booksToLink.map(b => parseInt(b.bookId)) : [];
+      await tx.eventBook.updateMany({ 
+        where: { eventId, authorId: author.id, bookId: { notIn: incomingBookIds } }, 
+        data: { isArchived: true } 
+      });
 
-      // ── STEP 5: Deduct new listedStock from Book.stock and create EventBook records ──
+      // ── STEP 5: Deduct new listedStock from Book.stock and update/create EventBook records ──
       const lowStockBooksAfterEvent = [];
       if (booksToLink && booksToLink.length > 0) {
         for (const b of booksToLink) {
           const requested = parseInt(b.stock);
+          const bookId = parseInt(b.bookId);
+
+          const existingEb = await tx.eventBook.findFirst({
+            where: { eventId, authorId: author.id, bookId }
+          });
+
+          if (existingEb) {
+            await tx.eventBook.update({
+              where: { id: existingEb.id },
+              data: { 
+                listedStock: { increment: requested },
+                isArchived: false
+              }
+            });
+          } else {
+            await tx.eventBook.create({
+              data: {
+                eventId,
+                authorId: author.id,
+                bookId,
+                listedStock: requested,
+                overrideMrp: b.overrideMrp || null
+              }
+            });
+          }
+
           // Deduct listed stock from Book.stock
           const bookAfterDeduct = await tx.book.update({
-            where: { id: parseInt(b.bookId) },
+            where: { id: bookId },
             data: { stock: { decrement: requested } },
             include: { author: true }
           });
-          // Collect books that fall below threshold for post-transaction alerting
+          
           if (bookAfterDeduct.stock < 10) {
             lowStockBooksAfterEvent.push(bookAfterDeduct);
           }
         }
-        const eventBooksData = booksToLink.map((b) => ({
-          eventId,
-          authorId: author.id,
-          bookId: parseInt(b.bookId),
-          listedStock: parseInt(b.stock)
-        }));
-        await tx.eventBook.createMany({ data: eventBooksData });
       }
       // Store for post-transaction processing (transactions cannot use external I/O)
       author._lowStockBooksAfterEvent = lowStockBooksAfterEvent;
@@ -5493,14 +5793,33 @@ router.put('/api/author/events/:id/settle', verifyToken, async (req, res) => {
   }
 });
 
+// Delete (Archive) Event
 router.delete('/api/admin/events/:id', verifyToken, isAdmin, async (req, res) => {
   try {
     const eventId = parseInt(req.params.id);
-    await prisma.event.delete({ where: { id: eventId } });
+    const { hard } = req.query;
+    if (hard === 'true') {
+      await prisma.event.delete({ where: { id: eventId } });
+      return res.json({ success: true, message: 'Event permanently deleted' });
+    } else {
+      await prisma.event.update({ where: { id: eventId }, data: { isArchived: true } });
+      return res.json({ success: true, message: 'Event archived' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to process event deletion' });
+  }
+});
+
+// Restore Event
+router.put('/api/admin/events/:id/restore', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const eventId = parseInt(req.params.id);
+    await prisma.event.update({ where: { id: eventId }, data: { isArchived: false } });
     res.json({ success: true });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to delete event' });
+    res.status(500).json({ error: 'Failed to restore event' });
   }
 });
 
@@ -5580,14 +5899,33 @@ router.post('/api/admin/notifications', verifyToken, isAdmin, upload.single('doc
   }
 });
 
+// Delete (Archive) Notification
 router.delete('/api/admin/notifications/:id', verifyToken, isAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await prisma.notification.delete({ where: { id } });
+    const { hard } = req.query;
+    if (hard === 'true') {
+      await prisma.notification.delete({ where: { id } });
+      return res.json({ success: true, message: 'Notification permanently deleted' });
+    } else {
+      await prisma.notification.update({ where: { id }, data: { isArchived: true } });
+      return res.json({ success: true, message: 'Notification archived' });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to process notification deletion' });
+  }
+});
+
+// Restore Notification
+router.put('/api/admin/notifications/:id/restore', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await prisma.notification.update({ where: { id }, data: { isArchived: false } });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to delete notification' });
+    res.status(500).json({ error: 'Failed to restore notification' });
   }
 });
 
@@ -6824,6 +7162,8 @@ router.get('/api/admin/inventory', verifyToken, isAdmin, async (req, res) => {
         { author: { name: { contains: search } } }
       ];
     }
+    
+    whereClause.isArchived = false;
 
     if (lowStock === 'true') {
       whereClause.stock = { lt: 10 };
@@ -7441,7 +7781,7 @@ router.get('/api/public/authors', async (req, res) => {
     const authors = await prisma.author.findMany({
       where: { status: 'Active' },
       include: {
-        books: { where: { status: 'Approved' } },
+        books: { where: { status: 'Approved', isArchived: false } },
         eventAuthors: { include: { event: true } }
       },
       orderBy: { name: 'asc' }
@@ -7460,7 +7800,7 @@ router.get('/api/public/authors/:id', async (req, res) => {
     const author = await prisma.author.findUnique({
       where: { id },
       include: {
-        books: { where: { status: 'Approved' } },
+        books: { where: { status: 'Approved', isArchived: false } },
         eventAuthors: { include: { event: true } }
       }
     });

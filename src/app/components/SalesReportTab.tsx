@@ -65,7 +65,7 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
       const needsLoadingState = isDateChange || !hasLoadedInitialData.current;
       if (needsLoadingState) setIsLoading(true);
       try {
-        const res = await axios.get(`${API}/api/admin/sales-report?startDate=${startDate}&endDate=${endDate}`, {
+        const res = await axios.get(`${API}/api/admin/sales-report?startDate=${startDate}&endDate=${endDate}&filterType=${filterType}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
         if (isMounted) {
@@ -390,8 +390,13 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
                         tickMargin={15}
                         minTickGap={20}
                         tickFormatter={(val) => {
+                          if (typeof val === 'string' && val.length === 7) {
+                            const [y, m] = val.split('-');
+                            const d = new Date(parseInt(y), parseInt(m) - 1, 1);
+                            return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+                          }
                           const d = new Date(val);
-                          return isNaN(d.getTime()) ? val : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                          return isNaN(d.getTime()) ? val : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
                         }}
                       />
                       <YAxis fontSize={10} tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(val) => `₹${val}`} width={60} />
@@ -401,16 +406,22 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
                         labelStyle={{ fontSize: '11px', color: '#64748b', marginBottom: '4px' }}
                         formatter={(value: number) => [`₹${value}`, 'Revenue']}
                         labelFormatter={(val) => {
+                          if (typeof val === 'string' && val.length === 7) {
+                            const [y, m] = val.split('-');
+                            const d = new Date(parseInt(y), parseInt(m) - 1, 1);
+                            return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+                          }
                           const d = new Date(val as string);
                           return isNaN(d.getTime()) ? val : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
                         }}
                       />
-                      <Line type="linear" dataKey="revenue" stroke="#06b6d4" strokeWidth={3} dot={(props: any) => { const { cx, cy, index } = props; const total = (salesData?.chartData || []).length; if (total <= 30 || index % Math.ceil(total / 15) === 0 || index === total - 1) { return <circle cx={cx} cy={cy} r={4} fill="#fff" stroke="#06b6d4" strokeWidth={2} key={`dot-${index}`} />; } return null; }} activeDot={{ r: 6 }}>
+                      <Line type="linear" dataKey="revenue" stroke="#06b6d4" strokeWidth={3} dot={(props: any) => { const { cx, cy, index } = props; const total = (salesData?.chartData || []).length; const maxLabels = typeof window !== 'undefined' && window.innerWidth < 768 ? 6 : 15; if (total <= maxLabels || index % Math.ceil(total / maxLabels) === 0 || index === total - 1) { return <circle cx={cx} cy={cy} r={4} fill="#fff" stroke="#06b6d4" strokeWidth={2} key={`dot-${index}`} />; } return null; }} activeDot={{ r: 6 }}>
                         <LabelList dataKey="revenue" position="top" content={(props: any) => {
                           const { x, y, value, index } = props;
                           const data = salesData?.chartData || [];
                           const total = data.length;
-                          if (total <= 30 || index % Math.ceil(total / 15) === 0 || index === total - 1) {
+                          const maxLabels = typeof window !== 'undefined' && window.innerWidth < 768 ? 6 : 15;
+                          if (total <= maxLabels || index % Math.ceil(total / maxLabels) === 0 || index === total - 1) {
 
                             const prev = data[index - 1]?.revenue;
                             const next = data[index + 1]?.revenue;

@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function run() { const e = await prisma.event.findFirst({ where: { name: { contains: 'Shillong' } } }); console.log('broadcastStatus:', e ? e.broadcastStatus : 'not found'); } run().finally(() => prisma.$disconnect());

@@ -65,6 +65,8 @@ export interface CatalogueBook {
   authorPhotoUrl?: string;
   authorInstagram?: string;
   authorFacebook?: string;
+  authorLinkedin?: string;
+  authorYoutube?: string;
   authorWhatsapp?: string;
   authorQualification?: string;
   authorAge?: string;
@@ -190,7 +192,7 @@ export async function downloadCataloguePDF(label: string, books: CatalogueBook[]
 
     
     // Group books by author
-    const byAuthor: Record<string, { name: string; bio: string; photoUrl: string; instagram: string; facebook: string; whatsapp: string; qualification?: string; age?: string; experience?: string; skills?: string; hobbies?: string; books: CatalogueBook[] }> = {};
+    const byAuthor: Record<string, { name: string; bio: string; photoUrl: string; instagram: string; facebook: string; linkedin: string; youtube: string; whatsapp: string; qualification?: string; age?: string; experience?: string; skills?: string; hobbies?: string; books: CatalogueBook[] }> = {};
     validBooks.forEach(b => {
       let safePhoto = b.authorPhotoUrl || "";
       if (safePhoto.startsWith('blob:') || safePhoto.startsWith('data:')) safePhoto = "";
@@ -202,6 +204,8 @@ export async function downloadCataloguePDF(label: string, books: CatalogueBook[]
           photoUrl: safePhoto,
           instagram: b.authorInstagram || "",
           facebook: b.authorFacebook || "",
+          linkedin: b.authorLinkedin || "",
+          youtube: b.authorYoutube || "",
           whatsapp: b.authorWhatsapp || "",
           qualification: b.authorQualification,
           age: b.authorAge,
@@ -284,11 +288,17 @@ export async function downloadCataloguePDF(label: string, books: CatalogueBook[]
   
         // Social links block
         const socials = [];
-        if (author.whatsapp && author.whatsapp !== 'NA') socials.push(`<a href="https://wa.me/${author.whatsapp.replace(/D/g,'')}" style="background: rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; color: #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
-          &#128222; ${author.whatsapp}
+        if (author.whatsapp && author.whatsapp !== 'NA') socials.push(`<a href="https://wa.me/${author.whatsapp.replace(/\D/g,'')}" style="background: rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; color: #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+          &#128222; WhatsApp
+        </a>`);
+        if (author.linkedin && author.linkedin !== 'NA') socials.push(`<a href="${author.linkedin.startsWith('http') ? author.linkedin : 'https://linkedin.com/in/'+author.linkedin}" style="background: rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; color: #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+          &#128188; LinkedIn
+        </a>`);
+        if (author.youtube && author.youtube !== 'NA') socials.push(`<a href="${author.youtube.startsWith('http') ? author.youtube : 'https://youtube.com/'+author.youtube}" style="background: rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; color: #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+          &#128250; YouTube
         </a>`);
         if (author.instagram && author.instagram !== 'NA') socials.push(`<a href="${author.instagram.startsWith('http') ? author.instagram : 'https://instagram.com/'+author.instagram}" style="background: rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; color: #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
-          &#128247; ${author.instagram.replace('https://instagram.com/', '@').replace('https://www.instagram.com/', '@')}
+          &#128247; Instagram
         </a>`);
         if (author.facebook && author.facebook !== 'NA') socials.push(`<a href="${author.facebook.startsWith('http') ? author.facebook : 'https://facebook.com/'+author.facebook}" style="background: rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 20px; color: #cbd5e1; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
           &#128101; Facebook
@@ -428,6 +438,12 @@ export async function downloadCataloguePDF(label: string, books: CatalogueBook[]
               <h2 style="color: ${mutedColor}; margin: 0 0 40px; font-size: 32px; font-weight: 400; font-style: italic; font-family: 'Playfair Display', serif;">The ${label} Portfolio</h2>
               <p style="color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 4px; font-family: system-ui, sans-serif;">
                 Volume &middot; ${new Date().toLocaleDateString("en-US", { month: 'long', year: 'numeric' })} &nbsp;|&nbsp; ${validBooks.length} Curated Title(s)
+              </p>
+              <p style="color: rgba(255,255,255,0.4); font-size: 10px; text-transform: uppercase; letter-spacing: 2px; font-family: system-ui, sans-serif; margin-top: 15px;">
+                Generated: ${(() => {
+                  const d = new Date();
+                  return d.getDate().toString().padStart(2, '0') + '/' + (d.getMonth() + 1).toString().padStart(2, '0') + '/' + d.getFullYear();
+                })()} ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
             <!-- Page Number -->
@@ -702,6 +718,8 @@ export function CataloguePage() {
           authorPhotoUrl: b.author?.photoUrl || "",
           authorInstagram: b.author?.instagram || "",
           authorFacebook: b.author?.facebook || "",
+          authorLinkedin: (typeof b.author?.extraData === 'string' ? JSON.parse(b.author.extraData || "{}") : b.author?.extraData || {}).linkedin || "",
+          authorYoutube: (typeof b.author?.extraData === 'string' ? JSON.parse(b.author.extraData || "{}") : b.author?.extraData || {}).youtube || "",
           authorWhatsapp: b.author?.whatsapp || "",
           authorQualification: b.author?.qualification || "",
           authorAge: b.author?.age || "",
@@ -1032,8 +1050,8 @@ export function CataloguePage() {
       <section style={{ position: "relative", padding: "11.5rem 2rem 4rem", zIndex: 30 }}>
         
         <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "2rem", marginBottom: "2rem" }}>
-            <div style={{ maxWidth: 650 }}>
+          <div className="catalogue-header-wrapper" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "2rem", marginBottom: "2rem" }}>
+            <div style={{ flex: 1, minWidth: "300px", maxWidth: 650 }}>
               <h1 style={{ 
                 fontFamily: "'Playfair Display', serif",
                 fontSize: "clamp(2rem, 5vw, 4.5rem)",
@@ -1060,7 +1078,7 @@ export function CataloguePage() {
               </p>
             </div>
 
-            <div className="catalogue-actions-container" style={{ display: "flex", flexDirection: "column", gap: "0.8rem", alignItems: "flex-end" }}>
+            <div className="catalogue-actions-container" style={{ display: "flex", flexDirection: "column", gap: "0.8rem", alignItems: "flex-end", flexShrink: 0 }}>
               <button 
                 onClick={() => {
                   if (activeCategory === "All") {

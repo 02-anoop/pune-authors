@@ -126,7 +126,7 @@ export const AuthorInvitationsView = () => {
         </div>
 
         {/* Status Filters — scrollable horizontally on very small screens */}
-        <div className="flex bg-gray-100 p-1 rounded-xl items-center gap-1 overflow-x-auto scrollbar-none">
+        <div className="flex flex-wrap bg-gray-100 p-1 rounded-xl items-center gap-1">
           {['All', 'Pending', 'Accepted', 'Declined'].map((tab) => (
             <button
               key={tab}

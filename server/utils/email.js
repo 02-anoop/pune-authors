@@ -12,26 +12,13 @@ const sendNotificationEmail = async (to, subject, htmlBody) => {
   if (!to) return;
   try {
     const textBody = htmlBody.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-    
-    if (process.env.BREVO_API_KEY) {
-      const axios = require('axios');
-      await axios.post('https://api.brevo.com/v3/smtp/email', {
-        sender: { name: "Pune Authors' Association", email: "noreply@puneauthors.com" },
-        to: [{ email: to }],
-        subject: subject,
-        htmlContent: htmlBody,
-        textContent: textBody
-      }, {
-        headers: {
-          'api-key': process.env.BREVO_API_KEY,
-          'Content-Type': 'application/json'
-        }
-      });
-      console.log(`[BREVO EMAIL SENT] to ${to}: ${subject}`);
-    } else if (mailTransporter) {
+    if (mailTransporter && process.env.EMAIL_USER) {
       await mailTransporter.sendMail({
         from: '"Pune Authors\' Association" <noreply@puneauthors.com>',
-        to, subject, html: htmlBody, text: textBody,
+        to, 
+        subject, 
+        html: htmlBody, 
+        text: textBody,
       });
       console.log(`[EMAIL SENT] to ${to}: ${subject}`);
     } else {

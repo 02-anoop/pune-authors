@@ -219,6 +219,26 @@ export function AuthorLandingPage() {
           grid-template-columns: 1fr 1fr;
           gap: 4rem;
           align-items: center;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .hero-grid > * {
+          min-width: 0 !important;
+          max-width: 100% !important;
+        }
+        .hero-carousel-wrapper {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          width: 100% !important;
+          overflow: hidden !important;
+          box-sizing: border-box !important;
+        }
+        .hero-carousel-card {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          width: 100% !important;
+          overflow: hidden !important;
+          box-sizing: border-box !important;
         }
         
         .contact-grid {
@@ -229,22 +249,263 @@ export function AuthorLandingPage() {
           gap: 4rem;
         }
 
-        @media (max-width: 900px) {
+        /* ════════════════════════════════════════════
+           RESPONSIVE BREAKPOINTS (Tablet & Mobile)
+        ════════════════════════════════════════════ */
+
+        /* Tablet Breakpoint (max-width: 1024px) */
+        @media (max-width: 1024px) {
           .hero-grid {
-            grid-template-columns: 1fr;
-            text-align: center;
+            grid-template-columns: 1fr !important;
+            text-align: center !important;
+            gap: 2.5rem !important;
           }
-          .desktop-only-deco { display: none !important; }
-          .hero-grid .anim-float,
-          .hero-grid .anim-float-rev,
-          .hero-grid .anim-spin {
-             display: none;
+          .hero-text-wrapper {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
           }
-          .contact-grid {
-            grid-template-columns: 1fr;
+          .hero-pill {
+            margin: 0 auto 1.25rem auto !important;
+          }
+          .hero-title {
+            text-align: center !important;
+            margin: 0 auto 1.25rem auto !important;
+          }
+          .hero-desc {
+            text-align: center !important;
+            margin: 0 auto 2rem auto !important;
           }
           .button-wrapper {
-            justify-content: center;
+            width: 100% !important;
+            justify-content: center !important;
+            align-items: center !important;
+          }
+          .bento-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 1.5rem !important;
+          }
+          .bento-wide {
+            grid-column: span 2 !important;
+          }
+          .contact-grid {
+            grid-template-columns: 1fr !important;
+            gap: 2.5rem !important;
+          }
+          .desktop-only-deco {
+            display: none !important;
+          }
+        }
+
+        /* Mobile Tablet & Large Phone (max-width: 768px) */
+        @media (max-width: 768px) {
+          .hero-section {
+            padding: 6.5rem 1rem 2rem !important;
+            width: 100% !important;
+            max-width: 100vw !important;
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
+          }
+          .hero-grid {
+            gap: 1.5rem !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            padding: 0 !important;
+            margin: 0 auto !important;
+            text-align: center !important;
+          }
+          .hero-pill {
+            font-size: 0.75rem !important;
+            padding: 0.4rem 1.25rem !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            margin: 0 auto 1.25rem auto !important;
+            display: inline-flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            text-align: center !important;
+          }
+          .hero-title {
+            font-size: clamp(1.4rem, 5.5vw, 1.8rem) !important;
+            line-height: 1.25 !important;
+            margin: 0 auto 1rem auto !important;
+            text-align: center !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .hero-title br {
+            display: none !important;
+          }
+          .hero-desc {
+            font-size: 0.88rem !important;
+            line-height: 1.5 !important;
+            margin: 0 auto 1.5rem auto !important;
+            text-align: center !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .hero-carousel-card {
+            padding: 0.85rem !important;
+            border-radius: 20px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            margin: 0 auto !important;
+          }
+          .hero-carousel-box {
+            height: 210px !important;
+          }
+          .section-divider {
+            margin: 2rem 0 1rem 0 !important;
+          }
+          .bento-grid-container {
+            padding: 1rem 0.85rem 3rem !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .bento-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1.25rem !important;
+            width: 100% !important;
+          }
+          .bento-wide {
+            grid-column: span 1 !important;
+          }
+          .neo-card {
+            border-radius: 20px !important;
+            border-width: 2px !important;
+            box-shadow: 4px 4px 0px ${C.dark} !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .bento-card-inner {
+            padding: 1.25rem 1rem !important;
+            min-height: auto !important;
+          }
+          .bento-card-title {
+            font-size: 1.25rem !important;
+          }
+          .bento-card-num {
+            min-width: 34px !important;
+            width: 34px !important;
+            height: 34px !important;
+            font-size: 0.9rem !important;
+          }
+          .author-needs-header {
+            padding: 1.75rem 0.85rem 1.25rem !important;
+          }
+          .author-needs-title {
+            font-size: 1.4rem !important;
+          }
+          .author-needs-grid {
+            padding: 1.25rem 0.75rem !important;
+            gap: 0.85rem !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+          }
+          .author-needs-grid > * {
+            height: 100% !important;
+          }
+          .author-needs-grid > *:nth-child(5) {
+            grid-column: span 2 !important;
+          }
+          .author-needs-circle-wrapper {
+            animation: none !important;
+            width: 100% !important;
+            height: 100% !important;
+          }
+          .author-needs-circle {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 145px !important;
+            border-radius: 20px !important;
+            padding: 1.25rem 0.85rem !important;
+            box-shadow: 4px 4px 0px ${C.dark} !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-sizing: border-box !important;
+          }
+          .author-needs-circle h3 {
+            font-size: 1.05rem !important;
+            margin-bottom: 0.35rem !important;
+            line-height: 1.2 !important;
+          }
+          .author-needs-circle p {
+            font-size: 0.8rem !important;
+            line-height: 1.35 !important;
+            margin: 0 !important;
+          }
+          .contact-section {
+            padding: 2.5rem 0.85rem !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .contact-title {
+            font-size: 1.75rem !important;
+          }
+          .contact-form-box {
+            padding: 1.25rem 1rem !important;
+            border-radius: 20px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .button-wrapper {
+            width: 100% !important;
+            max-width: 100% !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-sizing: border-box !important;
+            margin: 0 auto !important;
+          }
+          .button-wrapper a, .button-wrapper button {
+            width: 100% !important;
+            max-width: 100% !important;
+            text-align: center !important;
+            justify-content: center !important;
+            padding: 0.8rem 1rem !important;
+            font-size: 0.9rem !important;
+            box-sizing: border-box !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            display: flex !important;
+            align-items: center !important;
+            letter-spacing: 0.02em !important;
+          }
+        }
+
+        /* Compact Phone (max-width: 480px) */
+        @media (max-width: 480px) {
+          .hero-section {
+            padding: 5.5rem 0.75rem 1.5rem !important;
+          }
+          .hero-title {
+            font-size: 1.35rem !important;
+          }
+          .hero-desc {
+            font-size: 0.84rem !important;
+          }
+          .hero-carousel-box {
+            height: 190px !important;
+          }
+          .author-needs-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0.65rem !important;
+          }
+          .author-needs-circle {
+            min-height: 130px !important;
+            padding: 0.85rem 0.65rem !important;
+          }
+          .author-needs-circle h3 {
+            font-size: 0.95rem !important;
+          }
+          .author-needs-circle p {
+            font-size: 0.76rem !important;
           }
         }
 
@@ -254,7 +515,7 @@ export function AuthorLandingPage() {
       {/* ════════════════════════════════════════════
           HERO SECTION (2-Column)
       ════════════════════════════════════════════ */}
-      <section style={{ padding: "11.5rem 2rem 4rem", position: "relative", overflow: "hidden" }}>
+      <section className="hero-section" style={{ padding: "11.5rem 2rem 4rem", position: "relative", overflow: "hidden" }}>
         
         {/* Floating background decorations */}
         <div className="anim-float desktop-only-deco" style={{ position: "absolute", top: "15rem", left: "2%", width: 60, height: 60, zIndex: 0 }}>
@@ -289,12 +550,12 @@ export function AuthorLandingPage() {
         <div className="hero-grid">
           
           {/* LEFT SIDE: TEXT */}
-          <FadeIn>
-            <div style={{ display: "inline-flex", background: C.white, padding: "0.5rem 1.5rem", borderRadius: 50, border: `2px solid ${C.dark}`, boxShadow: "2px 2px 0px #000", fontWeight: 800, fontSize: "0.9rem", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "1.5rem" }}>
+          <FadeIn className="hero-text-wrapper">
+            <div className="hero-pill" style={{ display: "inline-flex", background: C.white, padding: "0.5rem 1.5rem", borderRadius: 50, border: `2px solid ${C.dark}`, boxShadow: "2px 2px 0px #000", fontWeight: 800, fontSize: "0.9rem", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "1.5rem" }}>
               For Authors & Writers
             </div>
 
-            <h1 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2.5rem, 5vw, 4.2rem)", fontWeight: 900, color: C.dark, lineHeight: 1.1, letterSpacing: "-0.04em", marginBottom: "1.5rem" }}>
+            <h1 className="hero-title" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2.5rem, 5vw, 4.2rem)", fontWeight: 900, color: C.dark, lineHeight: 1.1, letterSpacing: "-0.04em", marginBottom: "1.5rem" }}>
               Join the Group <br/>
               <span style={{ display: "inline-block", position: "relative" }}>
                 and reach
@@ -306,7 +567,7 @@ export function AuthorLandingPage() {
               </span>
             </h1>
 
-            <p style={{ fontSize: "1.1rem", color: C.text, fontWeight: 600, maxWidth: 500, marginBottom: "2.5rem", lineHeight: 1.6 }}>
+            <p className="hero-desc" style={{ fontSize: "1.1rem", color: C.text, fontWeight: 600, maxWidth: 500, marginBottom: "2.5rem", lineHeight: 1.6 }}>
               Join Pune Authors' Association to SELL, PROMOTE, AND GET PUBLISHING SUPPORT IN A COST-EFFECTIVE WAY (CROWD FUNDED). We provide comprehensive services from editing to distribution.
             </p>
 
@@ -334,15 +595,15 @@ export function AuthorLandingPage() {
           </FadeIn>
 
           {/* RIGHT SIDE: CAROUSEL */}
-          <FadeIn delay={150}>
-            <div className="neo-card" style={{ background: C.white, padding: "1.5rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <FadeIn delay={150} className="hero-carousel-wrapper">
+            <div className="neo-card hero-carousel-card" style={{ background: C.white, padding: "1.5rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ display: "flex", gap: "0.5rem", width: "100%", marginBottom: "1rem" }}>
                 <div style={{ width: 12, height: 12, borderRadius: "50%", background: C.red, border: `2px solid ${C.dark}` }} />
                 <div style={{ width: 12, height: 12, borderRadius: "50%", background: C.yellow, border: `2px solid ${C.dark}` }} />
                 <div style={{ width: 12, height: 12, borderRadius: "50%", background: C.blue, border: `2px solid ${C.dark}` }} />
               </div>
               
-              <div style={{ width: "100%", height: 400, background: "#f8fafc", borderRadius: 16, border: `2px solid ${C.dark}`, position: "relative", overflow: "hidden" }}>
+              <div className="hero-carousel-box" style={{ width: "100%", height: 400, background: "#f8fafc", borderRadius: 16, border: `2px solid ${C.dark}`, position: "relative", overflow: "hidden" }}>
                 <div style={{ display: "flex", width: `${totalSlides * 100}%`, height: "100%", transform: `translateX(-${currentSlide * (100 / (totalSlides || 1))}%)`, transition: "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)" }}>
                   {carouselImages.map((img: any, idx) => (
                     <div key={idx} style={{ width: `${100 / totalSlides}%`, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -360,7 +621,7 @@ export function AuthorLandingPage() {
       </section>
 
       {/* Decorative dashed divider */}
-      <div style={{ width: "100%", overflow: "hidden", margin: "6rem 0 2rem 0" }}>
+      <div className="section-divider" style={{ width: "100%", overflow: "hidden", margin: "6rem 0 2rem 0" }}>
         <svg width="100%" height="20" xmlns="http://www.w3.org/2000/svg">
           <line x1="0" y1="10" x2="100%" y2="10" stroke={C.dark} strokeWidth="4" strokeDasharray="15, 10" />
         </svg>
@@ -369,17 +630,17 @@ export function AuthorLandingPage() {
       {/* ════════════════════════════════════════════
           BENTO GRID LAYOUT
       ════════════════════════════════════════════ */}
-      <section style={{ padding: "2rem 2rem 6rem" }}>
+      <section className="bento-grid-container" style={{ padding: "2rem 2rem 6rem" }}>
         <div className="bento-grid">
 
           {/* Card 2: About PAA (Square White) */}
           <FadeIn delay={200} style={{ height: "100%" }}>
-            <div className="neo-card interactive" style={{ background: C.white, padding: "3rem 2rem", height: "100%", minHeight: 320, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div className="neo-card interactive bento-card-inner" style={{ background: C.white, padding: "3rem 2rem", height: "100%", minHeight: 320, display: "flex", flexDirection: "column", justifyContent: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
-                <div style={{ background: C.white, border: `2px solid ${C.dark}`, borderRadius: "50%", minWidth: 48, width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", fontWeight: 900, boxShadow: "2px 2px 0px #000" }}>
+                <div className="bento-card-num" style={{ background: C.white, border: `2px solid ${C.dark}`, borderRadius: "50%", minWidth: 48, width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", fontWeight: 900, boxShadow: "2px 2px 0px #000" }}>
                   1
                 </div>
-                <h2 style={{ margin: 0, fontSize: "1.8rem", fontWeight: 900, letterSpacing: "-0.03em", color: C.dark, lineHeight: 1.1 }}>
+                <h2 className="bento-card-title" style={{ margin: 0, fontSize: "1.8rem", fontWeight: 900, letterSpacing: "-0.03em", color: C.dark, lineHeight: 1.1 }}>
                   An Active Literary Collective.
                 </h2>
               </div>
@@ -394,12 +655,12 @@ export function AuthorLandingPage() {
 
           {/* Card 3: Lit Fests (Vertical Red with 3D animation) */}
           <FadeIn delay={300} style={{ height: "100%" }}>
-            <div className="neo-card interactive" style={{ background: C.red, padding: "3rem 2rem", height: "100%", minHeight: 320, color: C.white, display: "flex", flexDirection: "column" }}>
+            <div className="neo-card interactive bento-card-inner" style={{ background: C.red, padding: "3rem 2rem", height: "100%", minHeight: 320, color: C.white, display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
-                <div style={{ background: C.white, border: `2px solid ${C.dark}`, color: C.dark, borderRadius: "50%", minWidth: 48, width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", fontWeight: 900, boxShadow: "2px 2px 0px #000" }}>
+                <div className="bento-card-num" style={{ background: C.white, border: `2px solid ${C.dark}`, color: C.dark, borderRadius: "50%", minWidth: 48, width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", fontWeight: 900, boxShadow: "2px 2px 0px #000" }}>
                   2
                 </div>
-                <h3 style={{ margin: 0, fontSize: "2rem", fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
+                <h3 className="bento-card-title" style={{ margin: 0, fontSize: "2rem", fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
                   Literary Events
                 </h3>
               </div>
@@ -411,13 +672,13 @@ export function AuthorLandingPage() {
 
           {/* Card 4: Yellow decorative wavy card */}
           <FadeIn delay={400} style={{ height: "100%" }}>
-            <div className="neo-card interactive" style={{ background: C.yellow, padding: "3rem 2rem", height: "100%", minHeight: 320, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <div className="neo-card interactive bento-card-inner" style={{ background: C.yellow, padding: "3rem 2rem", height: "100%", minHeight: 320, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <div style={{ position: "relative", zIndex: 10, textAlign: "left", width: "100%" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
-                  <div style={{ background: C.white, border: `2px solid ${C.dark}`, color: C.dark, borderRadius: "50%", minWidth: 48, width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", fontWeight: 900, boxShadow: "2px 2px 0px #000" }}>
+                  <div className="bento-card-num" style={{ background: C.white, border: `2px solid ${C.dark}`, color: C.dark, borderRadius: "50%", minWidth: 48, width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", fontWeight: 900, boxShadow: "2px 2px 0px #000" }}>
                     3
                   </div>
-                  <h3 style={{ margin: 0, fontSize: "2rem", fontWeight: 900, color: C.dark, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
+                  <h3 className="bento-card-title" style={{ margin: 0, fontSize: "2rem", fontWeight: 900, color: C.dark, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
                     Get Invited
                   </h3>
                 </div>
@@ -442,12 +703,12 @@ export function AuthorLandingPage() {
           {/* Card 5: Everything an Author Needs (Wide Animated Edge-to-Edge) */}
           <FadeIn className="bento-wide" delay={500}>
             <div className="neo-card" style={{ background: C.purple, color: C.white, display: "flex", flexDirection: "column", overflow: "visible" }}>
-              <div style={{ padding: "4rem 2rem", textAlign: "center", position: "relative", overflow: "hidden", borderRadius: "32px 32px 0 0" }}>
+              <div className="author-needs-header" style={{ padding: "4rem 2rem", textAlign: "center", position: "relative", overflow: "hidden", borderRadius: "32px 32px 0 0" }}>
                 <div className="anim-float" style={{ display: "inline-flex", background: C.white, border: `2px solid ${C.dark}`, color: C.dark, borderRadius: "50%", width: 56, height: 56, alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: 900, marginBottom: "1.5rem", boxShadow: "4px 4px 0px #000" }}>
                   4
                 </div>
                 <div style={{ position: "relative", display: "inline-block", marginBottom: "1rem" }}>
-                  <h2 style={{ position: "relative", zIndex: 1, fontSize: "clamp(2rem, 4vw, 2.8rem)", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.1, textShadow: "4px 4px 0px rgba(0,0,0,0.8)", margin: 0 }}>
+                  <h2 className="author-needs-title" style={{ position: "relative", zIndex: 1, fontSize: "clamp(2rem, 4vw, 2.8rem)", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.1, textShadow: "4px 4px 0px rgba(0,0,0,0.8)", margin: 0 }}>
                     Everything an Author Needs
                   </h2>
                   <svg style={{ position: "absolute", bottom: "-5px", left: "-2%", width: "104%", height: 16, zIndex: 0 }} preserveAspectRatio="none" viewBox="0 0 100 20" fill="none"><path d="M0 10 Q25 0, 50 10 T100 10" stroke={C.yellow} strokeWidth="12" strokeLinecap="round"/></svg>
@@ -458,7 +719,7 @@ export function AuthorLandingPage() {
               </div>
 
               {/* Circular 3D Tabs / Cards Grid */}
-              <div style={{ 
+              <div className="author-needs-grid" style={{ 
                 display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "3rem", 
                 padding: "5rem 2rem", background: C.white, borderTop: `4px solid ${C.dark}`,
                 backgroundImage: `radial-gradient(rgba(0,0,0,0.15) 2px, transparent 2px)`,
@@ -467,15 +728,15 @@ export function AuthorLandingPage() {
               }}>
                 
                 {[
-                  { title: "Selling Books", desc: "Selling directly through our website, events, and book fairs in a cost-effective way.", icon: "🛍️", bg: C.green, color: C.dark },
-                  { title: "Literary Events", desc: "Author interaction.", icon: "🎤", bg: C.purple, color: C.white },
-                  { title: "Book Fairs", desc: "Participation in book fairs organised by National Book Trust.", icon: "🎪", bg: C.red, color: C.white },
-                  { title: "Promote Books", desc: "Promotional initiatives through airport library.", icon: "🚀", bg: C.blue, color: C.white },
-                  { title: "Publishing Support", desc: "Cost-effective Publishing. Editing, formatting, printing, and cover design.", icon: "📖", bg: C.yellow, color: C.dark }
+                  { title: "Selling Books", desc: "Selling directly through website, events, and NBT book fairs.", icon: "🛍️", bg: C.green, color: C.dark },
+                  { title: "Literary Events", desc: "Meet the author, panel discussions, and writing workshops.", icon: "🎤", bg: C.purple, color: C.white },
+                  { title: "Book Fairs", desc: "Participation in National Book Trust and literature fests.", icon: "🎪", bg: C.red, color: C.white },
+                  { title: "Promote Books", desc: "Promotional initiatives through airport library and media.", icon: "🚀", bg: C.blue, color: C.white },
+                  { title: "Publishing Support", desc: "Editing, formatting, printing, and professional cover design.", icon: "📖", bg: C.yellow, color: C.dark }
                 ].map((item, idx) => (
-                  <FadeIn key={idx} delay={500 + (idx * 150)}>
-                    <div className={idx % 2 === 0 ? "anim-float" : "anim-float-rev"} style={{ position: "relative" }}>
-                      <div style={{ 
+                  <FadeIn key={idx} delay={500 + (idx * 150)} style={{ height: "100%" }}>
+                    <div className={`author-needs-circle-wrapper ${idx % 2 === 0 ? "anim-float" : "anim-float-rev"}`} style={{ position: "relative" }}>
+                      <div className="author-needs-circle" style={{ 
                         width: 260, height: 260, borderRadius: "50%",
                         background: item.bg, color: item.color,
                         border: `4px solid ${C.dark}`,
@@ -517,11 +778,11 @@ export function AuthorLandingPage() {
       {/* ════════════════════════════════════════════
           CONTACT SECTION — BLACK SLICK STYLE
       ════════════════════════════════════════════ */}
-      <section style={{ background: C.dark, padding: "6rem 2rem", color: C.white, borderTop: `4px solid ${C.dark}` }}>
+      <section className="contact-section" style={{ background: C.dark, padding: "6rem 2rem", color: C.white, borderTop: `4px solid ${C.dark}` }}>
         <div className="contact-grid">
           <FadeIn>
             <div>
-              <h2 style={{ fontFamily: "var(--font-display)", fontSize: "3rem", fontWeight: 900, color: C.white, marginBottom: "1rem", letterSpacing: "-0.03em" }}>Get in Touch</h2>
+              <h2 className="contact-title" style={{ fontFamily: "var(--font-display)", fontSize: "3rem", fontWeight: 900, color: C.white, marginBottom: "1rem", letterSpacing: "-0.03em" }}>Get in Touch</h2>
               <p style={{ fontSize: "1.1rem", color: "#9ca3af", lineHeight: 1.6, marginBottom: "3rem", fontWeight: 500 }}>
                 Whether you're an author seeking publishing assistance, want to organize an event, or partner with us for literary initiatives — we're here to help.
               </p>
@@ -529,7 +790,7 @@ export function AuthorLandingPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "1rem", background: "#1f2937", padding: "0.8rem 1.5rem", borderRadius: 50, width: "fit-content", border: "1px solid #374151" }}>
                   <Mail size={20} color={C.yellow} />
-                  <span style={{ fontSize: "1rem", color: C.white, fontWeight: 700 }}>info@puneauthorsassociation.org</span>
+                  <span style={{ fontSize: "1rem", color: C.white, fontWeight: 700 }}>info@puneauthorsassociation.com</span>
                 </div>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "1rem", background: "#1f2937", padding: "0.8rem 1.5rem", borderRadius: 50, width: "fit-content", border: "1px solid #374151" }}>
                   <Phone size={20} color={C.red} />
@@ -537,7 +798,7 @@ export function AuthorLandingPage() {
                 </div>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "1rem", background: "#1f2937", padding: "0.8rem 1.5rem", borderRadius: 50, width: "fit-content", border: "1px solid #374151" }}>
                   <MapPin size={20} color={C.blue} />
-                  <span style={{ fontSize: "1rem", color: C.white, fontWeight: 700 }}>Pune, Maharashtra, India</span>
+                  <span style={{ fontSize: "1rem", color: C.white, fontWeight: 700 }}>Cdr Shiv Mathur, 2112, Clover Highlands, NIBM, Pune 411048</span>
                 </div>
               </div>
             </div>
@@ -634,6 +895,7 @@ function ContactForm() {
   return (
     <FocusTrap focusTrapOptions={{ initialFocus: false, escapeDeactivates: true, clickOutsideDeactivates: true }}>
       <form
+        className="contact-form-box"
         onSubmit={async (e) => {
           e.preventDefault();
           setIsSubmitting(true);

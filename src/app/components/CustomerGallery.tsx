@@ -329,39 +329,51 @@ export function CustomerGallery({ eventId }: { eventId?: string }) {
              </div>
              
              {ev.images && ev.images.length > 0 ? (
-               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                 {ev.images.map((img: any, idx: number) => (
-                   <div 
-                     key={img.id} 
-                     className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group bg-gray-100 border border-paa-navy/5 shadow-sm"
-                     onClick={() => openLightbox(ev.images, idx)}
-                   >
-                     <img 
-                       src={img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${img.url}`} 
-                       alt={img.caption || 'Event photo'} 
-                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                     />
-                     <div className="absolute inset-0 bg-gradient-to-t from-paa-navy/80 via-transparent to-transparent opacity-100"></div>
-                     {img.caption && (() => {
-                        const uploaderMatch = img.caption.match(/\(Uploaded by (.*?)\)/);
-                        const uploaderName = uploaderMatch ? uploaderMatch[1] : '';
-                        const cleanCaption = img.caption.replace(/\(Uploaded by .*?\)/, '').trim();
-                        
-                        return (
-                          <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col gap-1">
-                             {cleanCaption && <p className="text-white text-xs font-medium line-clamp-2 drop-shadow-md">{cleanCaption}</p>}
-                             {uploaderName && (
-                               <div className="flex items-center gap-1.5 text-paa-gold/90 mt-1">
-                                 <User size={10} className="shrink-0" />
-                                 <span className="text-[9px] uppercase font-bold tracking-widest truncate">{uploaderName}</span>
-                               </div>
-                             )}
-                          </div>
-                        );
-                     })()}
+               <>
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                   {ev.images.slice(0, 4).map((img: any, idx: number) => (
+                     <div 
+                       key={img.id} 
+                       className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group bg-gray-100 border border-paa-navy/5 shadow-sm"
+                       onClick={() => openLightbox(ev.images, idx)}
+                     >
+                       <img 
+                         src={img.url.startsWith('http') ? img.url : `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${img.url}`} 
+                         alt={img.caption || 'Event photo'} 
+                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                       />
+                       <div className="absolute inset-0 bg-gradient-to-t from-paa-navy/80 via-transparent to-transparent opacity-100"></div>
+                       {img.caption && (() => {
+                          const uploaderMatch = img.caption.match(/\(Uploaded by (.*?)\)/);
+                          const uploaderName = uploaderMatch ? uploaderMatch[1] : '';
+                          const cleanCaption = img.caption.replace(/\(Uploaded by .*?\)/, '').trim();
+                          
+                          return (
+                            <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col gap-1">
+                               {cleanCaption && <p className="text-white text-xs font-medium line-clamp-2 drop-shadow-md">{cleanCaption}</p>}
+                               {uploaderName && (
+                                 <div className="flex items-center gap-1.5 text-paa-gold/90 mt-1">
+                                   <User size={10} className="shrink-0" />
+                                   <span className="text-[9px] uppercase font-bold tracking-widest truncate">{uploaderName}</span>
+                                 </div>
+                               )}
+                            </div>
+                          );
+                       })()}
+                     </div>
+                   ))}
+                 </div>
+                 {ev.images.length > 4 && (
+                   <div className="mt-4 flex justify-center">
+                     <button 
+                       onClick={() => openLightbox(ev.images, 0)}
+                       className="px-6 py-2 bg-gray-100 hover:bg-paa-navy hover:text-white text-paa-navy font-bold uppercase tracking-widest text-xs rounded-full transition-colors border border-gray-200"
+                     >
+                       View All {ev.images.length} Photos
+                     </button>
                    </div>
-                 ))}
-               </div>
+                 )}
+               </>
              ) : (
                <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center">
                   <div className="absolute inset-0 opacity-10">

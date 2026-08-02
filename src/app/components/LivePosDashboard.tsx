@@ -366,10 +366,16 @@ export function LivePosDashboard() {
             </div>
             <button 
               onClick={() => setShowPaymentModal(true)}
-              disabled={cart.length === 0}
+              disabled={cart.length === 0 || cart.some(item => {
+                const eb = inventory.find((e: any) => e.book.id === item.bookId);
+                return !eb || item.quantity > (eb.listedStock - eb.soldStock);
+              })}
               className="dash-btn dash-btn-primary w-full justify-center bg-green-600 border-none hover:bg-green-700 text-white py-3 shadow-md disabled:opacity-50 disabled:cursor-not-allowed mt-2"
             >
-              Charge Customer (₹{totalAmount})
+              {cart.some(item => {
+                const eb = inventory.find((e: any) => e.book.id === item.bookId);
+                return !eb || item.quantity > (eb.listedStock - eb.soldStock);
+              }) ? 'Out of Stock' : `Charge Customer (₹${totalAmount})`}
             </button>
           </div>
         </div>

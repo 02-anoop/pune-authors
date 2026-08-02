@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function run() { const author = await prisma.eventAuthor.findFirst({ where: { eventId: 88, authorId: 122 } }); console.log(JSON.stringify(author, null, 2)); } run().finally(() => prisma.$disconnect());

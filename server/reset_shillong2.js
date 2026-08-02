@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function run() { const res = await prisma.eventBook.updateMany({ where: { eventId: 88, authorId: 122 }, data: { soldStock: 0, manualDailySales: {} } }); console.log('Updated:', res.count, 'records'); } run().finally(() => prisma.$disconnect());

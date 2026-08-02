@@ -78,6 +78,20 @@ export function OrganizeEventPage() {
       return;
     }
 
+    // Phone: must be exactly 10 digits
+    const phoneDigits = eventForm.phone.replace(/\D/g, '');
+    if (phoneDigits.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits.");
+      return;
+    }
+
+    // Email: must be a valid format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(eventForm.email.trim())) {
+      toast.error("Please enter a valid email address (e.g. you@example.com).");
+      return;
+    }
+
     const formattedActivities = selectedActivities.map(id => {
       if (id === "other") return `Other: ${otherActivityText.trim()}`;
       const found = activityOptions.find(o => o.id === id);
@@ -216,20 +230,51 @@ export function OrganizeEventPage() {
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>Phone *</label>
+                    <label style={labelStyle}>Phone * <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 400 }}>(10 digits)</span></label>
                     <input
-                      required type="tel" value={eventForm.phone}
-                      onChange={(e) => setEventForm({ ...eventForm, phone: e.target.value })}
-                      style={inputStyle} className="form-input" placeholder="+91 98765 43210"
+                      required
+                      type="tel"
+                      value={eventForm.phone}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setEventForm({ ...eventForm, phone: digits });
+                      }}
+                      pattern="[0-9]{10}"
+                      maxLength={10}
+                      inputMode="numeric"
+                      style={inputStyle}
+                      className="form-input"
+                      placeholder="e.g. 9876543210"
+                      title="Please enter exactly 10 digit phone number"
                     />
+                    {eventForm.phone.length > 0 && eventForm.phone.length < 10 && (
+                      <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4, fontWeight: 600 }}>
+                        {10 - eventForm.phone.length} more digit{10 - eventForm.phone.length !== 1 ? 's' : ''} needed
+                      </p>
+                    )}
+                    {eventForm.phone.length === 10 && (
+                      <p style={{ fontSize: 11, color: '#22c55e', marginTop: 4, fontWeight: 600 }}>✓ Valid</p>
+                    )}
                   </div>
                   <div>
                     <label style={labelStyle}>Email *</label>
                     <input
-                      required type="email" value={eventForm.email}
+                      required
+                      type="email"
+                      value={eventForm.email}
                       onChange={(e) => setEventForm({ ...eventForm, email: e.target.value })}
-                      style={inputStyle} className="form-input" placeholder="you@example.com"
+                      pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
+                      style={inputStyle}
+                      className="form-input"
+                      placeholder="you@example.com"
+                      title="Please enter a valid email address"
                     />
+                    {eventForm.email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eventForm.email) && (
+                      <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4, fontWeight: 600 }}>Please enter a valid email (e.g. you@example.com)</p>
+                    )}
+                    {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eventForm.email) && (
+                      <p style={{ fontSize: 11, color: '#22c55e', marginTop: 4, fontWeight: 600 }}>✓ Valid</p>
+                    )}
                   </div>
                 </div>
               </div>

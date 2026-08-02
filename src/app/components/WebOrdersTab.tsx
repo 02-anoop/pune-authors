@@ -82,6 +82,8 @@ function WebOrdersTab({
   const [bulkSearchTerm, setBulkSearchTerm] = useState('');
   const [bulkStatusFilter, setBulkStatusFilter] = useState('All');
   const [showAllBulkOrders, setShowAllBulkOrders] = useState(false);
+  const [showArchivedWeb, setShowArchivedWeb] = useState(false);
+  const [showArchivedBulk, setShowArchivedBulk] = useState(false);
 
   const getAggregateStatus = (ord: any) => {
     const { status: ordStatus, items } = ord;
@@ -100,6 +102,14 @@ function WebOrdersTab({
       if (anyRejected) return { text: 'Rejected', style: 'bg-red-500 text-white border-transparent shadow-md' };
     }
 
+    if (ord.isBulk) {
+      if (ordStatus === 'Bulk Request Pending') return { text: 'Bulk Req Pending', style: 'bg-amber-500 text-white border-transparent shadow-md' };
+      if (ordStatus === 'Approved - Pending Payment') return { text: 'Pending Payment', style: 'bg-indigo-500 text-white border-transparent shadow-md' };
+      if (ordStatus === 'Payment Verified') return { text: 'Payment Verified', style: 'bg-emerald-500 text-white border-transparent shadow-md' };
+      if (ordStatus === 'Dispatched') return { text: 'Dispatched', style: 'bg-blue-500 text-white border-transparent shadow-md' };
+      if (ordStatus === 'Delivered' || ordStatus === 'Completed') return { text: 'Delivered', style: 'bg-green-500 text-white border-transparent shadow-md' };
+    }
+
     if (ordStatus === 'Pending Verification' || ordStatus === 'Pending') {
       return { text: 'Pending Verification', style: 'bg-yellow-400 text-black border-transparent shadow-md' };
     }
@@ -107,12 +117,14 @@ function WebOrdersTab({
     return { text: ordStatus || 'Pending', style: 'bg-gray-500 text-white border-transparent shadow-md' };
   };
 
-  const filterOrders = (sourceOrders: any[], term: string, statFilter: string) => {
+  const filterOrders = (sourceOrders: any[], term: string, statFilter: string, showArchived: boolean) => {
     return sourceOrders.filter((ord: any) => {
+      if (showArchived) return ord.isArchived;
+      if (ord.isArchived) return false;
       if (statFilter !== 'All') {
         const statusText = getAggregateStatus(ord).text;
-        if (statFilter === 'Pending' && !['Pending Verification', 'Pending', 'Bulk Request Pending', 'Approved - Pending Payment'].includes(statusText)) return false;
-        if (statFilter === 'Accepted' && !['Accepted', 'Payment Confirmed'].includes(statusText)) return false;
+        if (statFilter === 'Pending' && !['Pending Verification', 'Pending', 'Bulk Req Pending', 'Pending Payment'].includes(statusText)) return false;
+        if (statFilter === 'Accepted' && !['Accepted', 'Payment Confirmed', 'Payment Verified'].includes(statusText)) return false;
         if (statFilter === 'Dispatched' && statusText !== 'Dispatched') return false;
         if (statFilter === 'Completed' && statusText !== 'Delivered') return false;
         if (statFilter === 'Cancelled' && !['Cancelled', 'Rejected', 'Payment Failed'].includes(statusText)) return false;
@@ -136,8 +148,8 @@ function WebOrdersTab({
   const webOrders = orders.filter((o: any) => !o.isBulk);
   const bulkOrders = orders.filter((o: any) => o.isBulk);
 
-  const filteredWebOrders = filterOrders(webOrders, webSearchTerm, webStatusFilter);
-  const filteredBulkOrders = filterOrders(bulkOrders, bulkSearchTerm, bulkStatusFilter);
+  const filteredWebOrders = filterOrders(webOrders, webSearchTerm, webStatusFilter, showArchivedWeb);
+  const filteredBulkOrders = filterOrders(bulkOrders, bulkSearchTerm, bulkStatusFilter, showArchivedBulk);
   const filteredOrders = [...filteredWebOrders, ...filteredBulkOrders];
 
   const successfulWeb = webOrders.filter((o: any) => getAggregateStatus(o).text === 'Delivered').length;
@@ -145,7 +157,7 @@ function WebOrdersTab({
   const successfulOrders = successfulWeb + successfulBulk;
 
   const toApproveWeb = webOrders.filter((o: any) => ['Pending Verification', 'Pending'].includes(getAggregateStatus(o).text)).length;
-  const toApproveBulk = bulkOrders.filter((o: any) => ['Bulk Request Pending', 'Approved - Pending Payment'].includes(getAggregateStatus(o).text)).length;
+  const toApproveBulk = bulkOrders.filter((o: any) => ['Bulk Req Pending', 'Pending Payment'].includes(getAggregateStatus(o).text)).length;
   const toApproveOrders = toApproveWeb + toApproveBulk;
 
   const underDeliveryWeb = webOrders.filter((o: any) => getAggregateStatus(o).text === 'Dispatched').length;
@@ -178,15 +190,29 @@ function WebOrdersTab({
   const avgDeliveryDays = deliveredCount > 0 ? (totalDeliveryTime / deliveredCount / (1000 * 3600 * 24)).toFixed(1) : 0;
 
   const handleDeleteOrder = async (id: number) => {
-    if (window.confirm('Are you sure you want to permanently delete this order?')) {
+    if (window.confirm('Are you sure you want to archive this order?')) {
       try {
         await axios.delete(`${API}/api/admin/orders/${id}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
         fetchOrders();
-        toast.success('Order deleted successfully');
+        toast.success('Order archived successfully');
       } catch (err) {
-        toast.error('Failed to delete order');
+        toast.error('Failed to archive order');
+      }
+    }
+  };
+
+  const handleRestoreOrder = async (id: number) => {
+    if (window.confirm('Are you sure you want to restore this order?')) {
+      try {
+        await axios.put(`${API}/api/admin/orders/${id}/restore`, {}, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        fetchOrders();
+        toast.success('Order restored successfully');
+      } catch (err) {
+        toast.error('Failed to restore order');
       }
     }
   };
@@ -334,13 +360,13 @@ function WebOrdersTab({
             <h3 className="text-2xl font-serif font-semibold text-paa-navy tracking-tight">{section.title}</h3>
           </div>
           {section.showFilters && (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <div className="flex bg-white rounded-lg p-1 border border-paa-navy/10 shadow-sm overflow-x-auto whitespace-nowrap">
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
+              <div className="flex flex-wrap bg-white rounded-lg p-1 border border-paa-navy/10 shadow-sm">
                 {['All', 'Pending', 'Accepted', 'Dispatched', 'Completed'].map((st) => {
                   const tabCount = st === 'All' ? section.data.length : section.data.filter((ord: any) => {
                     const statusText = getAggregateStatus(ord).text;
-                    if (st === 'Pending' && ['Pending Verification', 'Pending', 'Bulk Request Pending', 'Approved - Pending Payment'].includes(statusText)) return true;
-                    if (st === 'Accepted' && ['Accepted', 'Payment Confirmed'].includes(statusText)) return true;
+                    if (st === 'Pending' && ['Pending Verification', 'Pending', 'Bulk Req Pending', 'Pending Payment'].includes(statusText)) return true;
+                    if (st === 'Accepted' && ['Accepted', 'Payment Confirmed', 'Payment Verified'].includes(statusText)) return true;
                     if (st === 'Dispatched' && statusText === 'Dispatched') return true;
                     if (st === 'Completed' && statusText === 'Delivered') return true;
                     return false;
@@ -374,21 +400,31 @@ function WebOrdersTab({
                   <ClipboardList className="w-4 h-4" /> Web Orders Summary
                 </button>
               )}
+              <div className="w-[1px] h-6 bg-gray-300 mx-1 hidden sm:block"></div>
+              <div 
+                onClick={() => section.isBulkSection ? setShowArchivedBulk(!showArchivedBulk) : setShowArchivedWeb(!showArchivedWeb)}
+                className="flex items-center gap-2 cursor-pointer shrink-0 ml-1"
+              >
+                <div className={`relative w-8 h-4 rounded-full transition-colors ${(section.isBulkSection ? showArchivedBulk : showArchivedWeb) ? 'bg-red-500' : 'bg-gray-300'}`}>
+                  <div className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform duration-200 ${(section.isBulkSection ? showArchivedBulk : showArchivedWeb) ? 'translate-x-4' : 'translate-x-0'} shadow-sm`}></div>
+                </div>
+                <span className="text-[10px] font-bold tracking-wider uppercase text-gray-600">Archived</span>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="block w-full overflow-x-auto">
+        <div className="hidden md:block w-full overflow-x-auto">
           <table className="dash-table w-full table-auto xl:table-fixed min-w-[900px] xl:min-w-0">
             <thead>
               <tr className="bg-indigo-50 border-b-2 border-indigo-100">
                 <th className="w-[5%] !text-indigo-800 !bg-transparent !text-[14px]">S.No</th>
-                <th className="w-1/6 !text-indigo-800 !bg-transparent !text-[14px]">Order ID & Date</th>
-                <th className="w-1/5 !text-indigo-800 !bg-transparent !text-[14px]">Customer</th>
-                <th className="w-[28%] !text-indigo-800 !bg-transparent !text-[14px]">Items / Books</th>
-                <th className="w-[10%] !text-indigo-800 !bg-transparent !text-[14px]" style={{ textAlign: 'center' }}>Amount</th>
-                <th className="w-[12%] !text-indigo-800 !bg-transparent !text-[14px]" style={{ textAlign: 'center' }}>Status</th>
-                <th className="w-[10%] !text-indigo-800 !bg-transparent !text-[14px]" style={{ textAlign: 'center' }}>Actions</th>
+                <th className="w-[15%] !text-indigo-800 !bg-transparent !text-[14px]">Order ID & Date</th>
+                <th className="w-[15%] !text-indigo-800 !bg-transparent !text-[14px]">Customer</th>
+                <th className="w-[25%] !text-indigo-800 !bg-transparent !text-[14px]">Items / Books</th>
+                <th className="w-[8%] !text-indigo-800 !bg-transparent !text-[14px]" style={{ textAlign: 'center' }}>Amount</th>
+                <th className="w-[17%] !text-indigo-800 !bg-transparent !text-[14px]" style={{ textAlign: 'center' }}>Status</th>
+                <th className="w-[15%] !text-indigo-800 !bg-transparent !text-[14px]" style={{ textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -415,46 +451,79 @@ function WebOrdersTab({
                         </ul>
                       </td>
                       <td style={{ textAlign: 'center' }} className="font-bold text-paa-navy">₹{ord.total}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span className={`inline-flex items-center justify-center w-full px-2 py-1 text-[9px] font-bold uppercase tracking-widest rounded-full border ${getAggregateStatus(ord).style}`}>
-                          {statusText}
-                        </span>
+                      <td style={{ textAlign: 'center' }} className="px-2">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          {ord.isBulk ? (
+                            <select
+                              value={statusText}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                const val = e.target.value;
+                                if (statusText === 'Bulk Request Pending' && val === 'Approved - Pending Payment') {
+                                  handleApproveBulk(ord.dbId);
+                                } else {
+                                  handleUpdateBulkStatus(ord.dbId, val, `Change bulk order status to ${val}?`);
+                                }
+                              }}
+                              className={`w-full text-[9px] font-bold uppercase tracking-widest px-2 py-1.5 rounded-full border text-center outline-none cursor-pointer appearance-none ${getAggregateStatus(ord).style}`}
+                            >
+                              <option value="Bulk Request Pending" className="bg-white text-gray-800">Bulk Req Pending</option>
+                              <option value="Approved - Pending Payment" className="bg-white text-gray-800">Pending Payment</option>
+                              <option value="Payment Verified" className="bg-white text-gray-800">Payment Verified</option>
+                              <option value="Dispatched" className="bg-white text-gray-800">Dispatched</option>
+                              <option value="Delivered" className="bg-white text-gray-800">Delivered</option>
+                              <option value="Cancelled" className="bg-white text-gray-800">Cancelled</option>
+                            </select>
+                          ) : (
+                            <span className={`inline-flex items-center justify-center w-full px-2 py-1 text-[9px] font-bold uppercase tracking-widest rounded-full border ${getAggregateStatus(ord).style}`}>
+                              {statusText}
+                            </span>
+                          )}
+                          {['Dispatched', 'Delivered', 'Completed'].includes(statusText) && ord.items.some((it: any) => it.dispatchedAt) && (
+                            <span className="text-[9px] text-gray-500 font-bold tracking-wider uppercase">
+                              Disp: {new Date(Math.max(...ord.items.filter((it: any) => it.dispatchedAt).map((it: any) => new Date(it.dispatchedAt).getTime()))).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                            </span>
+                          )}
+                          {['Delivered', 'Completed'].includes(statusText) && ord.items.some((it: any) => it.deliveredAt) && (
+                            <span className="text-[9px] text-gray-500 font-bold tracking-wider uppercase">
+                              Del: {new Date(Math.max(...ord.items.filter((it: any) => it.deliveredAt).map((it: any) => new Date(it.deliveredAt).getTime()))).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div className="flex items-center justify-center gap-2">
+                      <td style={{ textAlign: 'center' }} className="px-2">
+                        <div className="flex flex-wrap items-center justify-center gap-1.5">
                           {ord.isBulk && statusText === 'Bulk Request Pending' && (
-                            <button onClick={(e) => { e.stopPropagation(); handleApproveBulk(ord.dbId); }} className="p-1.5 rounded-full hover:bg-green-50 text-green-500 transition-colors" title="Approve Bulk Order">
-                              <CheckCircle2 size={16} />
+                            <button onClick={(e) => { e.stopPropagation(); handleApproveBulk(ord.dbId); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-indigo-600 text-white border-none rounded shadow hover:bg-indigo-700 transition-colors" title="Approve Bulk Order">
+                              Approve Request
                             </button>
                           )}
                           {ord.isBulk && statusText === 'Approved - Pending Payment' && (
-                            <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Payment Verified', 'Verify Payment for this bulk order?'); }} className="p-1.5 rounded-full hover:bg-green-50 text-green-600 transition-colors" title="Verify Payment">
-                              <CheckCircle2 size={16} />
+                            <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Payment Verified', 'Verify Payment for this bulk order?'); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-emerald-600 text-white border-none rounded shadow hover:bg-emerald-700 transition-colors" title="Verify Payment">
+                              Verify Payment
                             </button>
                           )}
                           {ord.isBulk && statusText === 'Payment Verified' && (
-                            <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Dispatched', 'Mark this bulk order as Dispatched?'); }} className="p-1.5 rounded-full hover:bg-blue-50 text-blue-500 transition-colors" title="Mark as Dispatched">
-                              <Truck size={16} />
+                            <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Dispatched', 'Mark this bulk order as Dispatched?'); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-blue-600 text-white border-none rounded shadow hover:bg-blue-700 transition-colors" title="Mark as Dispatched">
+                              Dispatch
                             </button>
                           )}
                           {ord.isBulk && statusText === 'Dispatched' && (
-                            <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Delivered', 'Mark this bulk order as Delivered?'); }} className="p-1.5 rounded-full hover:bg-purple-50 text-purple-500 transition-colors" title="Mark as Delivered">
-                              <PackageCheck size={16} />
+                            <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Delivered', 'Mark this bulk order as Delivered?'); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-purple-600 text-white border-none rounded shadow hover:bg-purple-700 transition-colors" title="Mark as Delivered">
+                              Deliver
                             </button>
                           )}
-                          {!ord.isBulk && statusText === 'Pending Verification' && (
-                            <>
-                              <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Accepted', 'Accept this Web Order?'); }} className="p-1.5 rounded-full hover:bg-purple-50 text-purple-600 transition-colors" title="Accept Order">
-                                <CheckCircle2 size={16} />
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Rejected', 'Reject this Web Order?'); }} className="p-1.5 rounded-full hover:bg-red-50 text-red-600 transition-colors" title="Reject Order">
-                                <XCircle size={16} />
-                              </button>
-                            </>
+
+                          {ord.isArchived ? (
+                            <button onClick={(e) => { e.stopPropagation(); handleRestoreOrder(ord.dbId); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-amber-100 text-amber-800 border-none rounded shadow hover:bg-amber-200 transition-colors" title="Restore Order">
+                              Restore
+                            </button>
+                          ) : (
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteOrder(ord.dbId); }} className="p-1.5 rounded-full hover:bg-red-50 text-red-500 transition-colors" title="Archive Order">
+                              <Trash2 size={16} />
+                            </button>
                           )}
-                          <button onClick={(e) => { e.stopPropagation(); handleDeleteOrder(ord.dbId); }} className="p-1.5 rounded-full hover:bg-red-50 text-red-500 transition-colors" title="Delete Order">
-                            <Trash2 size={16} />
-                          </button>
                           <button className="text-gray-400 p-1.5 rounded-full hover:bg-gray-100 transition-colors" title="Toggle Details">
                             <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${expandedOrderId === ord.dbId ? 'rotate-180' : ''}`} />
                           </button>
@@ -486,6 +555,31 @@ function WebOrdersTab({
                                     </ul>
                                   </div>
                                 )}
+                                <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
+                                  <h5 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Order Timeline</h5>
+                                  <div className="flex justify-between items-center text-xs">
+                                    <span className="text-gray-500 font-medium">Placed On</span>
+                                    <span className="font-bold text-paa-navy">{new Date(ord.date).toLocaleString('en-IN')}</span>
+                                  </div>
+                                  {ord.items.some((it: any) => it.acceptedAt) && (
+                                    <div className="flex justify-between items-center text-xs">
+                                      <span className="text-gray-500 font-medium">Accepted</span>
+                                      <span className="font-bold text-paa-navy">{new Date(Math.max(...ord.items.filter((it: any) => it.acceptedAt).map((it: any) => new Date(it.acceptedAt).getTime()))).toLocaleString('en-IN')}</span>
+                                    </div>
+                                  )}
+                                  {ord.items.some((it: any) => it.dispatchedAt) && (
+                                    <div className="flex justify-between items-center text-xs">
+                                      <span className="text-gray-500 font-medium">Dispatched</span>
+                                      <span className="font-bold text-paa-navy">{new Date(Math.max(...ord.items.filter((it: any) => it.dispatchedAt).map((it: any) => new Date(it.dispatchedAt).getTime()))).toLocaleString('en-IN')}</span>
+                                    </div>
+                                  )}
+                                  {ord.items.some((it: any) => it.deliveredAt) && (
+                                    <div className="flex justify-between items-center text-xs">
+                                      <span className="text-gray-500 font-medium">Delivered</span>
+                                      <span className="font-bold text-green-600">{new Date(Math.max(...ord.items.filter((it: any) => it.deliveredAt).map((it: any) => new Date(it.deliveredAt).getTime()))).toLocaleString('en-IN')}</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
@@ -580,10 +674,46 @@ function WebOrdersTab({
                   <div>
                     <p className="font-bold text-paa-navy text-sm">{ord.id}</p>
                     <p className="text-[10px] text-paa-gray-text flex items-center gap-1 font-medium"><CalendarIcon className="w-3 h-3" /> {ord.date}</p>
+                    {['Dispatched', 'Delivered', 'Completed'].includes(statusText) && ord.items.some((it: any) => it.dispatchedAt) && (
+                      <span className="text-[10px] text-gray-500 font-bold uppercase block">
+                        Disp: {new Date(Math.max(...ord.items.filter((it: any) => it.dispatchedAt).map((it: any) => new Date(it.dispatchedAt).getTime()))).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                      </span>
+                    )}
+                    {['Delivered', 'Completed'].includes(statusText) && ord.items.some((it: any) => it.deliveredAt) && (
+                      <span className="text-[10px] text-gray-500 font-bold uppercase block">
+                        Del: {new Date(Math.max(...ord.items.filter((it: any) => it.deliveredAt).map((it: any) => new Date(it.deliveredAt).getTime()))).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                      </span>
+                    )}
                   </div>
-                  <span className={`text-[9px] px-2 py-1 rounded-full font-bold uppercase tracking-widest border ${getAggregateStatus(ord).style}`}>
-                    {statusText}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    {ord.isBulk ? (
+                      <select
+                        value={statusText}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          const val = e.target.value;
+                          if (statusText === 'Bulk Request Pending' && val === 'Approved - Pending Payment') {
+                            handleApproveBulk(ord.dbId);
+                          } else {
+                            handleUpdateBulkStatus(ord.dbId, val, `Change bulk order status to ${val}?`);
+                          }
+                        }}
+                        className={`text-[9px] px-2 py-1.5 rounded-full font-bold uppercase tracking-widest border text-center outline-none cursor-pointer appearance-none ${getAggregateStatus(ord).style}`}
+                      >
+                        <option value="Bulk Request Pending" className="bg-white text-gray-800">Bulk Req Pending</option>
+                        <option value="Approved - Pending Payment" className="bg-white text-gray-800">Pending Payment</option>
+                        <option value="Payment Verified" className="bg-white text-gray-800">Payment Verified</option>
+                        <option value="Dispatched" className="bg-white text-gray-800">Dispatched</option>
+                        <option value="Delivered" className="bg-white text-gray-800">Delivered</option>
+                        <option value="Cancelled" className="bg-white text-gray-800">Cancelled</option>
+                      </select>
+                    ) : (
+                      <span className={`text-[9px] px-2 py-1 rounded-full font-bold uppercase tracking-widest border ${getAggregateStatus(ord).style}`}>
+                        {statusText}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <p className="text-[10px] text-paa-gray-text font-bold uppercase tracking-widest mb-0.5">Customer</p>
@@ -601,38 +731,35 @@ function WebOrdersTab({
                   <div className="text-base font-black text-indigo-600">₹{ord.total}</div>
                   <div className="flex items-center gap-2">
                     {ord.isBulk && statusText === 'Bulk Request Pending' && (
-                      <button onClick={(e) => { e.stopPropagation(); handleApproveBulk(ord.dbId); }} className="p-1.5 rounded-full hover:bg-green-50 text-green-500 transition-colors" title="Approve Bulk Order">
-                        <CheckCircle2 size={16} />
+                      <button onClick={(e) => { e.stopPropagation(); handleApproveBulk(ord.dbId); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-indigo-600 text-white border-none rounded shadow hover:bg-indigo-700 transition-colors" title="Approve Bulk Order">
+                        Approve Request
                       </button>
                     )}
                     {ord.isBulk && statusText === 'Approved - Pending Payment' && (
-                      <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Payment Verified', 'Verify Payment for this bulk order?'); }} className="p-1.5 rounded-full hover:bg-green-50 text-green-600 transition-colors" title="Verify Payment">
-                        <CheckCircle2 size={16} />
+                      <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Payment Verified', 'Verify Payment for this bulk order?'); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-emerald-600 text-white border-none rounded shadow hover:bg-emerald-700 transition-colors" title="Verify Payment">
+                        Verify Payment
                       </button>
                     )}
                     {ord.isBulk && statusText === 'Payment Verified' && (
-                      <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Dispatched', 'Mark this bulk order as Dispatched?'); }} className="p-1.5 rounded-full hover:bg-blue-50 text-blue-500 transition-colors" title="Mark as Dispatched">
-                        <Truck size={16} />
+                      <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Dispatched', 'Mark this bulk order as Dispatched?'); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-blue-600 text-white border-none rounded shadow hover:bg-blue-700 transition-colors" title="Mark as Dispatched">
+                        Dispatch
                       </button>
                     )}
                     {ord.isBulk && statusText === 'Dispatched' && (
-                      <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Delivered', 'Mark this bulk order as Delivered?'); }} className="p-1.5 rounded-full hover:bg-purple-50 text-purple-500 transition-colors" title="Mark as Delivered">
-                        <PackageCheck size={16} />
+                      <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Delivered', 'Mark this bulk order as Delivered?'); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-purple-600 text-white border-none rounded shadow hover:bg-purple-700 transition-colors" title="Mark as Delivered">
+                        Deliver
                       </button>
                     )}
-                    {!ord.isBulk && statusText === 'Pending Verification' && (
-                      <>
-                        <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Accepted', 'Accept this Web Order?'); }} className="p-1.5 rounded-full hover:bg-purple-50 text-purple-600 transition-colors" title="Accept Order">
-                          <CheckCircle2 size={16} />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleUpdateBulkStatus(ord.dbId, 'Rejected', 'Reject this Web Order?'); }} className="p-1.5 rounded-full hover:bg-red-50 text-red-600 transition-colors" title="Reject Order">
-                          <XCircle size={16} />
-                        </button>
-                      </>
+
+                    {ord.isArchived ? (
+                      <button onClick={(e) => { e.stopPropagation(); handleRestoreOrder(ord.dbId); }} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-amber-100 text-amber-800 border-none rounded shadow hover:bg-amber-200 transition-colors" title="Restore Order">
+                        Restore
+                      </button>
+                    ) : (
+                      <button onClick={(e) => { e.stopPropagation(); handleDeleteOrder(ord.dbId); }} className="p-1.5 rounded-full hover:bg-red-50 text-red-500 transition-colors" title="Archive Order">
+                        <Trash2 size={16} />
+                      </button>
                     )}
-                    <button onClick={(e) => { e.stopPropagation(); handleDeleteOrder(ord.dbId); }} className="p-1.5 rounded-full hover:bg-red-50 text-red-500 transition-colors" title="Delete Order">
-                      <Trash2 size={16} />
-                    </button>
                     <button className="p-1 rounded-full hover:bg-gray-100 text-paa-navy font-bold flex items-center gap-1 text-[10px] uppercase tracking-wider" title="Toggle Details">
                       Details
                       <ChevronDown size={14} className={`transition-transform duration-200 ${expandedOrderId === ord.dbId ? 'rotate-180' : ''}`} />
@@ -657,6 +784,31 @@ function WebOrdersTab({
                           </ul>
                         </div>
                       )}
+                      <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
+                        <h5 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Order Timeline</h5>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-gray-500 font-medium">Placed On</span>
+                          <span className="font-bold text-paa-navy">{new Date(ord.date).toLocaleString('en-IN')}</span>
+                        </div>
+                        {ord.items.some((it: any) => it.acceptedAt) && (
+                          <div className="flex justify-between items-center text-[11px]">
+                            <span className="text-gray-500 font-medium">Accepted</span>
+                            <span className="font-bold text-paa-navy">{new Date(Math.max(...ord.items.filter((it: any) => it.acceptedAt).map((it: any) => new Date(it.acceptedAt).getTime()))).toLocaleString('en-IN')}</span>
+                          </div>
+                        )}
+                        {ord.items.some((it: any) => it.dispatchedAt) && (
+                          <div className="flex justify-between items-center text-[11px]">
+                            <span className="text-gray-500 font-medium">Dispatched</span>
+                            <span className="font-bold text-paa-navy">{new Date(Math.max(...ord.items.filter((it: any) => it.dispatchedAt).map((it: any) => new Date(it.dispatchedAt).getTime()))).toLocaleString('en-IN')}</span>
+                          </div>
+                        )}
+                        {ord.items.some((it: any) => it.deliveredAt) && (
+                          <div className="flex justify-between items-center text-[11px]">
+                            <span className="text-gray-500 font-medium">Delivered</span>
+                            <span className="font-bold text-green-600">{new Date(Math.max(...ord.items.filter((it: any) => it.deliveredAt).map((it: any) => new Date(it.deliveredAt).getTime()))).toLocaleString('en-IN')}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="space-y-1.5 text-xs">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-500 mb-2">Bill Summary</p>

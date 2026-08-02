@@ -358,7 +358,7 @@ export function LandingPage() {
           <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", zIndex: 10 }}>
             <FadeIn>
               <h1
-                className="hero-title"
+                className="hero-title landing-hero-title"
                 style={{
                   fontFamily: "'Google Sans', 'Montserrat', sans-serif",
                   fontSize: "clamp(4.5rem, 8vw, 7.5rem)",

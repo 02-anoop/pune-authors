@@ -134,19 +134,38 @@ export function CustomerProfilePage() {
   };
 
   const handleSaveProfile = async () => {
+    if (!editName || !editName.trim()) {
+      alert("Full Name is required.");
+      return;
+    }
+    const cleanPhone = (editPhone || "").replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      alert("Please enter a valid 10-digit Mobile Number.");
+      return;
+    }
+    if (!editAddressObj.street?.trim() || !editAddressObj.city?.trim() || !editAddressObj.state?.trim() || !editAddressObj.pincode?.trim()) {
+      alert("Please fill all required address details: Street Address, City, State, and PIN Code.");
+      return;
+    }
+    if (!/^\d{6}$/.test(editAddressObj.pincode.trim())) {
+      alert("Please enter a valid 6-digit PIN Code.");
+      return;
+    }
+
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      const fullAddress = editAddressObj.houseNo ? 
-        `${editAddressObj.houseNo}, ${editAddressObj.street}, ${editAddressObj.city}, ${editAddressObj.state} - ${editAddressObj.pincode}` 
-        : editAddressObj.street;
+      const fullAddress = editAddressObj.houseNo && editAddressObj.houseNo.trim()
+        ? `${editAddressObj.houseNo.trim()}, ${editAddressObj.street.trim()}, ${editAddressObj.city.trim()}, ${editAddressObj.state.trim()} - ${editAddressObj.pincode.trim()}`
+        : `${editAddressObj.street.trim()}, ${editAddressObj.city.trim()}, ${editAddressObj.state.trim()} - ${editAddressObj.pincode.trim()}`;
         
       const res = await axios.put(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/auth/profile`, 
-        { name: editName, address: fullAddress, phone: editPhone },
+        { name: editName.trim(), address: fullAddress, phone: cleanPhone },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setUserData(res.data);
       setIsEditing(false);
+      alert("Profile updated successfully!");
     } catch (err) {
       alert("Failed to update profile");
     } finally {
@@ -330,17 +349,17 @@ export function CustomerProfilePage() {
                 <p className="text-sm font-bold text-paa-navy mb-2">Before raising a query, you can contact the author directly:</p>
                 <div className="flex flex-col gap-2">
                   <span className="text-xs font-bold uppercase tracking-widest text-blue-800">{queryAuthor.name}</span>
-                  {queryAuthor.whatsapp && (
+                  {queryAuthor.whatsapp && queryAuthor.whatsapp !== 'NA' && (
                     <a href={`https://wa.me/${queryAuthor.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-green-700 flex items-center gap-2 hover:underline">
                       <MessageSquare size={14} /> WhatsApp: {queryAuthor.whatsapp}
                     </a>
                   )}
-                  {queryAuthor.email && (
+                  {queryAuthor.email && queryAuthor.email !== 'NA' && (
                     <a href={`mailto:${queryAuthor.email}`} className="text-sm font-medium text-blue-700 flex items-center gap-2 hover:underline">
                       <Mail size={14} /> {queryAuthor.email}
                     </a>
                   )}
-                  {queryAuthor.phone && !queryAuthor.whatsapp && (
+                  {queryAuthor.phone && queryAuthor.phone !== 'NA' && (!queryAuthor.whatsapp || queryAuthor.whatsapp === 'NA') && (
                     <a href={`tel:${queryAuthor.phone}`} className="text-sm font-medium text-gray-700 flex items-center gap-2 hover:underline">
                       <Phone size={14} /> Call: {queryAuthor.phone}
                     </a>
@@ -474,10 +493,6 @@ export function CustomerProfilePage() {
               
               <div className="border-t border-slate-100 pt-5 space-y-3">
                 <div className="text-[11px] font-extrabold text-slate-400 tracking-widest uppercase mb-2">Account Overview</div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-medium">Role</span>
-                  <span className="font-extrabold bg-emerald-900 text-amber-300 border border-emerald-700 px-2.5 py-0.5 rounded-full text-[10px] uppercase">Reader</span>
-                </div>
                 {isEditing ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", marginBottom: "0.6rem" }}>
                     <span style={{ fontSize: 13, color: "#555" }}>Phone</span>
@@ -492,7 +507,7 @@ export function CustomerProfilePage() {
                 {isEditing ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "0.6rem" }}>
                     <span style={{ fontSize: 13, color: "#555", fontWeight: 600 }}>Delivery Address</span>
-                    <input type="text" value={editAddressObj.houseNo} onChange={(e) => setEditAddressObj({...editAddressObj, houseNo: e.target.value})} style={{ width: "100%", padding: "0.5rem", border: "1px solid #ddd", fontSize: 13, outline: "none" }} placeholder="Building / House No. *" required />
+                    <input type="text" value={editAddressObj.houseNo} onChange={(e) => setEditAddressObj({...editAddressObj, houseNo: e.target.value})} style={{ width: "100%", padding: "0.5rem", border: "1px solid #ddd", fontSize: 13, outline: "none" }} placeholder="Building / House No. (Optional)" />
                     <input type="text" value={editAddressObj.street} onChange={(e) => setEditAddressObj({...editAddressObj, street: e.target.value})} style={{ width: "100%", padding: "0.5rem", border: "1px solid #ddd", fontSize: 13, outline: "none" }} placeholder="Street Address *" required />
                     <div style={{ display: "flex", gap: "0.5rem" }}>
                       <input type="text" value={editAddressObj.city} onChange={(e) => setEditAddressObj({...editAddressObj, city: e.target.value})} style={{ width: "50%", padding: "0.5rem", border: "1px solid #ddd", fontSize: 13, outline: "none" }} placeholder="City *" required />
@@ -505,13 +520,15 @@ export function CustomerProfilePage() {
                   </div>
                 ) : (
                   userData?.address && (
-                    <div className="flex justify-between items-start text-xs gap-2">
-                      <span className="text-slate-500 font-medium">Address</span>
-                      <span className="font-bold text-slate-900 text-right max-w-[65%] leading-tight">{userData.address}</span>
+                    <div className="pt-2 border-t border-slate-100">
+                      <span className="text-slate-500 font-medium text-xs block mb-1.5">Delivery Address</span>
+                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 leading-relaxed shadow-sm">
+                        {userData.address}
+                      </div>
                     </div>
                   )
                 )}
-                <div className="flex justify-between items-center text-xs">
+                <div className="flex justify-between items-center text-xs pt-1">
                   <span className="text-slate-500 font-medium">Member Since</span>
                   <span className="font-bold text-slate-900">{new Date(userData?.createdAt || Date.now()).getFullYear()}</span>
                 </div>
@@ -948,17 +965,17 @@ export function CustomerProfilePage() {
                         <div>
                           <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">Contact Author</div>
                           <div className="flex flex-wrap gap-2">
-                            {group.author?.whatsapp && (
+                            {group.author?.whatsapp && group.author?.whatsapp !== 'NA' && (
                               <a href={`https://wa.me/${group.author.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-600 hover:text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs">
                                 <MessageSquare size={13} /> WhatsApp: {group.author.whatsapp}
                               </a>
                             )}
-                            {group.author?.email && (
+                            {group.author?.email && group.author?.email !== 'NA' && (
                               <a href={`mailto:${group.author.email}`} className="flex items-center gap-1.5 text-sky-800 bg-sky-50 border border-sky-200 hover:bg-sky-600 hover:text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs">
                                 <Mail size={13} /> {group.author.email}
                               </a>
                             )}
-                            {group.author?.phone && !group.author?.whatsapp && (
+                            {group.author?.phone && group.author?.phone !== 'NA' && (!group.author?.whatsapp || group.author?.whatsapp === 'NA') && (
                               <a href={`tel:${group.author.phone}`} className="flex items-center gap-1.5 text-slate-800 bg-slate-100 border border-slate-300 hover:bg-slate-800 hover:text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs">
                                 <Phone size={13} /> Call: {group.author.phone}
                               </a>

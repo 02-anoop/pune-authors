@@ -92,6 +92,7 @@ model Author {
   formResponses         FormResponse[]
   posOrders             PosOrder[]
   queries               Query[]
+  isArchived            Boolean                @default(false)
 }
 
 model Query {
@@ -143,6 +144,7 @@ model Book {
   orderItems      OrderItem[]
   posOrderItems   PosOrderItem[]
   stockHistory    StockHistory[]
+  isArchived      Boolean        @default(false)
 }
 
 model Customer {
@@ -170,6 +172,7 @@ model Order {
   deliveryCharges   Float       @default(0)
   subtotal          Float       @default(0)
   isBulk            Boolean     @default(false)
+  isArchived        Boolean     @default(false)
   customer          Customer?   @relation(fields: [customerId], references: [id])
   items             OrderItem[]
 }
@@ -330,6 +333,7 @@ model Event {
   eventBooks         EventBook[]
   galleryEvent       GalleryEvent?
   posOrders          PosOrder[]
+  isArchived         Boolean       @default(false)
 }
 
 model EventAuthor {
@@ -347,6 +351,7 @@ model EventAuthor {
   investment         Float?   @default(0)
   rejectionReason    String?
   manualDailySales   Json?
+  isArchived         Boolean  @default(false)
   author             Author   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   event              Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
@@ -362,6 +367,7 @@ model EventBook {
   createdAt     DateTime @default(now())
   overrideMrp   Float?
   manualDailySales Json?
+  isArchived    Boolean  @default(false)
   author        Author   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   book          Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
   event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -399,6 +405,7 @@ model Notification {
   createdAt    DateTime @default(now())
   documentName String?
   documentUrl  String?
+  isArchived   Boolean  @default(false)
 }
 
 model Library {
@@ -417,6 +424,7 @@ model Library {
   status          String                 @default("Active")
   createdAt       DateTime               @default(now())
   bannerUrl       String?
+  isArchived      Boolean                @default(false)
   announcements   DonationAnnouncement[]
   logs            DonationLog[]
   galleryEvent    GalleryEvent?
@@ -442,6 +450,7 @@ model DonationAnnouncement {
   additionalInstructions String?
   visibility             String                 @default("Draft")
   createdAt              DateTime               @default(now())
+  isArchived             Boolean                @default(false)
   library                Library                @relation(fields: [libraryId], references: [id], onDelete: Cascade)
   registrations          DonationRegistration[]
 }
@@ -474,6 +483,7 @@ model DonationRegistration {
   globalRemarks       String?
   broadcastStatus     String               @default("Draft")
   createdAt           DateTime             @default(now())
+  isArchived          Boolean              @default(false)
   books               DonationBook[]
   announcement        DonationAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
   author              Author               @relation(fields: [authorId], references: [id], onDelete: Cascade)

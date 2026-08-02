@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router";
 import axios from "axios";
 import { CheckCircle, Circle, Package, MessageSquare, Truck, CheckSquare, BarChart2, CreditCard, MapPin, Minus, Plus, User, Phone, Mail, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 export function CheckoutPage() {
   const navigate = useNavigate();
@@ -35,6 +36,7 @@ export function CheckoutPage() {
   }, [quantities]);
 
   const [form, setForm] = useState({ name: "", email: "", phone: "", pincode: "", address: "", city: "", state: "", landmark: "", houseNo: "" });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [pincodeOptions, setPincodeOptions] = useState<string[]>([]);
   const [districtOptions, setDistrictOptions] = useState<string[]>([]);
   const [fetchingLoc, setFetchingLoc] = useState(false);
@@ -89,6 +91,24 @@ export function CheckoutPage() {
   const totalAmount = currentSubtotal - bundleDiscount + deliveryCharge;
 
 
+  const checkSavedAddressComplete = (saved: any) => {
+    if (!saved) return { complete: false, missing: "No saved address" };
+    const hasName = Boolean(saved.name && saved.name.trim());
+    const phoneDigits = (saved.phone || "").replace(/\D/g, "");
+    const hasPhone = phoneDigits.length === 10;
+    const hasAddress = Boolean(saved.address && saved.address.trim() && saved.address.length > 5);
+
+    const missing: string[] = [];
+    if (!hasName) missing.push("Full Name");
+    if (!hasPhone) missing.push("10-digit Phone Number");
+    if (!hasAddress) missing.push("Delivery Address");
+
+    return {
+      complete: hasName && hasPhone && hasAddress,
+      missing: missing.join(", ")
+    };
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("userRole");
@@ -110,12 +130,18 @@ export function CheckoutPage() {
             address: u.address || "",
           }));
           if (u.address) {
-             setSavedAddress({
-                name: u.name,
-                phone: u.phone,
-                address: u.address,
-             });
-             setUseSavedAddress(true);
+             const savedObj = {
+                name: u.name || "",
+                phone: u.phone || "",
+                address: u.address || "",
+             };
+             setSavedAddress(savedObj);
+             const check = checkSavedAddressComplete(savedObj);
+             if (check.complete) {
+                setUseSavedAddress(true);
+             } else {
+                setUseSavedAddress(false);
+             }
           }
         })
         .catch(() => {
@@ -188,57 +214,75 @@ export function CheckoutPage() {
     }
   };
 
+  const validateAddressForm = () => {
+    const errors: Record<string, string> = {};
+    if (!form.name || !form.name.trim()) errors.name = "Full Name is required";
+    
+    const phoneDigits = (form.phone || "").replace(/\D/g, "");
+    if (!phoneDigits) errors.phone = "Mobile Number is required";
+    else if (phoneDigits.length !== 10) errors.phone = `Mobile number must be 10 digits (${phoneDigits.length} entered)`;
+
+    if (!form.address || !form.address.trim()) errors.address = "Street Address is required";
+    if (!form.city || !form.city.trim()) errors.city = "District / Town is required";
+    if (!form.state || !form.state.trim()) errors.state = "Please select a State";
+
+    const pinDigits = (form.pincode || "").replace(/\D/g, "");
+    if (!pinDigits) errors.pincode = "PIN Code is required";
+    else if (pinDigits.length !== 6) errors.pincode = `PIN Code must be 6 digits (${pinDigits.length} entered)`;
+
+    setFormErrors(errors);
+    return errors;
+  };
+
   const handleSaveAddressToProfile = async () => {
-    if (!form.name || !form.phone || !form.houseNo || !form.address || !form.city || !form.state || !form.pincode) {
-      alert("Please fill all required delivery details (marked with *) before saving.");
+    const errors = validateAddressForm();
+    if (Object.keys(errors).length > 0) {
+      toast.error("Please fill in all compulsory fields marked with * correctly.");
       return;
     }
     try {
         const token = localStorage.getItem("token");
         if (token) {
-            const fullAddress = `${form.houseNo}, ${form.address}, ${form.city}, ${form.state} - ${form.pincode}`;
+            const fullAddress = form.houseNo && form.houseNo.trim()
+              ? `${form.houseNo.trim()}, ${form.address.trim()}, ${form.city.trim()}, ${form.state.trim()} - ${form.pincode.trim()}`
+              : `${form.address.trim()}, ${form.city.trim()}, ${form.state.trim()} - ${form.pincode.trim()}`;
+
             await axios.put(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/auth/profile`, {
-                name: form.name,
+                name: form.name.trim(),
                 address: fullAddress
             }, { headers: { Authorization: `Bearer ${token}` } });
             
             setSavedAddress({
-                name: form.name,
-                phone: form.phone,
+                name: form.name.trim(),
+                phone: form.phone.trim(),
                 address: fullAddress
             });
             setUseSavedAddress(true);
-            alert("Address saved to profile!");
+            toast.success("Address saved to profile successfully!");
         } else {
-            alert("Please log in to save your profile address.");
+            toast.error("Please log in to save your profile address.");
         }
     } catch (e) {
         console.error(e);
-        alert("Failed to save address to profile.");
+        toast.error("Failed to save address to profile.");
     }
   };
 
   const handleAddressSubmit = () => {
     if (useSavedAddress) {
-      if (!savedAddress?.name || !savedAddress?.phone || !savedAddress?.address) {
-        alert("Saved address is incomplete.");
+      const check = checkSavedAddressComplete(savedAddress);
+      if (!check.complete) {
+        toast.error(`Saved address is incomplete (Missing: ${check.missing}). Please use the address form below.`);
+        setUseSavedAddress(false);
         return;
       }
       setCheckoutStep(2);
       return;
     }
 
-    if (!form.name || !form.phone || !form.houseNo || !form.address || !form.city || !form.state || !form.pincode) {
-      alert("Please fill all required delivery details (marked with *)");
-      return;
-    }
-    const cleanPhone = form.phone.replace(/[\s-]/g, '');
-    if (cleanPhone.length < 10) {
-      alert("Please enter a valid phone number (at least 10 digits)");
-      return;
-    }
-    if (!/^\d{6}$/.test(form.pincode.trim())) {
-      alert("Please enter a valid 6-digit PIN code");
+    const errors = validateAddressForm();
+    if (Object.keys(errors).length > 0) {
+      toast.error("Please fill in all compulsory fields marked with * correctly.");
       return;
     }
     setCheckoutStep(2);
@@ -303,7 +347,7 @@ export function CheckoutPage() {
   const authors = Array.from(new Map(books.map(b => [b.author?.id, b.author])).values()).filter(Boolean);
 
   return (
-    <main style={{ fontFamily: "var(--font-body)", minHeight: "100vh" }}>
+    <main style={{ fontFamily: "var(--font-body)", minHeight: "100vh", paddingTop: "7.5rem" }}>
       <section style={{ background: "#fafafa", borderBottom: "1px solid #eaeaea", padding: "2rem 1.5rem" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
           <div>
@@ -370,7 +414,7 @@ export function CheckoutPage() {
               <strong>Expected Delivery:</strong> Orders are typically delivered within <strong>10 days</strong>. There is no need to worry until then! If you haven't received your order after 10 days, a support ticket will be raised automatically.
             </div>
           <div style={{ marginBottom: "2.5rem", textAlign: "left" }}>
-              <h3 style={{ fontSize: 16, fontWeight: 500, color: "#111", marginBottom: "1rem", borderBottom: "1px solid #eaeaea", paddingBottom: "0.5rem" }}>Contact Authors for Delivery Updates</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 500, color: "#111", marginBottom: "1rem", borderBottom: "1px solid #eaeaea", paddingBottom: "0.5rem" }}>Authors Processing Your Order</h3>
               <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
                 {authors.map((author: any) => (
                   <div key={author.id} style={{ background: "#fff", border: "1px solid #eaeaea", borderRadius: 4, padding: "1.5rem", display: "flex", flexDirection: "column", gap: "0.75rem", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
@@ -383,23 +427,9 @@ export function CheckoutPage() {
                         <div style={{ fontSize: 13, color: "#666" }}>Author</div>
                       </div>
                     </div>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
-                      {author.whatsapp && (
-                        <a href={`https://wa.me/${author.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#16a34a", textDecoration: "none", fontSize: 14, fontWeight: 600, background: "#f0fdf4", padding: "0.5rem 1rem", borderRadius: 8 }}>
-                          <MessageSquare size={16} /> WhatsApp: {author.whatsapp}
-                        </a>
-                      )}
-                      {author.email && (
-                        <a href={`mailto:${author.email}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#2563eb", textDecoration: "none", fontSize: 14, fontWeight: 600, background: "#eff6ff", padding: "0.5rem 1rem", borderRadius: 8 }}>
-                          <Mail size={16} /> {author.email}
-                        </a>
-                      )}
-                      {author.phone && !author.whatsapp && (
-                        <a href={`tel:${author.phone}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#475569", textDecoration: "none", fontSize: 14, fontWeight: 600, background: "#f8fafc", padding: "0.5rem 1rem", borderRadius: 8 }}>
-                          <Phone size={16} /> Call: {author.phone}
-                        </a>
-                      )}
+                    
+                    <div style={{ marginTop: "0.5rem", fontSize: 13, color: "#666", background: "#f9fafb", padding: "0.75rem", borderRadius: 8, border: "1px solid #f3f4f6" }}>
+                      For privacy and security, direct author contact is disabled. If you face issues after 10 days, a support ticket will automatically be raised for you.
                     </div>
                   </div>
                 ))}
@@ -420,23 +450,65 @@ export function CheckoutPage() {
                   <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500, color: "#111" }}>Delivery Address</h2>
                 </div>
 
-                {savedAddress && (
-                   <div style={{ background: "#fff", border: useSavedAddress ? "2px solid #2563eb" : "1px solid #eaeaea", borderRadius: 4, padding: "1.25rem", marginBottom: "1rem", cursor: "pointer", display: "flex", alignItems: "flex-start", gap: "1rem" }} onClick={() => setUseSavedAddress(true)}>
-                      <div style={{ marginTop: "0.25rem" }}>
-                         <div style={{ width: 20, height: 20, borderRadius: "50%", border: useSavedAddress ? "6px solid #2563eb" : "2px solid #ccc", background: "#fff", boxSizing: "border-box" }}></div>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                           <h3 style={{ fontSize: 15, fontWeight: 500, color: "#111", marginBottom: "0.25rem" }}>Saved Address</h3>
-                           {useSavedAddress && (
-                             <button onClick={(e) => { e.stopPropagation(); setSavedAddress(null); setUseSavedAddress(false); }} style={{ background: "none", border: "none", color: "#2563eb", fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "underline", padding: 0 }}>Edit</button>
+                {savedAddress && (() => {
+                  const check = checkSavedAddressComplete(savedAddress);
+                  const isSelectable = check.complete;
+
+                  return (
+                     <div 
+                       style={{ 
+                         background: isSelectable ? "#fff" : "#fafafa", 
+                         border: useSavedAddress && isSelectable ? "2px solid #2563eb" : !isSelectable ? "1.5px dashed #fca5a5" : "1px solid #eaeaea", 
+                         borderRadius: 8, 
+                         padding: "1.25rem", 
+                         marginBottom: "1rem", 
+                         cursor: isSelectable ? "pointer" : "not-allowed", 
+                         display: "flex", 
+                         alignItems: "flex-start", 
+                         gap: "1rem",
+                         opacity: isSelectable ? 1 : 0.8
+                       }} 
+                       onClick={() => {
+                         if (isSelectable) {
+                           setUseSavedAddress(true);
+                         } else {
+                           toast.error(`Saved profile address is incomplete (Missing: ${check.missing}). Please enter complete address details below.`);
+                         }
+                       }}
+                     >
+                        <div style={{ marginTop: "0.25rem" }}>
+                           <div style={{ width: 20, height: 20, borderRadius: "50%", border: useSavedAddress && isSelectable ? "6px solid #2563eb" : "2px solid #ccc", background: "#fff", boxSizing: "border-box" }}></div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem" }}>
+                             <h3 style={{ fontSize: 15, fontWeight: 600, color: isSelectable ? "#111" : "#475569", marginBottom: "0.25rem" }}>
+                               Saved Profile Address
+                             </h3>
+                             {!isSelectable ? (
+                               <span style={{ fontSize: 11, fontWeight: 700, background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca", padding: "0.2rem 0.6rem", borderRadius: 6, letterSpacing: "0.02em" }}>
+                                 ⚠️ Incomplete — Cannot Select
+                               </span>
+                             ) : useSavedAddress ? (
+                               <button onClick={(e) => { e.stopPropagation(); setUseSavedAddress(false); }} style={{ background: "none", border: "none", color: "#2563eb", fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+                                 Use New Address
+                               </button>
+                             ) : null}
+                           </div>
+                           <p style={{ fontWeight: 600, color: "#111", marginBottom: "0.25rem", fontSize: 13 }}>
+                             {savedAddress.name || "No Name"} {savedAddress.phone ? `(${savedAddress.phone})` : "(No Phone Number)"}
+                           </p>
+                           <p style={{ fontSize: 13, color: "#666", lineHeight: 1.5 }}>
+                             {savedAddress.address || "No Address Stored"}
+                           </p>
+                           {!isSelectable && (
+                             <p style={{ fontSize: 12, color: "#dc2626", fontWeight: 600, marginTop: "0.5rem", background: "#fff1f2", padding: "0.4rem 0.75rem", borderRadius: 6, border: "1px solid #ffe4e6" }}>
+                               ❌ Missing required fields: {check.missing}. Please fill out the address form below.
+                             </p>
                            )}
-                         </div>
-                         <p style={{ fontWeight: 600, color: "#111", marginBottom: "0.25rem", fontSize: 13 }}>{savedAddress.name} ({savedAddress.phone})</p>
-                         <p style={{ fontSize: 13, color: "#666", lineHeight: 1.5 }}>{savedAddress.address}</p>
-                      </div>
-                   </div>
-                )}
+                        </div>
+                     </div>
+                  );
+                })()}
 
                 <div style={{ background: "#fff", border: !useSavedAddress ? "2px solid #2563eb" : "1px solid #eaeaea", borderRadius: 4, padding: "1.25rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: !useSavedAddress ? "1rem" : "0", cursor: "pointer" }} onClick={() => setUseSavedAddress(false)}>
@@ -449,44 +521,99 @@ export function CheckoutPage() {
                       {[
                         { key: "name", label: "Full Name", placeholder: "e.g., Anita Sharma", required: true },
                         { key: "phone", label: "Mobile Number", placeholder: "9876543210", required: true, maxLength: 10, isNumeric: true },
-                        { key: "houseNo", label: "Building / House No.", placeholder: "e.g., 12B, Rose Apartments", required: true },
+                        { key: "houseNo", label: "Building / House No. (Optional)", placeholder: "e.g., 12B, Rose Apartments", required: false },
                         { key: "address", label: "Street Address", placeholder: "e.g., MG Road, Koregaon Park", required: true },
                         { key: "landmark", label: "Landmark (Optional)", placeholder: "e.g., Near XYZ Mall", required: false },
                         { key: "city", label: "District / Town", placeholder: "e.g., Pune", required: true },
                         { key: "state", label: "State", placeholder: "e.g., Maharashtra", required: true },
                         { key: "pincode", label: "PIN Code", placeholder: "e.g., 411001", required: true, maxLength: 6, isNumeric: true },
-                      ].map((field) => (
-                        <div key={field.key}>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#111", marginBottom: "0.3rem" }}>
-                            {field.label} {field.required && <span style={{ color: "#ef4444" }}>*</span>}
-                          </label>
-                          {field.key === "state" ? (
-                            <select
-                              value={form[field.key as keyof typeof form] || ""}
-                              onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
-                              style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #eaeaea", borderRadius: 8, fontFamily: "var(--font-body)", fontSize: 14, background: "#fafafa", outline: "none", boxSizing: "border-box" }}
-                            >
-                              <option value="" disabled>Select State</option>
-                              {["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Andaman and Nicobar Islands","Chandigarh","Dadra and Nagar Haveli and Daman and Diu","Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry"].map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                          ) : (
-                            <input
-                              type="text"
-                              placeholder={field.placeholder}
-                              maxLength={field.maxLength}
-                              value={form[field.key as keyof typeof form] || ""}
-                              onChange={(e) => {
-                                let val = e.target.value;
-                                if (field.isNumeric) {
-                                  val = val.replace(/[^0-9]/g, '');
-                                }
-                                setForm({ ...form, [field.key]: val });
-                              }}
-                              style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #eaeaea", borderRadius: 8, fontFamily: "var(--font-body)", fontSize: 14, background: "#fafafa", outline: "none", boxSizing: "border-box" }}
-                            />
-                          )}
-                        </div>
-                      ))}
+                      ].map((field) => {
+                        const val = form[field.key as keyof typeof form] || "";
+                        const err = formErrors[field.key];
+                        let isValid = false;
+
+                        if (field.key === "phone") {
+                          isValid = val.length === 10;
+                        } else if (field.key === "pincode") {
+                          isValid = val.length === 6;
+                        } else if (field.required) {
+                          isValid = Boolean(val.trim());
+                        }
+
+                        const borderStyle = err 
+                          ? "1.5px solid #ef4444" 
+                          : isValid 
+                          ? "1.5px solid #22c55e" 
+                          : val.length > 0 
+                          ? "1px solid #f59e0b"
+                          : "1px solid #eaeaea";
+
+                        return (
+                          <div key={field.key}>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#111", marginBottom: "0.3rem" }}>
+                              {field.label} {field.required && <span style={{ color: "#ef4444" }}>*</span>}
+                              {field.key === "phone" && <span style={{ fontSize: 11, color: "#64748b", fontWeight: 400, marginLeft: 4 }}>(10 digits)</span>}
+                              {field.key === "pincode" && <span style={{ fontSize: 11, color: "#64748b", fontWeight: 400, marginLeft: 4 }}>(6 digits)</span>}
+                            </label>
+                            {field.key === "state" ? (
+                              <select
+                                value={val}
+                                onChange={(e) => {
+                                  setForm({ ...form, state: e.target.value });
+                                  if (formErrors.state) setFormErrors({ ...formErrors, state: "" });
+                                }}
+                                style={{ width: "100%", padding: "0.6rem 0.85rem", border: borderStyle, borderRadius: 8, fontFamily: "var(--font-body)", fontSize: 14, background: "#fafafa", outline: "none", boxSizing: "border-box" }}
+                              >
+                                <option value="" disabled>Select State</option>
+                                {["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Andaman and Nicobar Islands","Chandigarh","Dadra and Nagar Haveli and Daman and Diu","Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry"].map(s => <option key={s} value={s}>{s}</option>)}
+                              </select>
+                            ) : (
+                              <input
+                                type={field.isNumeric ? "tel" : "text"}
+                                placeholder={field.placeholder}
+                                maxLength={field.maxLength}
+                                inputMode={field.isNumeric ? "numeric" : undefined}
+                                value={val}
+                                onChange={(e) => {
+                                  let inputVal = e.target.value;
+                                  if (field.isNumeric) {
+                                    inputVal = inputVal.replace(/[^0-9]/g, '');
+                                  }
+                                  setForm({ ...form, [field.key]: inputVal });
+                                  if (formErrors[field.key]) {
+                                    setFormErrors({ ...formErrors, [field.key]: "" });
+                                  }
+                                }}
+                                style={{ width: "100%", padding: "0.6rem 0.85rem", border: borderStyle, borderRadius: 8, fontFamily: "var(--font-body)", fontSize: 14, background: "#fafafa", outline: "none", boxSizing: "border-box" }}
+                              />
+                            )}
+
+                            {err && (
+                              <p style={{ color: "#ef4444", fontSize: 11, marginTop: 4, fontWeight: 600 }}>
+                                {err}
+                              </p>
+                            )}
+
+                            {!err && field.key === "phone" && val.length > 0 && val.length < 10 && (
+                              <p style={{ color: "#f59e0b", fontSize: 11, marginTop: 4, fontWeight: 600 }}>
+                                {10 - val.length} more digit{10 - val.length !== 1 ? "s" : ""} needed
+                              </p>
+                            )}
+
+                            {!err && field.key === "pincode" && val.length > 0 && val.length < 6 && (
+                              <p style={{ color: "#f59e0b", fontSize: 11, marginTop: 4, fontWeight: 600 }}>
+                                {6 - val.length} more digit{6 - val.length !== 1 ? "s" : ""} needed
+                              </p>
+                            )}
+
+                            {!err && isValid && field.required && (
+                              <p style={{ color: "#22c55e", fontSize: 11, marginTop: 4, fontWeight: 600 }}>
+                                ✓ Valid
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                   
@@ -577,8 +704,10 @@ export function CheckoutPage() {
                         } else {
                           handleAddressSubmit();
                         }
-                      }} style={{ width: "100%", padding: "1rem", background: "#111", color: "#fff", borderRadius: 4, fontSize: 16, fontWeight: 500, cursor: "pointer", border: "none" }}>
-                        Proceed to Payment
+                      }} 
+                      disabled={currentGroupBooks.some((b: any) => b.stock <= 0 || (quantities[b.id] || 1) > b.stock)}
+                      style={{ width: "100%", padding: "1rem", background: currentGroupBooks.some((b: any) => b.stock <= 0 || (quantities[b.id] || 1) > b.stock) ? "#9ca3af" : "#111", color: "#fff", borderRadius: 4, fontSize: 16, fontWeight: 500, cursor: currentGroupBooks.some((b: any) => b.stock <= 0 || (quantities[b.id] || 1) > b.stock) ? "not-allowed" : "pointer", border: "none" }}>
+                        {currentGroupBooks.some((b: any) => b.stock <= 0 || (quantities[b.id] || 1) > b.stock) ? "Some items are out of stock" : "Proceed to Payment"}
                       </button>
                     </div>
                   </>
@@ -713,10 +842,10 @@ export function CheckoutPage() {
                     )}
                     <button
                       onClick={handlePay}
-                      disabled={uploading}
+                      disabled={uploading || currentGroupBooks.some((b: any) => b.stock <= 0 || (quantities[b.id] || 1) > b.stock)}
                       style={{
                         width: currentAuthorIndex === 0 ? "70%" : "100%",
-                        background: "#111",
+                        background: (uploading || currentGroupBooks.some((b: any) => b.stock <= 0 || (quantities[b.id] || 1) > b.stock)) ? "#9ca3af" : "#111",
                         color: "#fff",
                         border: "none",
                         padding: "1rem",
@@ -724,16 +853,15 @@ export function CheckoutPage() {
                         fontFamily: "var(--font-body)",
                         fontSize: 16,
                         fontWeight: 500,
-                        cursor: uploading ? "not-allowed" : "pointer",
+                        cursor: (uploading || currentGroupBooks.some((b: any) => b.stock <= 0 || (quantities[b.id] || 1) > b.stock)) ? "not-allowed" : "pointer",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         gap: "0.5rem",
-                        opacity: uploading ? 0.7 : 1,
                       }}
                     >
                       <Package size={18} />
-                      {uploading ? "Processing..." : `Pay & Continue (${currentAuthorIndex + 1}/${authorGroups.length})`}
+                      {uploading ? "Processing..." : currentGroupBooks.some((b: any) => b.stock <= 0 || (quantities[b.id] || 1) > b.stock) ? "Out of Stock" : `Pay & Continue (${currentAuthorIndex + 1}/${authorGroups.length})`}
                     </button>
                   </div>
                 </div>

@@ -437,8 +437,18 @@ export function BookDetailPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '0.75rem' }}>
                       {book.author.age && book.author.age !== 'NA' && (
                         <div>
-                          <span style={{ display: 'block', fontSize: 11, color: '#64748b', fontWeight: 600 }}>AGE</span>
-                          <span style={{ display: 'block', fontSize: 13, color: '#1a1a2e', fontWeight: 500 }}>{book.author.age}</span>
+                          <span style={{ display: 'block', fontSize: 11, color: '#64748b', fontWeight: 600 }}>DATE OF BIRTH</span>
+                          <span style={{ display: 'block', fontSize: 13, color: '#1a1a2e', fontWeight: 500 }}>
+                            {(() => {
+                              try {
+                                const d = new Date(book.author.age);
+                                if (!isNaN(d.getTime())) {
+                                  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+                                }
+                              } catch(e) {}
+                              return book.author.age;
+                            })()}
+                          </span>
                         </div>
                       )}
                       {book.author.experience && book.author.experience !== 'NA' && book.author.experience !== '0' && (
@@ -454,7 +464,15 @@ export function BookDetailPage() {
                             return (
                               <div style={{ gridColumn: '1 / -1' }}>
                                 <span style={{ display: 'block', fontSize: 11, color: '#64748b', fontWeight: 600 }}>QUALIFICATIONS</span>
-                                <span style={{ display: 'block', fontSize: 13, color: '#1a1a2e', fontWeight: 500 }}>{quals.map((q: any) => q.qualification).join(', ')}</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.2rem' }}>
+                                  {quals.map((q: any, i: number) => (
+                                    <span key={i} style={{ display: 'block', fontSize: 13, color: '#1a1a2e', fontWeight: 500 }}>
+                                      <strong>{q.qualification}</strong>
+                                      {q.institution ? ` — ${q.institution}` : ''}
+                                      {q.subject ? ` (${q.subject})` : ''}
+                                    </span>
+                                  ))}
+                                </div>
                               </div>
                             );
                           }

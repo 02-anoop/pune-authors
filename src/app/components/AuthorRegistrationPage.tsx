@@ -81,6 +81,13 @@ function WizardAboutStep() {
 
 function WizardEventsStep() {
   const [currentPastEventIndex, setCurrentPastEventIndex] = useState(0);
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/impact-stats`)
+      .then(res => setStats(res.data))
+      .catch(console.error);
+  }, []);
 
   const nextPastEvent = () => setCurrentPastEventIndex((prev) => (prev + 1) % pastEvents.length);
   const prevPastEvent = () => setCurrentPastEventIndex((prev) => (prev - 1 + pastEvents.length) % pastEvents.length);
@@ -88,14 +95,14 @@ function WizardEventsStep() {
   const fairs = pastEvents.filter(e => e.name.toLowerCase().includes("fair"));
   const literaryEvents = pastEvents.filter(e => !e.name.toLowerCase().includes("fair"));
 
-  const totalFairs = fairs.length;
-  const totalFairsBooks = fairs.reduce((sum, e) => sum + (e.booksSold || 0), 0);
+  const totalFairs = stats ? stats.totalFairs : fairs.length;
+  const totalFairsBooks = stats ? stats.totalFairsBooks : fairs.reduce((sum, e) => sum + (e.booksSold || 0), 0);
 
-  const totalLiteraryEvents = literaryEvents.length;
-  const totalLiteraryBooks = literaryEvents.reduce((sum, e) => sum + (e.booksSold || 0), 0);
+  const totalLiteraryEvents = stats ? stats.totalLiteraryEvents : literaryEvents.length;
+  const totalLiteraryBooks = stats ? stats.totalLiteraryBooks : literaryEvents.reduce((sum, e) => sum + (e.booksSold || 0), 0);
 
-  const totalLibraries = 4;
-  const totalLibraryBooks = 450;
+  const totalLibraries = stats ? stats.totalLibraries : 4;
+  const totalLibraryBooks = stats ? stats.totalLibraryBooks : 450;
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -305,28 +312,6 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
   }, [step]);
 
   useEffect(() => {
-    if (!isReapply && !isAdminEdit && !isAuthorEdit && !hasLoadedDraft.current && localStorage.getItem('token')) {
-      hasLoadedDraft.current = true;
-      axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/auth/get-draft`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      }).then(res => {
-        if (res.data.draft) {
-          const d = res.data.draft;
-          if (d.step !== undefined) setStep(d.step);
-          if (d.form && Object.keys(d.form).length > 0) {
-            setForm({ ...d.form, email: res.data.email || d.form.email });
-          } else if (res.data.email) {
-            setForm((prev: any) => ({ ...prev, email: res.data.email }));
-          }
-          if (d.books && d.books.length > 0) setBooks(d.books);
-          if (d.qualifications && d.qualifications.length > 0) setQualifications(d.qualifications);
-          if (d.extraDataState) setExtraDataState(d.extraDataState);
-          if (d.skillInput) setSkillInput(d.skillInput);
-          if (d.hobbyInput) setHobbyInput(d.hobbyInput);
-        }
-      }).catch(err => console.log('No draft found'));
-    }
-
     axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/author-fields`)
       .then(res => {
         const requiredFields = res.data.filter((f: any) => f.requiredForRegistration);
@@ -384,7 +369,6 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
           skills: parseArray(initialData.skillsJson, initialData.skills),
           hobbies: parseArray(initialData.hobbiesJson, initialData.hobbies),
           whyJoining: initialData.whyJoining || '',
-          // isTraditionallyPublished removed (calculated dynamically)
           bio: initialData.bio || '',
           penName: initialData.penName || '',
           city: initialData.city || '',
@@ -406,8 +390,135 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
        if (initialData.paymentScreenshot) setPaymentScreenshotUrl(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}${initialData.paymentScreenshot}`);
        if (initialData.qrCodeUrl) setQrCodeUrl(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}${initialData.qrCodeUrl}`);
     }
-  }, [isReapply, isAdminEdit, isAuthorEdit, initialData]);
 
+    if (!isReapply && !isAdminEdit && !isAuthorEdit && !hasLoadedDraft.current) {
+      hasLoadedDraft.current = true;
+      
+      const loadDraft = async () => {
+        let draft: any = null;
+        try {
+          const draftStr = localStorage.getItem("authorRegistrationDraft");
+          if (draftStr) draft = JSON.parse(draftStr);
+        } catch (e) {}
+
+        if (localStorage.getItem('token')) {
+          try {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/auth/get-draft`, {
+              headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (res.data.draft) {
+              draft = res.data.draft;
+              if (draft.form && !draft.form.email && res.data.email) {
+                draft.form.email = res.data.email;
+              } else if (!draft.form && res.data.email) {
+                draft.form = { email: res.data.email };
+              }
+            }
+          } catch(err) { console.log('No db draft found'); }
+        }
+
+        if (draft) {
+          if (draft.step !== undefined) setStep(draft.step);
+          if (draft.extraDataState) {
+            setExtraDataState(draft.extraDataState);
+            if (draft.extraDataState.draftPhotoUrl) setAuthorPhotoUrl(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}${draft.extraDataState.draftPhotoUrl}`);
+            if (draft.extraDataState.draftPaymentUrl) setPaymentScreenshotUrl(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}${draft.extraDataState.draftPaymentUrl}`);
+            if (draft.extraDataState.draftQrUrl) setQrCodeUrl(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}${draft.extraDataState.draftQrUrl}`);
+          }
+          if (draft.form) {
+            setForm(prev => ({ ...prev, ...draft.form }));
+            if (draft.form.draftCoverUrl) setCoverFileUrl(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}${draft.form.draftCoverUrl}`);
+            if (draft.form.draftBackCoverUrl) setBackCoverFileUrl(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}${draft.form.draftBackCoverUrl}`);
+          }
+          if (draft.skillInput) setSkillInput(draft.skillInput);
+          if (draft.hobbyInput) setHobbyInput(draft.hobbyInput);
+
+          let currentBooks = draft.books || [];
+          let currentQuals = draft.qualifications || [];
+
+          if (currentBooks.length > 0) {
+            currentBooks = currentBooks.map((b: any) => ({
+              ...b,
+              coverFileUrl: b.draftCoverUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${b.draftCoverUrl}` : null,
+              backCoverFileUrl: b.draftBackCoverUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${b.draftBackCoverUrl}` : null
+            }));
+          }
+          
+          if (currentQuals.length > 0) {
+            currentQuals = currentQuals.map((q: any) => ({
+              ...q,
+              certificateUrl: q.certificateUrl && !q.certificateUrl.startsWith('blob:') && !q.certificateUrl.startsWith('http') 
+                ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${q.certificateUrl}` 
+                : (q.certificateUrl || "")
+            }));
+          }
+
+          try {
+            const files: any = await localforage.getItem("authorRegistrationFiles");
+            if (files) {
+              const restoreB64 = async (b64: string, name: string) => b64 ? await fromBase64(b64, name) : null;
+              
+              if (files.authorBlob) {
+                const f = await restoreB64(files.authorBlob, 'photo.jpg');
+                if (f) { setAuthorBlob(f); setAuthorPhotoUrl(URL.createObjectURL(f)); }
+              }
+              if (files.paymentBlob) {
+                const f = await restoreB64(files.paymentBlob, 'payment.jpg');
+                if (f) { setPaymentBlob(f); setPaymentScreenshotUrl(URL.createObjectURL(f)); }
+              }
+              if (files.qrCodeBlob) {
+                const f = await restoreB64(files.qrCodeBlob, 'qr.jpg');
+                if (f) { setQrCodeBlob(f); setQrCodeUrl(URL.createObjectURL(f)); }
+              }
+              
+              if (files.booksBlobs && currentBooks.length > 0) {
+                currentBooks = await Promise.all(currentBooks.map(async (b: any, idx: number) => {
+                  const bBlobs = files.booksBlobs[idx] || {};
+                  const cBlob = await restoreB64(bBlobs.coverBlob, 'cover.jpg');
+                  const bcBlob = await restoreB64(bBlobs.backCoverBlob, 'back.jpg');
+                  return {
+                    ...b,
+                    coverBlob: cBlob,
+                    backCoverBlob: bcBlob,
+                    coverFileUrl: cBlob ? URL.createObjectURL(cBlob) : b.coverFileUrl,
+                    backCoverFileUrl: bcBlob ? URL.createObjectURL(bcBlob) : b.backCoverFileUrl
+                  };
+                }));
+              }
+              
+              if (files.activeCoverBlob) {
+                const f = await restoreB64(files.activeCoverBlob, 'cover.jpg');
+                if (f) { setCoverBlob(f); setCoverFileUrl(URL.createObjectURL(f)); }
+              }
+              if (files.activeBackCoverBlob) {
+                const f = await restoreB64(files.activeBackCoverBlob, 'back.jpg');
+                if (f) { setBackCoverBlob(f); setBackCoverFileUrl(URL.createObjectURL(f)); }
+              }
+              
+              if (files.qualificationsBlobs && currentQuals.length > 0) {
+                currentQuals = await Promise.all(currentQuals.map(async (q: any, idx: number) => {
+                  const certB64 = files.qualificationsBlobs[idx]?.certificateBlob;
+                  const f = await restoreB64(certB64, 'cert.jpg');
+                  return {
+                    ...q,
+                    certificateBlob: f,
+                    certificateUrl: f ? URL.createObjectURL(f) : q.certificateUrl
+                  };
+                }));
+              }
+            }
+          } catch (e) {
+            console.error("Failed to load local files:", e);
+          }
+          
+          if (currentBooks.length > 0) setBooks(currentBooks);
+          if (currentQuals.length > 0) setQualifications(currentQuals);
+        }
+      };
+
+      loadDraft();
+    }
+  }, [isReapply, isAdminEdit, isAuthorEdit, initialData]);
 
   const [form, setForm] = useState<any>({
     name: "",
@@ -423,7 +534,6 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
     skills: [],
     hobbies: [],
     whyJoining: "",
-    // isTraditionallyPublished removed
     bio: "",
     penName: "",
     city: "",
@@ -437,7 +547,6 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
     agreedToInfoDoc: false,
     groupJoiningDate: "",
 
-    // Book 1
     title: "",
     subtitle: "",
     genre: "",
@@ -456,7 +565,6 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
     printFormat: "",
     purposeOfWriting: "",
 
-    // Payment
     transactionId: ""
   });
 
@@ -474,90 +582,6 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
 
   const [showAddBookForm, setShowAddBookForm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!isAdminEdit && !isReapply && !isAuthorEdit && !hasLoadedDraft.current) {
-      hasLoadedDraft.current = true;
-      try {
-        const draftStr = localStorage.getItem("authorRegistrationDraft");
-        if (draftStr) {
-          const draft = JSON.parse(draftStr);
-          if (draft.step !== undefined) setStep(draft.step);
-          if (draft.form) setForm(prev => ({ ...prev, ...draft.form }));
-          if (draft.books) setBooks(draft.books);
-          if (draft.qualifications) setQualifications(draft.qualifications);
-          if (draft.extraDataState) setExtraDataState(draft.extraDataState);
-          if (draft.skillInput) setSkillInput(draft.skillInput);
-          if (draft.hobbyInput) setHobbyInput(draft.hobbyInput);
-
-          // Restore files from localForage
-          (async () => {
-            try {
-              const files: any = await localforage.getItem("authorRegistrationFiles");
-              if (files) {
-                const restoreB64 = async (b64: string, name: string) => b64 ? await fromBase64(b64, name) : null;
-                
-                if (files.authorBlob) {
-                  const f = await restoreB64(files.authorBlob, 'photo.jpg');
-                  if (f) { setAuthorBlob(f); setAuthorPhotoUrl(URL.createObjectURL(f)); }
-                }
-                if (files.paymentBlob) {
-                  const f = await restoreB64(files.paymentBlob, 'payment.jpg');
-                  if (f) { setPaymentBlob(f); setPaymentScreenshotUrl(URL.createObjectURL(f)); }
-                }
-                if (files.qrCodeBlob) {
-                  const f = await restoreB64(files.qrCodeBlob, 'qr.jpg');
-                  if (f) { setQrCodeBlob(f); setQrCodeUrl(URL.createObjectURL(f)); }
-                }
-                
-                if (files.booksBlobs && draft.books) {
-                  const restoredBooks = await Promise.all(draft.books.map(async (b: any, idx: number) => {
-                    const bBlobs = files.booksBlobs[idx] || {};
-                    const cBlob = await restoreB64(bBlobs.coverBlob, 'cover.jpg');
-                    const bcBlob = await restoreB64(bBlobs.backCoverBlob, 'back.jpg');
-                    return {
-                      ...b,
-                      coverBlob: cBlob,
-                      backCoverBlob: bcBlob,
-                      coverFileUrl: cBlob ? URL.createObjectURL(cBlob) : null,
-                      backCoverFileUrl: bcBlob ? URL.createObjectURL(bcBlob) : null
-                    };
-                  }));
-                  setBooks(restoredBooks);
-                }
-                
-                if (files.activeCoverBlob) {
-                  const f = await restoreB64(files.activeCoverBlob, 'cover.jpg');
-                  if (f) { setCoverBlob(f); setCoverFileUrl(URL.createObjectURL(f)); }
-                }
-                if (files.activeBackCoverBlob) {
-                  const f = await restoreB64(files.activeBackCoverBlob, 'back.jpg');
-                  if (f) { setBackCoverBlob(f); setBackCoverFileUrl(URL.createObjectURL(f)); }
-                }
-                
-                if (files.qualificationsBlobs && draft.qualifications) {
-                  const restoredQuals = await Promise.all(draft.qualifications.map(async (q: any, idx: number) => {
-                    const certB64 = files.qualificationsBlobs[idx]?.certificateBlob;
-                    const f = await restoreB64(certB64, 'cert.jpg');
-                    return {
-                      ...q,
-                      certificateBlob: f,
-                      certificateUrl: f ? URL.createObjectURL(f) : ""
-                    };
-                  }));
-                  setQualifications(restoredQuals);
-                }
-              }
-            } catch (e) {
-              console.error("Failed to load local files:", e);
-            }
-          })();
-        }
-      } catch (e) {
-        console.error("Failed to load registration draft:", e);
-      }
-    }
-  }, [isAdminEdit, isReapply]);
 
   useEffect(() => {
     if (!isAdminEdit && !isReapply && !isAuthorEdit && hasLoadedDraft.current) {
@@ -602,6 +626,18 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
       })();
     }
   }, [step, form, books, qualifications, extraDataState, skillInput, hobbyInput, authorBlob, paymentBlob, qrCodeBlob, coverBlob, backCoverBlob, isAdminEdit, isReapply, isAuthorEdit]);
+
+  const uploadFileToServer = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/upload`, formData);
+      return res.data.url;
+    } catch (e) {
+      console.error('File upload failed', e);
+      return null;
+    }
+  };
 
   const validateField = (key: string, value: any) => {
     let error = "";
@@ -796,7 +832,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       >
                         <div
                           className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center mb-1 transition-all duration-300 shadow-sm
-                            ${i < step ? "bg-[#ebd8c0]0 text-white shadow-emerald-500/20" : i === step ? "bg-paa-gold text-paa-navy shadow-paa-gold/20" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"}`}
+                            ${i < step ? "bg-[#ebd8c0] text-paa-navy shadow-amber-500/20" : i === step ? "bg-paa-gold text-paa-navy shadow-paa-gold/20" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"}`}
                         >
                           {i < step ? <CheckCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-[18px] md:h-[18px]" /> : <span className="scale-[0.6] sm:scale-75 md:scale-100">{s.icon}</span>}
                         </div>
@@ -805,7 +841,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         </span>
                       </div>
                       {i < currentSteps.length - 1 && (
-                        <div className={`flex-1 h-0.5 mx-0.5 sm:mx-1 md:mx-2 min-w-[4px] transition-colors ${i < step ? "bg-[#ebd8c0]0" : "bg-gray-200"}`} />
+                        <div className={`flex-1 h-0.5 mx-0.5 sm:mx-1 md:mx-2 min-w-[4px] transition-colors ${i < step ? "bg-[#ebd8c0]" : "bg-gray-200"}`} />
                       )}
                     </Fragment>
                   ))}
@@ -1076,12 +1112,14 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                               type="file"
                               accept="image/*,application/pdf"
                               className="hidden"
-                              onChange={(e) => {
+                              onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
                                   const n = [...qualifications];
                                   n[idx].certificateBlob = file;
                                   n[idx].certificateUrl = URL.createObjectURL(file);
+                                  const url = await uploadFileToServer(file);
+                                  if (url) n[idx].certificateUrl = url;
                                   setQualifications(n);
                                 }
                               }}
@@ -1203,11 +1241,13 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            setAuthorBlob(file);
                             setAuthorPhotoUrl(URL.createObjectURL(file));
+                            setAuthorBlob(file);
+                            const url = await uploadFileToServer(file);
+                            if (url) setExtraDataState(prev => ({ ...prev, draftPhotoUrl: url }));
                           }
                         }}
                       />
@@ -1238,11 +1278,13 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            setQrCodeBlob(file);
                             setQrCodeUrl(URL.createObjectURL(file));
+                            setQrCodeBlob(file);
+                            const url = await uploadFileToServer(file);
+                            if (url) setExtraDataState(prev => ({ ...prev, draftQrUrl: url }));
                           }
                         }}
                       />
@@ -1474,11 +1516,13 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          setCoverBlob(file);
                           setCoverFileUrl(URL.createObjectURL(file));
+                          setCoverBlob(file);
+                          const url = await uploadFileToServer(file);
+                          if (url) setForm(prev => ({ ...prev, draftCoverUrl: url }));
                         }
                       }}
                     />
@@ -1509,11 +1553,13 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          setBackCoverBlob(file);
                           setBackCoverFileUrl(URL.createObjectURL(file));
+                          setBackCoverBlob(file);
+                          const url = await uploadFileToServer(file);
+                          if (url) setForm(prev => ({ ...prev, draftBackCoverUrl: url }));
                         }
                       }}
                     />
@@ -1524,7 +1570,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       <button
                         type="button"
                         onClick={() => {
-                          setForm({ ...form, title: "", subtitle: "", genre: "", subcategory: "", subSubcategory: "", synopsis: "", pages: "", mrp: "", stock: "0", language: "", isbn: "", publisher: "", publicationDate: "", edition: "", format: "", printFormat: "", purposeOfWriting: "" });
+                          setForm({ ...form, title: "", subtitle: "", genre: "", subcategory: "", subSubcategory: "", synopsis: "", pages: "", mrp: "", stock: "0", language: "", isbn: "", publisher: "", publicationDate: "", edition: "", format: "", printFormat: "", purposeOfWriting: "", draftCoverUrl: "", draftBackCoverUrl: "" });
                           setErrors(prev => { const n = {...prev}; ['title','genre','synopsis','pages','mrp','language','isbn','publisher','publicationDate','format','printFormat','purposeOfWriting'].forEach(k => delete n[k]); return n; });
                           setCoverBlob(null);
                           setBackCoverBlob(null);
@@ -1542,7 +1588,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       <button
                         type="button"
                         onClick={() => {
-                          setForm({ ...form, title: "", subtitle: "", genre: "", subcategory: "", subSubcategory: "", synopsis: "", pages: "", mrp: "", stock: "0", language: "", isbn: "", publisher: "", publicationDate: "", edition: "", format: "", printFormat: "", purposeOfWriting: "" });
+                          setForm({ ...form, title: "", subtitle: "", genre: "", subcategory: "", subSubcategory: "", synopsis: "", pages: "", mrp: "", stock: "0", language: "", isbn: "", publisher: "", publicationDate: "", edition: "", format: "", printFormat: "", purposeOfWriting: "", draftCoverUrl: "", draftBackCoverUrl: "" });
                           setErrors(prev => { const n = {...prev}; ['title','genre','synopsis','pages','mrp','language','isbn','publisher','publicationDate','format','printFormat','purposeOfWriting'].forEach(k => delete n[k]); return n; });
                           setCoverBlob(null);
                           setBackCoverBlob(null);
@@ -1592,7 +1638,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                           setBooks([...books, newBookData]);
                         }
                         
-                        setForm({ ...form, title: "", subtitle: "", genre: "", subcategory: "", subSubcategory: "", synopsis: "", pages: "", mrp: "", stock: "0", language: "", isbn: "", publisher: "", publicationDate: "", edition: "", format: "", printFormat: "", purposeOfWriting: "" });
+                        setForm({ ...form, title: "", subtitle: "", genre: "", subcategory: "", subSubcategory: "", synopsis: "", pages: "", mrp: "", stock: "0", language: "", isbn: "", publisher: "", publicationDate: "", edition: "", format: "", printFormat: "", purposeOfWriting: "", draftCoverUrl: "", draftBackCoverUrl: "" });
                         setErrors(prev => { const n = {...prev}; ['title','genre','synopsis','pages','mrp','language','isbn','publisher','publicationDate','format','printFormat','purposeOfWriting'].forEach(k => delete n[k]); return n; });
                         setCoverBlob(null);
                         setBackCoverBlob(null);
@@ -1708,11 +1754,13 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          setPaymentBlob(file);
                           setPaymentScreenshotUrl(URL.createObjectURL(file));
+                          setPaymentBlob(file);
+                          const url = await uploadFileToServer(file);
+                          if (url) setExtraDataState(prev => ({ ...prev, draftPaymentUrl: url }));
                         }
                       }}
                     />
@@ -2008,26 +2056,41 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       if (authorBlob) {
                         const compressed = await compressImage(authorBlob, compressOpts);
                         formData.append("photo", compressed, compressed.name);
+                      } else if (extraDataState.draftPhotoUrl) {
+                        formData.append("photoUrl", extraDataState.draftPhotoUrl);
                       }
 
+                      let fallbackCovers: any = {};
+                      let fallbackBackCovers: any = {};
                       await Promise.all(finalBooks.map(async (b, idx) => {
                         if (b.coverBlob) {
                           const c = await compressImage(b.coverBlob, compressOpts);
                           formData.append(`cover_${idx}`, c, c.name);
+                        } else if (b.draftCoverUrl || b.coverUrl) {
+                          fallbackCovers[idx] = b.draftCoverUrl || b.coverUrl;
                         }
                         if (b.backCoverBlob) {
                           const bc = await compressImage(b.backCoverBlob, compressOpts);
                           formData.append(`backCover_${idx}`, bc, bc.name);
+                        } else if (b.draftBackCoverUrl || b.backCoverUrl) {
+                          fallbackBackCovers[idx] = b.draftBackCoverUrl || b.backCoverUrl;
                         }
                       }));
+                      if (Object.keys(fallbackCovers).length > 0) formData.append("covers", JSON.stringify(fallbackCovers));
+                      if (Object.keys(fallbackBackCovers).length > 0) formData.append("backCovers", JSON.stringify(fallbackBackCovers));
 
                       if (paymentBlob) {
                         const compressed = await compressImage(paymentBlob, compressOpts);
                         formData.append("paymentScreenshot", compressed, compressed.name);
+                      } else if (extraDataState.draftPaymentUrl) {
+                        formData.append("paymentScreenshotUrl", extraDataState.draftPaymentUrl);
                       }
+                      
                       if (qrCodeBlob) {
                         const compressed = await compressImage(qrCodeBlob, compressOpts);
                         formData.append("qrCode", compressed, compressed.name);
+                      } else if (extraDataState.draftQrUrl) {
+                        formData.append("qrCodeUrl", extraDataState.draftQrUrl);
                       }
                       
                       formData.append("qualifications", JSON.stringify(qualifications.map(q => ({
@@ -2035,7 +2098,8 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         qualification: q.qualification,
                         institution: q.institution,
                         subject: q.subject,
-                        mode: q.mode
+                        mode: q.mode,
+                        certificateUrl: q.certificateUrl
                       }))));
                       await Promise.all(qualifications.map(async q => {
                         if (q.certificateBlob) {
@@ -2058,14 +2122,19 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       } else if (isReapply) {
                         res = await axios.put(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/author/reapply-full`, formData, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }});
                       } else {
-                        res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/authors/register`, formData);
-                      }
-                      
-                      localStorage.removeItem("authorRegistrationDraft");
-                      setSubmitted(true);
-                      if (isReapply && onReapplySuccess) {
-                        onReapplySuccess();
-                      }
+                      res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/authors/register`, formData);
+                    }
+                    
+                    localStorage.removeItem("authorRegistrationDraft");
+                    try {
+                      await localforage.removeItem("authorRegistrationFiles");
+                    } catch (err) {
+                      console.error("Failed to clear local files", err);
+                    }
+                    setSubmitted(true);
+                    if (isReapply && onReapplySuccess) {
+                      onReapplySuccess();
+                    }
                     } catch (e: any) {
                       console.error("Submission error:", e.response?.data || e.message || e);
                       let errorMessage = e.response?.data?.error || e.response?.data?.details;

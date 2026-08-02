@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function run() { const author = await prisma.author.findUnique({ where: { id: 122 } }); console.log(author.totalSold, author.totalRevenue); } run().finally(() => prisma.$disconnect());

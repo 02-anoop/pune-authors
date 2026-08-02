@@ -25,8 +25,13 @@ export function Footer() {
         <div>
           <h4 style={{ color: "#111", fontSize: 13, fontWeight: 800, letterSpacing: "0.1em", marginBottom: "1.5rem", textTransform: "uppercase", fontFamily: "'Playfair Display', serif" }}>Official Contacts</h4>
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem", fontWeight: 500 }}>
-            <span style={{ lineHeight: 1.5 }}>Pune Authors' Association<br/>Pune, Maharashtra, India</span>
-            <span>info@puneauthorsassociation.org</span>
+            <span style={{ lineHeight: 1.5 }}>
+              Cdr Shiv Mathur<br/>
+              Pune Authors' Association<br/>
+              2112, Clover Highlands<br/>
+              NIBM, Pune 411048
+            </span>
+            <span>info@puneauthorsassociation.com</span>
             <span>+91 79770 97397</span>
           </div>
         </div>

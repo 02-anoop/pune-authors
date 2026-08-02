@@ -62,7 +62,12 @@ export function AuthorPublicProfilePage() {
   }, [id]);
 
   const handleInputChange = (e: any) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    let value = e.target.value;
+    // For phone: strip non-digits and cap at 10
+    if (e.target.name === 'customerPhone') {
+      value = value.replace(/\D/g, '').slice(0, 10);
+    }
+    setFormData({ ...formData, [e.target.name]: value });
     if (formErrors[e.target.name]) {
       setFormErrors({ ...formErrors, [e.target.name]: "" });
     }
@@ -74,8 +79,17 @@ export function AuthorPublicProfilePage() {
     // Manual Validation
     const errors: Record<string, string> = {};
     if (!formData.customerName.trim()) errors.customerName = "Full Name is required";
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.customerEmail.trim()) errors.customerEmail = "Email Address is required";
-    if (!formData.customerPhone.trim()) errors.customerPhone = "Mobile Number is required";
+    else if (!emailRegex.test(formData.customerEmail.trim())) errors.customerEmail = "Enter a valid email (e.g. you@example.com)";
+
+    // Phone validation: exactly 10 digits
+    const phoneDigits = formData.customerPhone.replace(/\D/g, '');
+    if (!phoneDigits) errors.customerPhone = "Mobile Number is required";
+    else if (phoneDigits.length !== 10) errors.customerPhone = `Mobile number must be 10 digits (${phoneDigits.length} entered)`;
+
     if (!formData.eventTitle.trim()) errors.eventTitle = "Event Title is required";
     if (!formData.eventDate.trim()) errors.eventDate = "Date is required";
     if (!formData.eventTime.trim()) errors.eventTime = "Time is required";
@@ -382,13 +396,40 @@ export function AuthorPublicProfilePage() {
                       </div>
                       <div>
                         <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.4rem" }}>Email Address *</label>
-                        <input type="email" name="customerEmail" value={formData.customerEmail} onChange={handleInputChange} style={{ width: "100%", padding: "0.8rem 1rem", background: C.cream, border: `1px solid ${formErrors.customerEmail ? C.error : C.border}`, borderRadius: 6, fontSize: 14, outline: "none", color: C.dark }} className="form-input" />
+                        <input
+                          type="email"
+                          name="customerEmail"
+                          value={formData.customerEmail}
+                          onChange={handleInputChange}
+                          placeholder="you@example.com"
+                          pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
+                          title="Please enter a valid email address"
+                          style={{ width: "100%", padding: "0.8rem 1rem", background: C.cream, border: `1px solid ${formErrors.customerEmail ? C.error : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customerEmail) ? '#22c55e' : C.border}`, borderRadius: 6, fontSize: 14, outline: "none", color: C.dark }}
+                          className="form-input"
+                        />
                         {formErrors.customerEmail && <span style={{ color: C.error, fontSize: 12, marginTop: "0.2rem", display: "block" }}>{formErrors.customerEmail}</span>}
+                        {!formErrors.customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customerEmail) && <span style={{ color: '#22c55e', fontSize: 11, marginTop: "0.2rem", display: "block", fontWeight: 600 }}>✓ Valid</span>}
                       </div>
                       <div>
-                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.4rem" }}>Mobile Number *</label>
-                        <input type="tel" name="customerPhone" value={formData.customerPhone} onChange={handleInputChange} style={{ width: "100%", padding: "0.8rem 1rem", background: C.cream, border: `1px solid ${formErrors.customerPhone ? C.error : C.border}`, borderRadius: 6, fontSize: 14, outline: "none", color: C.dark }} className="form-input" />
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.4rem" }}>Mobile Number * <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 400, textTransform: 'none' }}>(10 digits)</span></label>
+                        <input
+                          type="tel"
+                          name="customerPhone"
+                          value={formData.customerPhone}
+                          onChange={handleInputChange}
+                          placeholder="9876543210"
+                          maxLength={10}
+                          inputMode="numeric"
+                          pattern="[0-9]{10}"
+                          title="Please enter exactly 10 digit mobile number"
+                          style={{ width: "100%", padding: "0.8rem 1rem", background: C.cream, border: `1px solid ${formErrors.customerPhone ? C.error : formData.customerPhone.length === 10 ? '#22c55e' : formData.customerPhone.length > 0 ? '#f59e0b' : C.border}`, borderRadius: 6, fontSize: 14, outline: "none", color: C.dark }}
+                          className="form-input"
+                        />
                         {formErrors.customerPhone && <span style={{ color: C.error, fontSize: 12, marginTop: "0.2rem", display: "block" }}>{formErrors.customerPhone}</span>}
+                        {!formErrors.customerPhone && formData.customerPhone.length > 0 && formData.customerPhone.length < 10 && (
+                          <span style={{ color: '#f59e0b', fontSize: 11, marginTop: "0.2rem", display: "block", fontWeight: 600 }}>{10 - formData.customerPhone.length} more digit{10 - formData.customerPhone.length !== 1 ? 's' : ''} needed</span>
+                        )}
+                        {!formErrors.customerPhone && formData.customerPhone.length === 10 && <span style={{ color: '#22c55e', fontSize: 11, marginTop: "0.2rem", display: "block", fontWeight: 600 }}>✓ Valid</span>}
                       </div>
                     </div>
                   </div>

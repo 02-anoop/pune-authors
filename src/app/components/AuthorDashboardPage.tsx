@@ -374,10 +374,10 @@ export function AuthorDashboardPage() {
 
   return (
     <>
-      {/* Late Delivery Fine Overlay */}
+      {/* Late Delivery Fine Banner */}
       {(isFineOverdue || showFineModal) && fineAmount > 0 && (
-        <div className="fixed inset-0 bg-[#1a1a2e]/90 backdrop-blur-md z-[9999] flex items-center justify-center p-4 pointer-events-auto">
-          <div className="bg-white p-8 rounded-3xl-2xl shadow-premium max-w-md w-full border border-red-100 text-center relative overflow-hidden animate-fade-in-up">
+        <div className="w-full bg-red-50 border-b-4 border-red-600 p-6 z-40 relative flex justify-center">
+          <div className="bg-white p-6 rounded-2xl shadow-md max-w-3xl w-full border border-red-100 text-center relative overflow-hidden animate-fade-in-up">
             {!isFineOverdue && (
               <button onClick={() => setShowFineModal(false)} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-colors">
                 <X size={16} />
@@ -385,45 +385,54 @@ export function AuthorDashboardPage() {
             )}
             {dashboardData?.authorProfile?.extraData?.fineStatus === 'Pending Verification' ? (
               <>
-                <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
-                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle2 className="w-6 h-6 text-green-600" />
+                <div className="absolute top-0 left-0 w-full h-1 bg-green-500"></div>
+                <div className="flex items-center justify-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  </div>
+                  <h2 className="text-xl font-serif text-paa-navy">Payment Under Review</h2>
                 </div>
-                <h2 className="text-2xl font-serif text-paa-navy mb-2">Payment Under Review</h2>
-                <p className="text-sm text-gray-600 mb-6">You have submitted your payment of <strong className="text-green-600">₹{dashboardData.authorProfile.extraData.lateFines}</strong>. Your payment is currently under review by an administrator.</p>
-                {isFineOverdue && <p className="text-sm text-red-500 mb-6 font-semibold">Your dashboard access will be restored once the payment is approved.</p>}
+                <p className="text-sm text-gray-600">You have submitted your payment of <strong className="text-green-600">₹{dashboardData.authorProfile.extraData.lateFines}</strong>. Your payment is currently under review by an administrator.</p>
+                {isFineOverdue && <p className="text-sm text-red-500 font-semibold mt-2">Please ensure you manage your pending orders below.</p>}
               </>
             ) : (
               <>
-                <div className="absolute top-0 left-0 w-full h-2 bg-red-600"></div>
-                <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-                <h2 className="text-2xl font-serif text-paa-navy mb-2">{isFineOverdue ? 'Account Restricted' : 'Pay Late Fine'}</h2>
-                <p className="text-sm text-gray-600 mb-6">You have an outstanding late delivery fine of <strong className="text-red-600">₹{dashboardData.authorProfile.extraData.lateFines}</strong>. {isFineOverdue ? 'Your dashboard access has been temporarily suspended until the fine is cleared.' : 'Please pay it to avoid dashboard suspension.'}</p>
-    
-                <div className="bg-orange-50 p-6 rounded-xl border border-orange-200 mb-6 relative">
-                  <img src={qrCode} alt="Payment QR" className="w-40 h-40 mx-auto rounded-xl shadow-sm mb-3 border border-orange-300" />
-                  <p className="text-xs font-bold text-orange-900 uppercase tracking-widest">Scan to pay ₹{dashboardData.authorProfile.extraData.lateFines}</p>
+                <div className="absolute top-0 left-0 w-full h-1 bg-red-600"></div>
+                <div className="flex flex-col items-center justify-center gap-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-6 h-6 text-red-600" />
+                    <h2 className="text-xl font-serif text-paa-navy">Outstanding Late Fine</h2>
+                  </div>
+                  <p className="text-sm text-gray-600">You have an outstanding late delivery fine of <strong className="text-red-600">₹{dashboardData.authorProfile.extraData.lateFines}</strong>. {isFineOverdue ? 'Please pay it as soon as possible. Your dashboard access remains active so you can fulfill orders.' : 'Please pay it to avoid issues.'}</p>
                 </div>
     
-                <div className="text-left mb-6">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-paa-navy mb-2 block">Upload Payment Screenshot *</label>
-                  <input type="file" accept="image/*" className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none focus:border-paa-navy bg-white" onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      setFineScreenshot(e.target.files[0]);
-                    } else {
-                      setFineScreenshot(null);
-                    }
-                  }} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                  <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 relative flex flex-col items-center justify-center h-full">
+                    <img src={qrCode} alt="Payment QR" className="w-32 h-32 rounded-xl shadow-sm mb-3 border border-orange-300" />
+                    <p className="text-xs font-bold text-orange-900 uppercase tracking-widest">Scan to pay ₹{dashboardData.authorProfile.extraData.lateFines}</p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="text-left">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-paa-navy mb-1 block">Upload Payment Screenshot *</label>
+                      <input type="file" accept="image/*" className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none focus:border-paa-navy bg-white" onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setFineScreenshot(e.target.files[0]);
+                        } else {
+                          setFineScreenshot(null);
+                        }
+                      }} />
+                    </div>
+        
+                    <div className="text-left">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-paa-navy mb-1 block">Reason for Late Dispatch *</label>
+                      <textarea className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none focus:border-paa-navy bg-white min-h-[60px]" placeholder="Please explain why the order was dispatched late..." value={fineReason} onChange={(e) => setFineReason(e.target.value)} />
+                    </div>
+        
+                    <button onClick={handlePayFine} disabled={isSubmittingFine || !fineScreenshot || !fineReason} className="w-full dash-btn dash-btn-primary bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white border-none py-2 text-sm">
+                      {isSubmittingFine ? 'Submitting...' : 'Submit Payment Screenshot'}
+                    </button>
+                  </div>
                 </div>
-    
-                <div className="text-left mb-6">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-paa-navy mb-2 block">Reason for Late Dispatch *</label>
-                  <textarea className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none focus:border-paa-navy bg-white min-h-[60px]" placeholder="Please explain why the order was dispatched late..." value={fineReason} onChange={(e) => setFineReason(e.target.value)} />
-                </div>
-    
-                <button onClick={handlePayFine} disabled={isSubmittingFine || !fineScreenshot || !fineReason} className="w-full dash-btn dash-btn-primary bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white border-none py-3">
-                  {isSubmittingFine ? 'Submitting...' : 'Submit Payment Screenshot'}
-                </button>
               </>
             )}
           </div>
@@ -814,9 +823,27 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
     { name: 'Support Queries', count: data.queries?.length || 0 }
   ];
 
-  const completedOrders = authorOrders.filter((o: any) => o.status === 'Completed' || o.status === 'Delivered');
+  const completedOrders = authorOrders.filter((o: any) => o.status === 'Completed' || o.status === 'Delivered' || o.orderStatus === 'Completed' || o.orderStatus === 'Delivered');
   const webSalesAmount = completedOrders.reduce((acc: number, curr: any) => acc + curr.amount, 0);
-  const posSalesAmount = (data.posOrders || []).reduce((acc: number, o: any) => acc + (o.totalAmount || 0), 0);
+  
+  let posSalesAmount = (data.posOrders || []).reduce((acc: number, o: any) => acc + (o.totalAmount || 0), 0);
+
+  (data.eventInvites || []).forEach((ea: any) => {
+    if (ea.optInStatus === 'Registered' || ea.optInStatus === 'Approved') {
+      if (ea.manualTotalSold > 0 || ea.manualTotalRevenue > 0) {
+        posSalesAmount += (ea.manualTotalRevenue || 0);
+      } else {
+        const eventBooks = (data.listedBooks || []).filter((lb: any) => lb.eventId === ea.eventId);
+        eventBooks.forEach((eb: any) => {
+          if (eb.soldStock > 0) {
+            const price = eb.overrideMrp || authorBooks.find((b: any) => b.id === eb.bookId)?.mrp || 0;
+            posSalesAmount += (eb.soldStock * price);
+          }
+        });
+      }
+    }
+  });
+
   const grossSales = webSalesAmount + posSalesAmount;
 
   const lowStockCount = authorBooks.filter((b: any) => b.stock < 5).length;
@@ -1334,22 +1361,85 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
         </div>
       ))}
 
-      {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-4">
-        {[
-          { label: 'Event Participation', value: `${data?.authorProfile?.aggParticipatedEvents || 0}/${data?.authorProfile?.aggEligibleEvents || 0}`, colorClass: 'green' },
-          { label: 'Total Titles', value: authorBooks.length, colorClass: 'blue' },
-          { label: 'Gross Sales', value: '\u20b9' + grossSales.toFixed(0), colorClass: 'amber' },
-          { label: 'Total Fees Paid', value: '\u20b9' + totalFeesPaid, colorClass: 'red' },
-          { label: 'Web Sales', value: '\u20b9' + webSalesAmount.toFixed(0), colorClass: 'blue' },
-          { label: 'POS/Event Sales', value: '\u20b9' + posSalesAmount.toFixed(0), colorClass: 'amber' },
-        ].map((kpi, i) => (
-          <div key={i} className={`dash-kpi-card ${kpi.colorClass}`}>
-            <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">{kpi.label}</p>
-            <h3 className="text-2xl font-bold text-paa-navy">{kpi.value}</h3>
+      {/* ════ Pending Actions — Full Width Strip Above KPIs ════ */}
+      <div className="bg-white rounded-2xl border border-paa-navy/5 shadow-sm px-6 py-5 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <AlertCircle className="w-5 h-5 text-amber-500 animate-pulse" aria-hidden="true" />
+          <h3 className="text-base font-serif font-semibold text-paa-navy">Pending Actions</h3>
+          {actionItems.length > 0 && actionItems[0].id !== 'act-none' && (
+            <span className="ml-1 text-xs font-bold bg-amber-100 text-amber-700 rounded-full px-2.5 py-0.5">{actionItems.length}</span>
+          )}
+        </div>
+        {actionItems.length === 0 || actionItems[0].id === 'act-none' ? (
+          <p className="text-sm text-paa-gray-text py-1">✓ All caught up — no pending actions.</p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {actionItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => { if (item.link) navigate(item.link); }}
+                  className={`group relative flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 w-full sm:w-auto ${item.bg} ${item.color.replace('text-', 'border-').replace('600', '200')}`}
+                >
+                  <Icon size={18} aria-hidden="true" className={item.color} />
+                  <div className="leading-tight pr-2 flex-1 min-w-0">
+                    <p className="text-sm font-bold text-wrap break-words">{item.text}</p>
+                  </div>
+                  <button
+                    aria-label={`Dismiss ${item.text}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const next = [...dismissedActions, item.id];
+                      setDismissedActions(next);
+                      localStorage.setItem('paa_author_dismissed', JSON.stringify(next));
+                    }}
+                    className="ml-1 p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/10 transition-all"
+                  >
+                    <X size={13} aria-hidden="true" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
-        ))}
+        )}
       </div>
+
+      {/* ── KPI Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+        <div className="dash-kpi-card green">
+          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">Event Participation</p>
+          <h3 className="text-2xl font-bold text-paa-navy">{`${data?.authorProfile?.aggParticipatedEvents || 0}/${data?.authorProfile?.aggEligibleEvents || 0}`}</h3>
+        </div>
+        <div className="dash-kpi-card blue">
+          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">Total Titles</p>
+          <h3 className="text-2xl font-bold text-paa-navy">{authorBooks.length}</h3>
+        </div>
+        
+        <div className="dash-kpi-card amber lg:col-span-2 flex flex-col justify-center">
+          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">Total Sales</p>
+          <div className="flex items-end gap-3 mb-2">
+            <h3 className="text-2xl font-bold text-paa-navy leading-none">₹{grossSales.toFixed(0)}</h3>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <button onClick={() => navigate('/dashboard/orders')} className="text-[9px] font-bold text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 uppercase tracking-widest bg-blue-50/50 px-2.5 py-1 rounded-md transition-colors shadow-sm">
+              Web Orders: ₹{webSalesAmount.toFixed(0)}
+            </button>
+            <button onClick={() => navigate('/dashboard/events')} className="text-[9px] font-bold text-amber-600 hover:text-white hover:bg-amber-500 border border-amber-200 uppercase tracking-widest bg-amber-50/50 px-2.5 py-1 rounded-md transition-colors shadow-sm">
+              Event/Fair Sales: ₹{posSalesAmount.toFixed(0)}
+            </button>
+          </div>
+        </div>
+
+        <button onClick={() => navigate('/dashboard/payments')} className="dash-kpi-card red text-left cursor-pointer hover:shadow-md hover:border-red-200 transition-all relative group">
+          <div className="flex justify-between items-start">
+            <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">Total Fees Paid</p>
+            <span className="text-red-400 bg-red-50 group-hover:bg-red-100 transition-colors p-1 rounded-full"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg></span>
+          </div>
+          <h3 className="text-2xl font-bold text-paa-navy">₹{totalFeesPaid}</h3>
+        </button>
+      </div>
+
 
       {/* ── Library Donations KPI Cards ── */}
       {data?.activeDonations?.length > 0 || donationRegistrations.length > 0 ? (
@@ -1376,42 +1466,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
 
 
 
-      {/* ── Pending Actions ── */}
-      <div className="dash-panel flex flex-col mb-6">
-        <div className="dash-panel-header">
-          <h3 className="dash-panel-title">Pending Actions</h3>
-        </div>
-        <div className="p-5 space-y-5 overflow-auto max-h-[300px]">
-          {actionItems.map((action) => {
-            const Icon = action.icon;
-            return (
-              <div key={action.id} className="flex gap-4 items-center group">
-                <div className="flex-1 flex items-center gap-4 cursor-pointer" onClick={() => { if (action.link) navigate(action.link); }}>
-                  <div className={`w-10 h-10 flex items-center justify-center shrink-0 ${action.bg} ${action.color} border border-paa-navy/5 rounded-full transition-transform group-hover:scale-110`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-paa-navy group-hover:underline">{action.text}</p>
-                  </div>
-                  {action.id !== 'act-none' && (
-                    <ChevronDown className="w-4 h-4 text-paa-gray-text -rotate-90 group-hover:text-paa-navy transition-colors mr-2" />
-                  )}
-                </div>
-                {action.id !== 'act-none' && (
-                  <button onClick={(e) => {
-                    e.stopPropagation();
-                    const next = [...dismissedActions, action.id];
-                    setDismissedActions(next);
-                    localStorage.setItem('paa_author_dismissed', JSON.stringify(next));
-                  }} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Dismiss">
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
+
 
       {/* ── Genre Filter Pills ── */}
       <div className="flex items-center gap-2 mb-5 flex-wrap">
@@ -2984,6 +3039,30 @@ function AuthorOrders({ orders, onRefresh, dashboardData }: { orders: any[], onR
   const [editingStatusOrderId, setEditingStatusOrderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const totalSalesAmount = dashboardData?.totalWebAndBulkSales !== undefined 
+    ? dashboardData.totalWebAndBulkSales 
+    : (orders || []).reduce((sum: number, o: any) => {
+        const isCompleted = o.status === 'Completed' || o.status === 'Delivered' || 
+                            o.orderStatus === 'Completed' || o.orderStatus === 'Delivered';
+        return isCompleted ? sum + (o.amount || 0) : sum;
+      }, 0);
+
+  const webSalesAmount = dashboardData?.totalWebSales !== undefined
+    ? dashboardData.totalWebSales
+    : (orders || []).reduce((sum: number, o: any) => {
+        const isCompleted = o.status === 'Completed' || o.status === 'Delivered' || 
+                            o.orderStatus === 'Completed' || o.orderStatus === 'Delivered';
+        return (isCompleted && !o.isBulk) ? sum + (o.amount || 0) : sum;
+      }, 0);
+
+  const bulkSalesAmount = dashboardData?.totalBulkSales !== undefined
+    ? dashboardData.totalBulkSales
+    : (orders || []).reduce((sum: number, o: any) => {
+        const isCompleted = o.status === 'Completed' || o.status === 'Delivered' || 
+                            o.orderStatus === 'Completed' || o.orderStatus === 'Delivered';
+        return (isCompleted && o.isBulk) ? sum + (o.amount || 0) : sum;
+      }, 0);
+
   const ORDER_REJECTION_REASONS = [
     'Item out of stock',
     'Inventory is damaged',
@@ -3665,6 +3744,25 @@ function AuthorOrders({ orders, onRefresh, dashboardData }: { orders: any[], onR
         
         {/* KPI Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 h-max">
+          <div className="bg-[#FFFBEB] rounded-xl shadow-sm border border-amber-200 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-amber-300 transition-colors col-span-2 md:col-span-3">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-white text-amber-600 flex items-center justify-center shrink-0 shadow-sm border border-amber-100">
+                <TrendingUp size={18} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold tracking-widest uppercase text-gray-500 mb-0.5">TOTAL SALES</p>
+                <h3 className="text-xl font-bold text-gray-900">₹{totalSalesAmount.toLocaleString()}</h3>
+              </div>
+            </div>
+            <div className="flex flex-row items-center gap-2">
+              <span className="px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE] whitespace-nowrap">
+                WEB ORDERS: ₹{webSalesAmount.toLocaleString()}
+              </span>
+              <span className="px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] whitespace-nowrap">
+                BULK ORDERS: ₹{bulkSalesAmount.toLocaleString()}
+              </span>
+            </div>
+          </div>
           <div className="bg-white rounded-xl shadow-sm border border-paa-navy/5 p-4 flex items-center gap-4 hover:border-green-500/30 transition-colors">
             <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center shrink-0">
               <Check size={18} />
@@ -3760,7 +3858,7 @@ function AuthorOrders({ orders, onRefresh, dashboardData }: { orders: any[], onR
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar max-w-full">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2">
           {['All', 'Pending', 'Accepted', 'Dispatched', 'Delivered', 'Rejected'].map(status => {
             const tabCount = status === 'All' 
               ? uniqueAllOrders.length
@@ -3882,67 +3980,79 @@ function AuthorOrders({ orders, onRefresh, dashboardData }: { orders: any[], onR
                       <div className="flex flex-col gap-2 items-center w-full max-w-[120px] mx-auto">
                         
                         {/* Status Badge */}
-                        {ord.isBulk ? (
-                          <span className={`inline-flex items-center justify-center w-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-full border ${
-                            ord.orderStatus === 'Completed' || ord.orderStatus === 'Delivered' ? 'bg-[#43a047] text-white border-[#4cae4c]'
-                            : ord.orderStatus === 'Dispatched' ? 'bg-blue-50 text-blue-800 border-blue-200'
-                            : ord.orderStatus === 'Accepted' || ord.orderStatus === 'Processing' ? 'bg-gray-50 text-paa-navy border-gray-200'
-                            : ord.orderStatus === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200'
-                            : 'bg-yellow-50 text-yellow-800 border-yellow-200'
-                          }`}>
-                            {ord.orderStatus === 'Completed' ? 'Delivered' : (ord.orderStatus || 'Pending')}
-                          </span>
-                        ) : ord.status === 'Pending Verification' || ord.status === 'Pending' ? (
-                          <span className="inline-flex items-center justify-center w-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-full border bg-yellow-50 text-yellow-800 border-yellow-200">
-                            Pending
-                          </span>
-                        ) : (
-                          <>
-                            {editingStatusOrderId === String(ord.orderId) ? (
-                              <select
-                                className={`text-[9px] py-1.5 px-2 uppercase font-bold w-full text-center rounded-full border shadow-sm outline-none cursor-pointer ${ord.status === 'Completed' ? 'bg-[#43a047] text-white border-[#4cae4c]'
-                                    : ord.status === 'Dispatched' ? 'bg-white text-blue-800 border-blue-200'
-                                      : ord.status === 'Accepted' ? 'bg-[#eef2f6] text-paa-navy border-[#8faadc]'
-                                        : ord.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200'
-                                          : 'bg-yellow-50 text-yellow-800 border-yellow-200'
+                        <div className="flex flex-col items-center justify-center gap-1 w-full">
+                          {ord.isBulk ? (
+                            <span className={`inline-flex items-center justify-center w-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-full border ${
+                              ord.orderStatus === 'Completed' || ord.orderStatus === 'Delivered' ? 'bg-[#43a047] text-white border-[#4cae4c]'
+                              : ord.orderStatus === 'Dispatched' ? 'bg-blue-50 text-blue-800 border-blue-200'
+                              : ord.orderStatus === 'Accepted' || ord.orderStatus === 'Processing' ? 'bg-gray-50 text-paa-navy border-gray-200'
+                              : ord.orderStatus === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200'
+                              : 'bg-yellow-50 text-yellow-800 border-yellow-200'
+                            }`}>
+                              {ord.orderStatus === 'Completed' ? 'Delivered' : (ord.orderStatus || 'Pending')}
+                            </span>
+                          ) : ord.status === 'Pending Verification' || ord.status === 'Pending' ? (
+                            <span className="inline-flex items-center justify-center w-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-full border bg-yellow-50 text-yellow-800 border-yellow-200">
+                              Pending
+                            </span>
+                          ) : (
+                            <>
+                              {editingStatusOrderId === String(ord.orderId) ? (
+                                <select
+                                  className={`text-[9px] py-1.5 px-2 uppercase font-bold w-full text-center rounded-full border shadow-sm outline-none cursor-pointer ${ord.status === 'Completed' ? 'bg-[#43a047] text-white border-[#4cae4c]'
+                                      : ord.status === 'Dispatched' ? 'bg-white text-blue-800 border-blue-200'
+                                        : ord.status === 'Accepted' ? 'bg-[#eef2f6] text-paa-navy border-[#8faadc]'
+                                          : ord.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200'
+                                            : 'bg-yellow-50 text-yellow-800 border-yellow-200'
+                                    }`}
+                                  value={ord.status === 'Completed' ? 'Delivered' : ord.status}
+                                  disabled={loadingAction !== null}
+                                  onChange={(e) => {
+                                    handleStatusChange(ord.itemIds, e.target.value);
+                                    setEditingStatusOrderId(null);
+                                  }}
+                                  onBlur={() => setEditingStatusOrderId(null)}
+                                  autoFocus
+                                >
+                                  <option value="Accepted">Accepted</option>
+                                  <option value="Dispatched">Dispatched</option>
+                                </select>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    if (ord.status !== 'Rejected' && ord.status !== 'Completed' && ord.status !== 'Delivered') {
+                                      setEditingStatusOrderId(String(ord.orderId));
+                                    }
+                                  }}
+                                  disabled={ord.status === 'Rejected' || ord.status === 'Completed' || ord.status === 'Delivered'}
+                                  className={`group flex items-center justify-between w-full px-3 py-1.5 rounded-full border transition-all ${
+                                    ord.status === 'Completed' ? 'bg-[#43a047] text-white border-[#4cae4c] cursor-default'
+                                    : ord.status === 'Dispatched' ? 'bg-blue-50 text-blue-800 border-blue-200  cursor-pointer'
+                                    : ord.status === 'Accepted' ? 'bg-gray-50 text-paa-navy border-gray-200 hover:bg-gray-100 cursor-pointer'
+                                    : ord.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200 cursor-default'
+                                    : 'bg-yellow-50 text-yellow-800 border-yellow-200 cursor-default'
                                   }`}
-                                value={ord.status === 'Completed' ? 'Delivered' : ord.status}
-                                disabled={loadingAction !== null}
-                                onChange={(e) => {
-                                  handleStatusChange(ord.itemIds, e.target.value);
-                                  setEditingStatusOrderId(null);
-                                }}
-                                onBlur={() => setEditingStatusOrderId(null)}
-                                autoFocus
-                              >
-                                <option value="Accepted">Accepted</option>
-                                <option value="Dispatched">Dispatched</option>
-                              </select>
-                            ) : (
-                              <button
-                                onClick={() => {
-                                  if (ord.status !== 'Rejected' && ord.status !== 'Completed' && ord.status !== 'Delivered') {
-                                    setEditingStatusOrderId(String(ord.orderId));
-                                  }
-                                }}
-                                disabled={ord.status === 'Rejected' || ord.status === 'Completed' || ord.status === 'Delivered'}
-                                className={`group flex items-center justify-between w-full px-3 py-1.5 rounded-full border transition-all ${
-                                  ord.status === 'Completed' ? 'bg-[#43a047] text-white border-[#4cae4c] cursor-default'
-                                  : ord.status === 'Dispatched' ? 'bg-blue-50 text-blue-800 border-blue-200  cursor-pointer'
-                                  : ord.status === 'Accepted' ? 'bg-gray-50 text-paa-navy border-gray-200 hover:bg-gray-100 cursor-pointer'
-                                  : ord.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200 cursor-default'
-                                  : 'bg-yellow-50 text-yellow-800 border-yellow-200 cursor-default'
-                                }`}
-                                title={ord.status !== 'Rejected' && ord.status !== 'Completed' && ord.status !== 'Delivered' ? 'Click to Edit Status' : ''}
-                              >
-                                <span className="text-[9px] font-bold uppercase tracking-widest mx-auto">{ord.status}</span>
-                                {ord.status !== 'Rejected' && ord.status !== 'Completed' && ord.status !== 'Delivered' && (
-                                  <Edit2 size={10} className="opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
-                                )}
-                              </button>
-                            )}
-                          </>
-                        )}
+                                  title={ord.status !== 'Rejected' && ord.status !== 'Completed' && ord.status !== 'Delivered' ? 'Click to Edit Status' : ''}
+                                >
+                                  <span className="text-[9px] font-bold uppercase tracking-widest mx-auto">{ord.status}</span>
+                                  {ord.status !== 'Rejected' && ord.status !== 'Completed' && ord.status !== 'Delivered' && (
+                                    <Edit2 size={10} className="opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+                                  )}
+                                </button>
+                              )}
+                            </>
+                          )}
+                          {(ord.status === 'Dispatched' || ord.orderStatus === 'Dispatched' || ord.status === 'Delivered' || ord.status === 'Completed' || ord.orderStatus === 'Delivered' || ord.orderStatus === 'Completed') && ord.dispatchedAt && (
+                            <span className="text-[9px] text-gray-500 font-bold tracking-wider uppercase mt-0.5">
+                              Disp: {new Date(ord.dispatchedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                            </span>
+                          )}
+                          {(ord.status === 'Delivered' || ord.status === 'Completed' || ord.orderStatus === 'Delivered' || ord.orderStatus === 'Completed') && ord.deliveredAt && (
+                            <span className="text-[9px] text-gray-500 font-bold tracking-wider uppercase mt-0.5">
+                              Del: {new Date(ord.deliveredAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                            </span>
+                          )}
+                        </div>
                         
                         {/* Rejection Reason Text */}
                         {ord.status === 'Rejected' && ord.rejectionReason && (
@@ -6627,7 +6737,7 @@ function AuthorSalesReport({ data, onRefresh }: { data: any, onRefresh: () => vo
           <div className="flex justify-center gap-4 mt-4 flex-wrap">
             <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500/85"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Web</span></div>
             <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Events</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-white0"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Fairs</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Fairs</span></div>
           </div>
         </div>
 

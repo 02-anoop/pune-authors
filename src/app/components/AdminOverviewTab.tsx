@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Users, Activity, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit } from 'lucide-react';
+import { Users, Activity, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit, CheckCircle } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, LabelList } from 'recharts';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -8,7 +8,7 @@ import { getAuthorParticipationStats } from './OperationsDashboardPage';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, orders, events, stats, prevQueries, setActiveTab, setAuthorStatusFilter, API }: any) => {
+export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, orders, events, stats, prevQueries, lastAdminVisit, setActiveTab, setAuthorStatusFilter, API }: any) => {
 
     const [localDismissed, setLocalDismissed] = useState<string[]>(() => {
       const saved = localStorage.getItem('paa_dismissed_actions');
@@ -31,7 +31,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     
     // Memoize heavy calculations to prevent layout thrashing and high main-thread execution time
     const { 
-      lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, pendingOrders, pendingQueries, pendingFines,
+      lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries, pendingFines,
       orderCompletionRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
       orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
       completedOrders
@@ -54,13 +54,41 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
 
 
 
-    // KPIs & Insights
+    const getAggregateStatusText = (ord: any) => {
+      const { status: ordStatus, items } = ord;
+      if (ordStatus === 'Cancelled') return 'Cancelled';
+      if (ordStatus === 'Payment Not Received') return 'Payment Failed';
+      if (items && items.length > 0) {
+        if (items.every((it: any) => it.status === 'Completed' || it.status === 'Delivered')) return 'Delivered';
+        if (items.some((it: any) => it.status === 'Dispatched' || it.status === 'Completed' || it.status === 'Delivered')) return 'Dispatched';
+        if (items.some((it: any) => it.status === 'Accepted')) return 'Accepted';
+        if (items.some((it: any) => it.status === 'Rejected')) return 'Rejected';
+      }
+      if (ord.isBulk) {
+        if (ordStatus === 'Bulk Request Pending') return 'Bulk Req Pending';
+        if (ordStatus === 'Approved - Pending Payment') return 'Pending Payment';
+        if (ordStatus === 'Payment Verified') return 'Payment Verified';
+        if (ordStatus === 'Dispatched') return 'Dispatched';
+        if (ordStatus === 'Delivered' || ordStatus === 'Completed') return 'Delivered';
+      }
+      if (ordStatus === 'Pending Verification' || ordStatus === 'Pending') return 'Pending Verification';
+      return ordStatus || 'Pending';
+    };
+
     const pendingAuthors = authors.filter((a: any) => a.status === 'Pending').length;
     const pendingEdits = authors.filter((a: any) => { const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData) } catch(e) { return {} } })() : (a.extraData || {}); return a.status === 'Edited' || ed?.hasPendingEdits; }).length;
-    const pendingEvents = authors.filter((a: any) => a.eventParticipation && a.eventParticipation.length > 0 && a.eventParticipation.some((e: any) => e.status === 'Pending')).length;
-    const pendingOrders = orders.filter((o: any) => o.status === 'Pending Verification' || o.status === 'Processing').length;
+    const pendingEvents = authors.filter((a: any) => a.eventParticipation && a.eventParticipation.length > 0 && a.eventParticipation.some((e: any) => e.status === 'Pending Approval')).length;
+    
+    const newWebOrders = orders.filter((o: any) => !o.isArchived && !o.isBulk && ['Pending Verification', 'Pending'].includes(getAggregateStatusText(o))).length;
+    const pendingBulkOrders = orders.filter((o: any) => !o.isArchived && o.isBulk && ['Bulk Req Pending', 'Pending Payment'].includes(getAggregateStatusText(o))).length;
+    
+    const recentDispatchedOrders = lastAdminVisit ? orders.filter((o: any) => !o.isArchived && o.items?.some((it: any) => it.dispatchedAt && new Date(it.dispatchedAt).getTime() > lastAdminVisit)).length : 0;
+    const recentDeliveredOrders = lastAdminVisit ? orders.filter((o: any) => !o.isArchived && o.items?.some((it: any) => it.deliveredAt && new Date(it.deliveredAt).getTime() > lastAdminVisit)).length : 0;
     const pendingQueries = prevQueries || 0;
-    const pendingFines = authors.filter((a: any) => { const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData) } catch(e) { return {} } })() : (a.extraData || {}); return ed?.fineStatus === 'Pending Verification' || (!ed?.fineStatus && ed?.finePaymentScreenshot); }).length;
+    const pendingFines = authors.filter((a: any) => { 
+        const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData) } catch(e) { return {} } })() : (a.extraData || {}); 
+        return (ed?.fineStatus === 'Pending Verification' || (!ed?.fineStatus && ed?.finePaymentScreenshot)) && ed?.finePaymentScreenshot; 
+    }).length;
 
     const totalOrders = orders.length;
     const completedOrders = orders.filter((o: any) => o.status === 'Completed' || o.status === 'Dispatched').length;
@@ -90,24 +118,9 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     });
     const latestEventRate = last3Events.length > 0 ? last3Events[0].rate : 0;
 
-    const categorySalesMap: Record<string, number> = {};
-    orders.forEach((o: any) => {
-      if (o.status === 'Completed' || o.status === 'Dispatched') {
-        o.items?.forEach((item: any) => {
-          const book = books.find((b: any) => b.title === item.title || b.id === item.bookId);
-          const catName = book && book.category ? book.category : 'Unknown';
-          const genreName = book && book.genre ? book.genre : '';
-          const cat = genreName || catName;
-          if (cat && cat !== 'Unknown') {
-            categorySalesMap[cat] = (categorySalesMap[cat] || 0) + (item.qty || 1);
-          }
-        });
-      }
-    });
-    const categoryChartData = Object.entries(categorySalesMap)
-      .filter(([name]) => name !== 'Others' && name !== 'Uncategorized' && name !== 'N/A' && name !== 'Unknown')
-      .map(([name, sales]) => ({ name, sales }))
-      .sort((a, b) => b.sales - a.sales)
+    const categoryChartData = (stats?.salesByGenre || [])
+      .filter((g: any) => g.name !== 'Others' && g.name !== 'Uncategorized' && g.name !== 'N/A' && g.name !== 'Unknown')
+      .map((g: any) => ({ name: g.name, sales: g.units }))
       .slice(0, 6);
 
     // Chart Data 2: Order Status
@@ -119,40 +132,12 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     const orderStatusData = Object.entries(orderStatusMap).map(([name, value]) => ({ name, value }));
 
     // Chart Data 3: Top Authors and Books
-    const authorSalesMap: Record<string, number> = {};
-    const bookSalesMap: Record<string, number> = {};
-    orders.forEach((o: any) => {
-      if (o.status === 'Completed' || o.status === 'Dispatched') {
-        o.items?.forEach((it: any) => {
-          const aName = it.authorName || 'Unknown Author';
-          const bTitle = it.title || 'Unknown Book';
-          authorSalesMap[aName] = (authorSalesMap[aName] || 0) + (it.qty || 1);
-          bookSalesMap[bTitle] = (bookSalesMap[bTitle] || 0) + (it.qty || 1);
-        });
-      }
-    });
-
-    let totalDeliveryTime = 0;
-    let deliveredCount = 0;
-    orders.forEach((o: any) => {
-      o.items?.forEach((it: any) => {
-        if (it.status === 'Delivered' && it.dispatchedAt && it.deliveredAt) {
-          const time = new Date(it.deliveredAt).getTime() - new Date(it.dispatchedAt).getTime();
-          totalDeliveryTime += time;
-          deliveredCount++;
-        }
-      });
-    });
-    const avgDeliveryDays = deliveredCount > 0 ? (totalDeliveryTime / deliveredCount / (1000 * 3600 * 24)).toFixed(1) : 0;
-
-    const topAuthorsData = Object.entries(authorSalesMap)
-      .map(([name, sales]) => ({ name, sales }))
-      .sort((a, b) => b.sales - a.sales)
+    const topAuthorsData = (stats?.salesByAuthor || [])
+      .map((a: any) => ({ name: a.name, sales: a.units }))
       .slice(0, 5);
 
-    const topBooksData = Object.entries(bookSalesMap)
-      .map(([name, sales]) => ({ name, sales }))
-      .sort((a, b) => b.sales - a.sales)
+    const topBooksData = (stats?.topSellingBooks || [])
+      .map((b: any) => ({ name: b.title, sales: b.units }))
       .slice(0, 5);
 
     // Chart Data 4: Revenue Trend
@@ -177,12 +162,12 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
 
     
       return {
-        lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, pendingOrders, pendingQueries: prevQueries, pendingFines,
+        lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries: prevQueries, pendingFines,
         orderCompletionRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
         orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
         completedOrders: orders.filter((o: any) => o.status === 'Completed' || o.status === 'Dispatched').length
       };
-    }, [books, authors, orders, events, stats, localDismissed, notifiedBooks, prevQueries]);
+    }, [books, authors, orders, events, stats, localDismissed, notifiedBooks, prevQueries, lastAdminVisit]);
 
     const handleNotifyAllLowStock = async () => {
       setNotifiedBooks((prev: any) => {
@@ -221,9 +206,61 @@ const insights = [
       { label: 'Web Orders Received', value: totalBooksSoldWeb, desc: 'Total web orders received online', icon: ShoppingCart, color: 'text-purple-600', bg: 'bg-purple-50' },
     ];
 
+    const pendingActionItems = [
+      { id: 'authors', show: !localDismissed.includes('authors') && pendingAuthors > 0, icon: Users, color: 'bg-blue-50 text-blue-600 border-blue-200', label: 'Approve New Authors', count: pendingAuthors, unit: 'waiting', tab: 'authors', filter: null },
+      { id: 'edits', show: !localDismissed.includes('edits') && pendingEdits > 0, icon: Edit, color: 'bg-orange-50 text-orange-600 border-orange-200', label: 'Profile Edits', count: pendingEdits, unit: 'pending', tab: 'authors', filter: 'Edited' },
+      { id: 'events', show: !localDismissed.includes('events') && pendingEvents > 0, icon: CalendarIcon, color: 'bg-amber-50 text-amber-600 border-amber-200', label: 'Event Registrations', count: pendingEvents, unit: 'pending', tab: 'events', filter: null },
+      { id: 'web_orders', show: !localDismissed.includes('web_orders') && newWebOrders > 0, icon: ShoppingCart, color: 'bg-emerald-50 text-emerald-600 border-emerald-200', label: 'New Web Orders', count: newWebOrders, unit: 'new orders', tab: 'web_orders', filter: null },
+      { id: 'bulk_orders', show: !localDismissed.includes('bulk_orders') && pendingBulkOrders > 0, icon: Package, color: 'bg-cyan-50 text-cyan-600 border-cyan-200', label: 'Pending Bulk Orders', count: pendingBulkOrders, unit: 'to process', tab: 'web_orders', filter: null },
+      { id: 'dispatched_orders', show: !localDismissed.includes('dispatched_orders') && recentDispatchedOrders > 0, icon: Package, color: 'bg-blue-50 text-blue-600 border-blue-200', label: 'Dispatched Orders', count: recentDispatchedOrders, unit: 'recently', tab: 'web_orders', filter: null },
+      { id: 'delivered_orders', show: !localDismissed.includes('delivered_orders') && recentDeliveredOrders > 0, icon: CheckCircle, color: 'bg-green-50 text-green-600 border-green-200', label: 'Delivered Orders', count: recentDeliveredOrders, unit: 'recently', tab: 'web_orders', filter: null },
+      { id: 'fines', show: !localDismissed.includes('fines') && pendingFines > 0, icon: AlertCircle, color: 'bg-red-50 text-red-600 border-red-200', label: 'Fine Payments', count: pendingFines, unit: 'received', tab: 'late_authors', filter: null },
+      { id: 'helpdesk', show: !localDismissed.includes('helpdesk') && pendingQueries > 0, icon: MessageSquare, color: 'bg-purple-50 text-purple-600 border-purple-200', label: 'Author Queries', count: pendingQueries, unit: 'unread', tab: 'helpdesk', filter: null },
+    ].filter(a => a.show);
+
     return (
       <div className="space-y-6">
-        {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ High Level KPIs ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
+        {/* ════ Pending Actions — Full Width Strip Above KPIs ════ */}
+        <div className="bg-white rounded-2xl border border-paa-navy/5 shadow-sm px-6 py-5">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertCircle className="w-5 h-5 text-amber-500 animate-pulse" aria-hidden="true" />
+            <h3 className="text-base font-serif font-semibold text-paa-navy">Pending Actions</h3>
+            {pendingActionItems.length > 0 && (
+              <span className="ml-1 text-xs font-bold bg-amber-100 text-amber-700 rounded-full px-2.5 py-0.5">{pendingActionItems.length}</span>
+            )}
+          </div>
+          {pendingActionItems.length === 0 ? (
+            <p className="text-sm text-paa-gray-text py-1">✓ All caught up — no pending actions.</p>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {pendingActionItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => { if (item.filter) { setActiveTab(item.tab); setAuthorStatusFilter(item.filter); } else setActiveTab(item.tab); }}
+                    className={`group relative flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 w-full sm:w-auto ${item.color}`}
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                    <div className="leading-tight flex-1 min-w-0">
+                      <p className="text-sm font-bold text-wrap break-words">{item.label}</p>
+                      <p className="text-xs opacity-70">{item.count} {item.unit}</p>
+                    </div>
+                    <button
+                      aria-label={`Dismiss ${item.label}`}
+                      onClick={(e) => handleDismiss(e, item.id)}
+                      className="ml-1 p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/10 transition-all"
+                    >
+                      <X size={13} aria-hidden="true" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ════ High Level KPIs ════ */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
           {[
             { label: 'Total Authors', value: stats?.totalAuthors || 0, icon: Users, colorClass: 'blue' },
@@ -242,14 +279,11 @@ const insights = [
           ))}
         </div>
 
-
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Visual Data Insights (col-span-2) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Mini Insight Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+          {/* ════ Visual Data Insights (col-span-2) ════ */}
+          <div className="lg:col-span-2 space-y-5">
+            {/* Mini Insight Cards — 3 cols so no empty gap */}
+            <div className="grid grid-cols-3 gap-4">
               {insights.map((insight, idx) => (
                 <div key={idx} className="p-4 rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow relative group">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-3 ${insight.bg} ${insight.color}`}>
@@ -279,8 +313,8 @@ const insights = [
               ))}
             </div>
 
-            {/* Charts Row 1 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Charts Row 1 — all 3 charts in one row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm">
                 <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-emerald-500" aria-hidden="true" /> Recent Revenue Trend
@@ -301,52 +335,42 @@ const insights = [
                   )}
                 </div>
               </div>
-
-              <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm">
+              <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm col-span-2">
                 <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
                   <PieChart className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Order Status Distribution
                 </h3>
-                <div className="h-48 w-full">
+                <div className="h-48 w-full flex items-center">
                   {orderStatusData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                        <Pie data={orderStatusData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} dataKey="value">
-                          {orderStatusData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
+                    <>
+                      <div className="w-1/2 h-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsPieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                            <Pie data={orderStatusData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} dataKey="value">
+                              {orderStatusData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                          </RechartsPieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="w-1/2 flex flex-col justify-center gap-2 pl-4 border-l border-gray-100">
+                        {orderStatusData.map((entry, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-[10px] font-bold text-gray-600">
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
+                            {entry.name} ({entry.value})
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400 text-xs">No orders.</div>
-                  )}
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm">
-                <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-                  <PieChart className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Event Participation Distribution
-                </h3>
-                <div className="h-48 w-full">
-                  {participationChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={participationChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                        <XAxis dataKey="name" fontSize={10} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                        <YAxis fontSize={10} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                        <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                        <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Authors" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400 text-xs">No participation data.</div>
+                    <div className="h-full flex items-center justify-center text-gray-400 text-xs w-full">No orders.</div>
                   )}
                 </div>
               </div>
             </div>
-
             {/* Charts Row 2 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm col-span-1">
                 <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
                   <BarChart2 className="w-4 h-4 text-blue-500" aria-hidden="true" /> Popular by Category & Genre
@@ -413,142 +437,23 @@ const insights = [
               </div>
             </div>
           </div>
-
-          {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Pending Actions & Low Stock (col-span-1) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm">
-              <h3 className="text-lg font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-amber-500 animate-pulse" aria-hidden="true" /> Pending Actions
+          {/* ════ Low Stock (col-span-1) ════ */}
+          <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-serif font-semibold text-paa-navy flex items-center gap-2">
+                <Package className="w-5 h-5 text-red-500" aria-hidden="true" /> Low Stock Books Alert
               </h3>
-              <div className="space-y-3">
-                {!localDismissed.includes('authors') && pendingAuthors > 0 && (
-                  <div className="group relative flex items-center justify-between p-3 rounded-xl border border-paa-navy/10 hover:bg-paa-navy/5 transition-colors text-left cursor-pointer" onClick={() => setActiveTab('authors')}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                        <Users size={18} aria-hidden="true" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-paa-navy">Approve New Authors</p>
-                        <p className="text-xs text-paa-gray-text">{pendingAuthors} authors waiting for approval</p>
-                      </div>
-                    </div>
-                    <button aria-label="Dismiss Author Approval" onClick={(e) => handleDismiss(e, 'authors')} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100">
-                      <X size={16} aria-hidden="true" />
-                    </button>
-                  </div>
-                )}
-
-                {!localDismissed.includes('edits') && pendingEdits > 0 && (
-                  <div className="group relative flex items-center justify-between p-3 rounded-xl border border-paa-navy/10 hover:bg-paa-navy/5 transition-colors text-left cursor-pointer" onClick={() => { setActiveTab('authors'); setAuthorStatusFilter('Edited'); }}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
-                        <Edit size={18} aria-hidden="true" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-paa-navy">Approve Profile Edits</p>
-                        <p className="text-xs text-paa-gray-text">{pendingEdits} author profiles have pending edits</p>
-                      </div>
-                    </div>
-                    <button aria-label="Dismiss Edits Approval" onClick={(e) => handleDismiss(e, 'edits')} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100">
-                      <X size={16} aria-hidden="true" />
-                    </button>
-                  </div>
-                )}
-
-                {!localDismissed.includes('events') && pendingEvents > 0 && (
-                  <div className="group relative flex items-center justify-between p-3 rounded-xl border border-paa-navy/10 hover:bg-paa-navy/5 transition-colors text-left cursor-pointer" onClick={() => setActiveTab('events')}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                        <CalendarIcon size={18} aria-hidden="true" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-paa-navy">Event Registrations</p>
-                        <p className="text-xs text-paa-gray-text">{pendingEvents} new event participations pending</p>
-                      </div>
-                    </div>
-                    <button aria-label="Dismiss Event Registrations" onClick={(e) => handleDismiss(e, 'events')} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100">
-                      <X size={16} aria-hidden="true" />
-                    </button>
-                  </div>
-                )}
-
-                {!localDismissed.includes('orders') && pendingOrders > 0 && (
-                  <div className="group relative flex items-center justify-between p-3 rounded-xl border border-paa-navy/10 hover:bg-paa-navy/5 transition-colors text-left cursor-pointer" onClick={() => setActiveTab('web_orders')}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#ebd8c0] text-emerald-600 flex items-center justify-center shrink-0">
-                        <ShoppingCart size={18} aria-hidden="true" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-paa-navy">Fulfill Web Orders</p>
-                        <p className="text-xs text-paa-gray-text">{pendingOrders} orders pending verification or dispatch</p>
-                      </div>
-                    </div>
-                    <button aria-label="Dismiss Web Orders" onClick={(e) => handleDismiss(e, 'orders')} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100">
-                      <X size={16} aria-hidden="true" />
-                    </button>
-                  </div>
-                )}
-
-                {!localDismissed.includes('fines') && pendingFines > 0 && (
-                  <div className="group relative flex items-center justify-between p-3 rounded-xl border border-paa-navy/10 hover:bg-paa-navy/5 transition-colors text-left cursor-pointer" onClick={() => setActiveTab('late_authors')}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0">
-                        <AlertCircle size={18} aria-hidden="true" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-paa-navy">Fine Payments Received</p>
-                        <p className="text-xs text-paa-gray-text">{pendingFines} authors submitted fine payments</p>
-                      </div>
-                    </div>
-                    <button aria-label="Dismiss Fine Payments" onClick={(e) => handleDismiss(e, 'fines')} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100">
-                      <X size={16} aria-hidden="true" />
-                    </button>
-                  </div>
-                )}
-
-                {!localDismissed.includes('helpdesk') && pendingQueries > 0 && (
-                  <div className="group relative flex items-center justify-between p-3 rounded-xl border border-paa-navy/10 hover:bg-paa-navy/5 transition-colors text-left cursor-pointer" onClick={() => setActiveTab('helpdesk')}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                        <MessageSquare size={18} aria-hidden="true" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-paa-navy">Author Queries</p>
-                        <p className="text-xs text-paa-gray-text">{pendingQueries} unread helpdesk queries</p>
-                      </div>
-                    </div>
-                    <button aria-label="Dismiss Author Queries" onClick={(e) => handleDismiss(e, 'helpdesk')} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100">
-                      <X size={16} aria-hidden="true" />
-                    </button>
-                  </div>
-                )}
-
-                {((localDismissed.includes('authors') || pendingAuthors === 0) &&
-                  (localDismissed.includes('edits') || pendingEdits === 0) &&
-                  (localDismissed.includes('events') || pendingEvents === 0) &&
-                  (localDismissed.includes('orders') || pendingOrders === 0) &&
-                  (localDismissed.includes('fines') || pendingFines === 0) &&
-                  (localDismissed.includes('helpdesk') || pendingQueries === 0)) && (
-                    <div className="text-center py-6 text-sm text-paa-gray-text">No pending actions to display.</div>
-                  )}
-              </div>
+              {lowStockBooks.length > 0 && (
+                <button aria-label="Notify All Authors About Low Stock" onClick={handleNotifyAllLowStock} className="text-xs flex items-center gap-1 font-bold text-paa-navy bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors uppercase tracking-wider">
+                  <Bell size={12} className="text-amber-500" /> Notify All
+                </button>
+              )}
             </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm flex flex-col h-[500px]">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-serif font-semibold text-paa-navy flex items-center gap-2">
-                  <Package className="w-5 h-5 text-red-500" aria-hidden="true" /> Low Stock Books Alert
-                </h3>
-                {lowStockBooks.length > 0 && (
-                  <button aria-label="Notify All Authors About Low Stock" onClick={handleNotifyAllLowStock} className="text-xs flex items-center gap-1 font-bold text-paa-navy bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors uppercase tracking-wider">
-                    <Bell size={12} className="text-amber-500" /> Notify All
-                  </button>
-                )}
-              </div>
-              {lowStockBooks.length === 0 ? (
-                <div className="text-center py-8 text-sm text-paa-gray-text my-auto">All books have sufficient inventory or authors notified.</div>
-              ) : (
-                <div className="space-y-3 overflow-y-auto pr-2 flex-1">
+            {lowStockBooks.length === 0 ? (
+              <div className="text-center py-8 text-sm text-paa-gray-text my-auto">All books have sufficient inventory or authors notified.</div>
+            ) : (
+              <>
+                <div className="space-y-3 overflow-y-auto pr-1" style={{ maxHeight: '420px' }}>
                   {lowStockBooks.map((b: any) => (
                     <div key={b.dbId || b.id} className="flex items-center justify-between p-3 rounded-xl border border-red-100 bg-red-50/30 group">
                       <div className="flex-1 min-w-0 pr-4">
@@ -570,8 +475,14 @@ const insights = [
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+                <button
+                  onClick={() => setActiveTab('inventory')}
+                  className="mt-4 w-full text-xs font-bold text-paa-navy bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl py-2.5 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Package size={13} /> View All Inventory
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

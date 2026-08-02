@@ -82,44 +82,75 @@ router.post('/api/author/events/:eventId/pos-checkout', verifyToken, async (req,
     const author = await prisma.author.findUnique({ where: { email: req.user.email } });
     if (!author) return res.status(404).json({ error: 'Author not found' });
 
-    // Ensure they have enough stock
+    // 1. Aggregate and validate cart items > 0
+    const aggregatedItems = {};
     for (const item of cart) {
-       const eb = await prisma.eventBook.findFirst({ where: { eventId, authorId: author.id, bookId: item.bookId } });
+      const qty = parseInt(item.quantity);
+      if (isNaN(qty) || qty <= 0) {
+        return res.status(400).json({ error: 'Invalid quantity provided in cart' });
+      }
+      const bId = parseInt(item.bookId);
+      aggregatedItems[bId] = (aggregatedItems[bId] || 0) + qty;
+    }
+    const parsedCart = Object.keys(aggregatedItems).map(id => ({ bookId: parseInt(id), quantity: aggregatedItems[id] }));
+
+    // 2. Validate stock and recalculate exact totals
+    let calculatedTotal = 0;
+    const finalCartWithPrices = [];
+    
+    for (const item of parsedCart) {
+       const eb = await prisma.eventBook.findFirst({ where: { eventId, authorId: author.id, bookId: item.bookId }, include: { book: true } });
        if (!eb) return res.status(400).json({ error: `Book ${item.bookId} not registered for this event` });
        if ((eb.listedStock - eb.soldStock) < item.quantity) {
-          return res.status(400).json({ error: `Insufficient stock for book ID ${item.bookId}` });
+          return res.status(400).json({ error: `Insufficient stock for book: ${eb.book?.title}` });
        }
+       calculatedTotal += eb.book.mrp * item.quantity;
+       finalCartWithPrices.push({ bookId: item.bookId, quantity: item.quantity, price: eb.book.mrp });
     }
 
-    // Create PosOrder
-    const posOrder = await prisma.posOrder.create({
-      data: {
-        authorId: author.id,
-        eventId,
-        totalAmount: parseFloat(totalAmount),
-        paymentMethod,
-        paymentStatus: 'CONFIRMED',
-        saleSource: 'BOOK_FAIR',
-        items: {
-          create: cart.map(item => ({
-             bookId: item.bookId,
-             quantity: item.quantity,
-             price: parseFloat(item.price)
-          }))
-        }
+    // Strictly override the requested amount with the calculated amount
+    const requestedAmount = parseFloat(totalAmount);
+    if (Math.abs(calculatedTotal - requestedAmount) > 1) {
+       return res.status(400).json({ error: 'Amount mismatch. Financial payload invalid.' });
+    }
+
+    // 3. Wrap in a transaction to prevent zombie orders
+    const posOrder = await prisma.$transaction(async (tx) => {
+      // Re-verify stock inside lock
+      for (const item of finalCartWithPrices) {
+         const eb = await tx.eventBook.findFirst({ where: { eventId, authorId: author.id, bookId: item.bookId } });
+         if ((eb.listedStock - eb.soldStock) < item.quantity) {
+            throw new Error(`Insufficient stock for book ID ${item.bookId}`);
+         }
       }
-    });
 
-    // Increment soldStock
-    for (const item of cart) {
-       const eb = await prisma.eventBook.findFirst({ where: { eventId, authorId: author.id, bookId: item.bookId } });
-       if (eb) {
-          await prisma.eventBook.update({
-             where: { id: eb.id },
-             data: { soldStock: { increment: item.quantity } }
-          });
-       }
-    }
+      const newPosOrder = await tx.posOrder.create({
+        data: {
+          authorId: author.id,
+          eventId,
+          totalAmount: calculatedTotal,
+          paymentMethod,
+          paymentStatus: 'CONFIRMED',
+          saleSource: 'BOOK_FAIR',
+          items: {
+            create: finalCartWithPrices.map(item => ({
+               bookId: item.bookId,
+               quantity: item.quantity,
+               price: item.price
+            }))
+          }
+        }
+      });
+
+      for (const item of finalCartWithPrices) {
+         const eb = await tx.eventBook.findFirst({ where: { eventId, authorId: author.id, bookId: item.bookId } });
+         await tx.eventBook.update({
+            where: { id: eb.id },
+            data: { soldStock: { increment: item.quantity } }
+         });
+      }
+      return newPosOrder;
+    });
 
     res.json({ success: true, posOrder });
   } catch (error) {

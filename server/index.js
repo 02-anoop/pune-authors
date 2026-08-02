@@ -195,6 +195,41 @@ setInterval(async () => {
       }
     }
 
+    // Auto-Raise Support Ticket (10 days after order creation if not delivered)
+    const tenDaysAgoForTicket = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+    const overdueItems = await prisma.orderItem.findMany({
+      where: {
+        status: { notIn: ['Delivered', 'Rejected'] },
+        createdAt: { lt: tenDaysAgoForTicket }
+      },
+      include: { order: true, book: true }
+    });
+
+    for (const item of overdueItems) {
+      if (!item.order || !item.order.customerId) continue;
+      const orderId = item.orderId || item.order.id;
+      const subject = `Automatic Ticket: Order #${orderId} delayed`;
+      
+      const existingTicket = await prisma.query.findFirst({
+        where: {
+          userId: item.order.customerId,
+          subject: subject
+        }
+      });
+      
+      if (!existingTicket) {
+        console.log(`Auto-raising ticket for delayed order item #${item.id}`);
+        await prisma.query.create({
+          data: {
+            userId: item.order.customerId,
+            subject: subject,
+            message: `Hello, I placed an order for "${item.book ? item.book.title : 'a book'}" (Order #${orderId}) over 10 days ago and haven't received it yet. Could you please check on the status?`,
+            status: 'Pending'
+          }
+        });
+      }
+    }
+
     // Daily Admin Report for Late Authors (runs at 9 AM)
     if (now.getHours() === 9 && (!global.lastLateReportSent || global.lastLateReportSent.getDate() !== now.getDate())) {
       global.lastLateReportSent = now;
