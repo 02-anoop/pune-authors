@@ -152,9 +152,9 @@ export function LandingPage() {
   const [stats, setStats] = useState({
     events: 0, fairs: 0, airportLibraries: 0, authors: 0, books: 0, categories: 0,
     landingConfig: {
-      heroTitle: "Helping indie authors publish, promote and sell.",
+      heroTitle: "Helping indie authors self-publish, promote and sell.",
       heroHighlight: "authors",
-      heroSubtitle: "We provide independent authors with refined publishing assistance, strategic promotion, and curated distribution channels.",
+      heroSubtitle: "We provide independent authors with refined self-publishing assistance, strategic promotion, and collaborative initiatives to reach readers.",
       titleColor: "#1e293b",
       highlightColor: "#f16522",
       subtitleColor: "#475569",

@@ -406,7 +406,7 @@ const SettingsTabComponent = ({
                     landing_hero_title: e.target.value,
                   })
                 }
-                placeholder="e.g. Helping indie authors publish, promote and sell."
+                placeholder="e.g. Helping indie authors self-publish, promote and sell."
                 className="w-full border border-paa-navy/20 bg-gray-50 rounded-lg p-3 text-sm outline-none focus:border-paa-navy focus:bg-white transition-colors"
               />
             </div>
@@ -653,7 +653,7 @@ const SettingsTabComponent = ({
                     author_hero_subtitle: e.target.value,
                   })
                 }
-                placeholder="e.g. Join Pune Authors' Association to publish, promote, and sell your books..."
+                placeholder="e.g. Join Pune Authors' Association to self-publish, promote, and sell your books..."
                 className="w-full border border-paa-navy/20 bg-gray-50 rounded-lg p-3 text-sm outline-none focus:border-paa-navy focus:bg-white transition-colors h-24 resize-none"
               />
             </div>

@@ -66,7 +66,7 @@ function WizardAboutStep() {
           The group was conceived in <strong className="text-paa-navy font-semibold">December 2024</strong> following the Pune Book Fair. While networking at a local stall, several authors recognized a shared challenge: the immense difficulty of selling independently in a saturated market.
         </p>
         <p>
-          The idea to form a unified coalition of Pune authors was spearheaded by <strong className="text-paa-navy font-semibold">Cdr Shiv Mathur</strong>. Having witnessed firsthand the struggles authors face with visibility and distribution, the vision became clear: find a way to promote literature collaboratively rather than competitively.
+          The idea to form a unified coalition of Pune authors was spearheaded by <strong className="text-paa-navy font-semibold">Cdr Shiv Mathur</strong>. Having witnessed firsthand the struggles authors face with visibility and reaching readers, the vision became clear: find a way to promote literature collaboratively rather than competitively.
         </p>
         <p>
           By pooling resources, we discovered that financial barriers to self-marketing drastically decreased. Shared costs allow us to execute large-scale activities, prominent stall placements, and robust marketing campaigns that would be prohibitively expensive for an individual author.
@@ -202,15 +202,15 @@ function WizardEventsStep() {
 
 function WizardServicesStep() {
   const services = [
-    { num: "I.", title: "Publishing Support", desc: "We provide professional end-to-end manuscript production to ensure your book meets exact industry standards before hitting the market.", items: ["Formatting of Manuscript", "Book Cover Design", "Editing & Proof Reading", "Printing as low as 50 copies at minimal cost"] },
+    { num: "I.", title: "Support in Self-Publishing", desc: "We provide professional end-to-end manuscript production to ensure your book meets exact industry standards before hitting the market.", items: ["Formatting of Manuscript", "Book Cover Design", "Editing & Proof Reading", "Printing as low as 50 copies at minimal cost"] },
     { num: "II.", title: "Promotional Support", desc: "Strategic visibility is crucial. We position your literature directly in front of discerning audiences using collective brand power.", items: ["Catalogue of fiction and non-fiction books", "Giving books to the Airport Libraries", "Donating books to well known local libraries", "LinkedIn page management"] },
-    { num: "III.", title: "Selling Books", desc: "Securing reliable revenue streams through vetted physical and digital distribution networks.", items: ["Participation in book fairs all over India (NBT)", "Literary Events in large housing societies & Educational Institutes", "Setting up stalls in housing societies"] }
+    { num: "III.", title: "Selling Books", desc: "Securing reliable revenue streams through vetted physical and digital channels.", items: ["Participation in book fairs all over India (NBT)", "Literary Events in large housing societies & Educational Institutes", "Setting up stalls in housing societies"] }
   ];
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <h2 className="font-serif text-2xl font-medium text-paa-navy mb-2">Our Services</h2>
-      <p className="text-sm text-paa-gray-text mb-8">Empowering independent authors through collaborative publishing, strategic promotion, and widespread distribution.</p>
+      <p className="text-sm text-paa-gray-text mb-8">Empowering independent authors through collaborative support in self-publishing, strategic promotion, and collaborative initiatives to reach readers.</p>
       <div className="space-y-6">
         {services.map((service, idx) => (
           <div key={idx} className="bg-white p-6 md:p-8 rounded-2xl border border-paa-navy/5 shadow-sm flex flex-col md:flex-row gap-6 md:gap-10 hover:shadow-md transition-shadow">
@@ -1299,7 +1299,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
             {formStepIndex === 1 && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <h2 className="font-serif text-2xl font-medium text-paa-navy mb-2">Book Details</h2>
-                <p className="text-sm text-paa-gray-text mb-8">Information about the book(s) you wish to publish or register with PAA.</p>
+                <p className="text-sm text-paa-gray-text mb-8">Information about the book(s) you wish to receive support in self-publishing or register with PAA.</p>
 
                 {books.length > 0 && (
                   <div className="mb-8 flex flex-col gap-3">

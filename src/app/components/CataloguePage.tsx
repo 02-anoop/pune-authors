@@ -474,7 +474,7 @@ export async function downloadCataloguePDF(label: string, books: CatalogueBook[]
                   <li>d) A literary activity at the door step, where residents can meet the authors live, interact with them, understand the background about the writing of that book.</li>
                   <li>e) Promote Indian Authors, Indian culture and literature.</li>
                   <li>f) They can also buy inked signed copies from the authors directly.</li>
-                  <li>g) Help and guide those who are keen to write and publish a book.</li>
+                  <li>g) Help and guide those who are keen to write and receive support in self-publishing a book.</li>
                 </ul>
               </div>
             </div>

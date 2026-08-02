@@ -62,7 +62,7 @@ const goals = [
   {
     img: "/goal_mentoring.webp",
     title: "Guide Aspiring Authors",
-    desc: " Help and guide those who are keen to write and publish a book.",
+    desc: " Help and guide those who are keen to write and receive support in self-publishing a book.",
   },
 ];
 
@@ -310,7 +310,7 @@ export function AboutPage() {
                 <li>A literary activity at the door step, where residents can meet the authors live, interact with them, understand the background about the writing of that book.</li>
                 <li>Promote Indian Authors, Indian culture and literature.</li>
                 <li>They can also buy inked signed copies from the authors directly.</li>
-                <li>Help and guide those who are keen to write and publish a book.</li>
+                <li>Help and guide those who are keen to write and receive support in self-publishing a book.</li>
               </ul>
 
               <p style={{ fontWeight: 700, color: "#0f172a", marginBottom: "0.8rem", marginTop: "2rem" }}>
