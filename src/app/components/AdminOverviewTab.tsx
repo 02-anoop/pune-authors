@@ -280,7 +280,7 @@ const insights = [
         </div>
 
         {/* ════ High Level KPIs ════ */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
           {[
             { label: 'Total Authors', value: stats?.totalAuthors || 0, icon: Users, colorClass: 'blue' },
             { label: 'Books Listed', value: stats?.totalBooks || 0, icon: BookOpen, colorClass: 'green' },
@@ -298,183 +298,258 @@ const insights = [
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
-          {/* ════ Visual Data Insights (col-span-2) ════ */}
-          <div className="lg:col-span-2 space-y-5">
-            {/* Mini Insight Cards — 3 cols so no empty gap */}
-            <div className="grid grid-cols-3 gap-4">
-              {insights.map((insight, idx) => (
-                <div key={idx} className="p-4 rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow relative group">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-3 ${insight.bg} ${insight.color}`}>
-                    <insight.icon size={16} aria-hidden="true" />
+        {/* ════ Operational Insights Row — 4 Symmetrical Mini Cards ════ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          {insights.map((insight, idx) => (
+            <div key={idx} className="p-4 rounded-2xl border border-paa-navy/5 bg-white shadow-sm hover:shadow-md transition-all relative group flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${insight.bg} ${insight.color}`}>
+                    <insight.icon size={18} aria-hidden="true" />
                   </div>
-                  <h4 className="text-2xl font-bold text-paa-navy mb-1">{insight.value}</h4>
-                  <p className="text-xs font-semibold text-gray-800 mb-1">{insight.label}</p>
-                  <p className="text-[10px] text-paa-gray-text flex items-center justify-between">
-                    {insight.desc}
-                    {(insight as any).hoverData && <Eye size={12} className="cursor-pointer text-indigo-400 hover:text-indigo-600" />}
-                  </p>
-
-                  {(insight as any).hoverData && (
-                    <div className="absolute z-10 bottom-full left-0 mb-2 w-48 bg-white border border-gray-100 shadow-xl rounded-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text mb-2 border-b pb-1">Last 3 Events</p>
-                      <div className="space-y-2">
-                        {(insight as any).hoverData.map((ev: any, i: number) => (
-                          <div key={i} className="flex justify-between items-center text-xs">
-                            <span className="text-gray-600 truncate mr-2">{ev.name}</span>
-                            <span className="font-bold text-paa-navy">{ev.rate}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {(insight as any).hoverData && <Eye size={14} className="cursor-pointer text-indigo-400 hover:text-indigo-600" />}
                 </div>
-              ))}
-            </div>
-
-            {/* Charts Row 1 — all 3 charts in one row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm">
-                <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-500" aria-hidden="true" /> Recent Revenue Trend
-                </h3>
-                <div className="h-48 w-full">
-                  {revenueTrendData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={revenueTrendData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                        <XAxis dataKey="date" fontSize={10} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                        <YAxis fontSize={10} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                        <RechartsTooltip cursor={{ stroke: '#10b981', strokeWidth: 1, strokeDasharray: '3 3' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                        <Line type="linear" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={(props: any) => { const { cx, cy, index } = props; const total = revenueTrendData.length; if (total <= 30 || index % Math.ceil(total / 15) === 0 || index === total - 1) { return <circle cx={cx} cy={cy} r={3} fill="#fff" stroke="#10b981" strokeWidth={2} key={`dot-${index}`} />; } return null; }} activeDot={{ r: 6 }} name="Revenue (₹)" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400 text-xs">No revenue data.</div>
-                  )}
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm col-span-2">
-                <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-                  <PieChart className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Order Status Distribution
-                </h3>
-                <div className="h-48 w-full flex items-center">
-                  {orderStatusData.length > 0 ? (
-                    <>
-                      <div className="w-1/2 h-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RechartsPieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                            <Pie data={orderStatusData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} dataKey="value">
-                              {orderStatusData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                          </RechartsPieChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="w-1/2 flex flex-col justify-center gap-2 pl-4 border-l border-gray-100">
-                        {orderStatusData.map((entry, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-[10px] font-bold text-gray-600">
-                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
-                            {entry.name} ({entry.value})
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400 text-xs w-full">No orders.</div>
-                  )}
-                </div>
-              </div>
-            </div>
-            {/* Charts Row 2 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm col-span-1">
-                <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-                  <BarChart2 className="w-4 h-4 text-blue-500" aria-hidden="true" /> Popular by Category & Genre
-                </h3>
-                <div className="h-56 w-full">
-                  {categoryChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={categoryChartData} layout="vertical" margin={{ top: 5, right: 10, left: 40, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
-                        <XAxis type="number" fontSize={10} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                        <YAxis dataKey="name" type="category" fontSize={10} tick={{ fill: '#4B5563', fontWeight: 600 }} axisLine={false} tickLine={false} width={80} />
-                        <RechartsTooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                        <Bar dataKey="sales" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Books Sold">
-                          {categoryChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400 text-xs">No category data.</div>
-                  )}
-                </div>
+                <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{insight.value}</h4>
+                <p className="text-xs font-bold text-gray-800 mb-0.5">{insight.label}</p>
+                <p className="text-[11px] text-paa-gray-text">{insight.desc}</p>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-paa-navy/5 shadow-sm">
-                <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Top Selling Authors
-                </h3>
-                <div className="space-y-3">
-                  {topAuthorsData.length > 0 ? topAuthorsData.map((a, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">#{idx + 1}</div>
-                        <p className="text-sm font-bold text-paa-navy line-clamp-1">{a.name}</p>
+              {(insight as any).hoverData && (
+                <div className="absolute z-10 bottom-full left-0 mb-2 w-52 bg-white border border-gray-100 shadow-xl rounded-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text mb-2 border-b pb-1">Last 3 Events</p>
+                  <div className="space-y-2">
+                    {(insight as any).hoverData.map((ev: any, i: number) => (
+                      <div key={i} className="flex justify-between items-center text-xs">
+                        <span className="text-gray-600 truncate mr-2">{ev.name}</span>
+                        <span className="font-bold text-paa-navy">{ev.rate}%</span>
                       </div>
-                      <div className="text-right shrink-0 ml-4">
-                        <span className="text-sm font-black text-indigo-600">{a.sales}</span>
-                        <span className="text-[10px] text-gray-500 ml-1">Sold</span>
-                      </div>
-                    </div>
-                  )) : <p className="text-xs text-gray-400">No completed sales yet.</p>}
+                    ))}
+                  </div>
                 </div>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-paa-navy/5 shadow-sm">
-                <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-emerald-500" aria-hidden="true" /> Highest Selling Books
-                </h3>
-                <div className="space-y-3">
-                  {topBooksData.length > 0 ? topBooksData.map((b, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-100">
-                      <div className="flex items-center gap-3 min-w-0 pr-4">
-                        <div className="w-8 h-8 rounded-full bg-[#ebd8c0] text-emerald-600 flex items-center justify-center text-xs font-bold shrink-0">#{idx + 1}</div>
-                        <p className="text-sm font-bold text-paa-navy line-clamp-1">{b.name}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-sm font-black text-emerald-600">{b.sales}</span>
-                        <span className="text-[10px] text-gray-500 ml-1">Sold</span>
-                      </div>
-                    </div>
-                  )) : <p className="text-xs text-gray-400">No completed sales yet.</p>}
-                </div>
-              </div>
-            </div>
-          </div>
-          {/* ════ Low Stock (col-span-1) ════ */}
-          <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-serif font-semibold text-paa-navy flex items-center gap-2">
-                <Package className="w-5 h-5 text-red-500" aria-hidden="true" /> Low Stock Books Alert
-              </h3>
-              {lowStockBooks.length > 0 && (
-                <button aria-label="Notify All Authors About Low Stock" onClick={handleNotifyAllLowStock} className="text-xs flex items-center gap-1 font-bold text-paa-navy bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-full transition-colors uppercase tracking-wider">
-                  <Bell size={12} className="text-amber-600" /> Notify All
-                </button>
               )}
+            </div>
+          ))}
+
+          {/* Low Stock Alert Mini Card */}
+          <div className="p-4 rounded-2xl border border-red-100 bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                  <Package size={18} aria-hidden="true" />
+                </div>
+                {lowStockBooks.length > 0 && (
+                  <button
+                    aria-label="Notify All Authors About Low Stock"
+                    onClick={handleNotifyAllLowStock}
+                    className="text-[10px] flex items-center gap-1 font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 px-2 py-0.5 rounded-full transition-colors uppercase tracking-wider"
+                  >
+                    <Bell size={10} className="text-amber-600" /> Notify All
+                  </button>
+                )}
+              </div>
+              <div className="flex items-baseline gap-2 mb-1">
+                <h4 className="text-2xl font-black text-paa-navy tracking-tight">{lowStockBooks.length}</h4>
+                <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Low Stock</span>
+              </div>
+              <p className="text-xs font-bold text-gray-800 mb-0.5">Inventory Alert</p>
+              <p className="text-[11px] text-paa-gray-text">Books requiring restocking attention</p>
             </div>
 
             <button
               onClick={() => setActiveTab('inventory')}
-              className="mt-4 w-full text-xs font-bold text-white bg-paa-navy hover:bg-[#0c1e30] rounded-xl py-3 transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+              className="mt-3 w-full text-xs font-bold text-white bg-paa-navy hover:bg-[#0c1e30] rounded-xl py-2 transition-all flex items-center justify-center gap-1.5 shadow-xs hover:shadow-sm"
             >
-              <Package size={14} /> Go to Inventory &amp; Restock Records
+              <Package size={13} /> View Inventory
             </button>
+          </div>
+        </div>
+
+        {/* ════ Analytics Row — 2 Equal Balanced Columns ════ */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Revenue Trend Chart */}
+          <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-serif font-semibold text-paa-navy flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-500" aria-hidden="true" /> Recent Revenue Trend
+              </h3>
+              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">Last 7 Active Dates</span>
+            </div>
+            <div className="h-60 w-full">
+              {revenueTrendData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={revenueTrendData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="date" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
+                    <YAxis fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
+                    <RechartsTooltip cursor={{ stroke: '#10b981', strokeWidth: 1, strokeDasharray: '3 3' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                    <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4, fill: '#fff', stroke: '#10b981', strokeWidth: 2 }} activeDot={{ r: 7 }} name="Revenue (₹)" />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-400 text-xs">No revenue data available.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Order Status Distribution Chart */}
+          <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-serif font-semibold text-paa-navy flex items-center gap-2">
+                <PieChart className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Order Status Distribution
+              </h3>
+              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
+                {orderStatusData.reduce((s, i) => s + i.value, 0)} Total Orders
+              </span>
+            </div>
+
+            {orderStatusData.length > 0 ? (
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                {/* Donut Chart with Center Label */}
+                <div className="relative w-44 h-44 shrink-0 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                      <Pie
+                        data={orderStatusData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={52}
+                        outerRadius={75}
+                        paddingAngle={3}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {orderStatusData.map((entry, index) => {
+                          const statusColors: Record<string, string> = {
+                            'Completed': '#10b981',
+                            'Delivered': '#059669',
+                            'Dispatched': '#3b82f6',
+                            'Pending': '#f59e0b',
+                            'Pending Verification': '#f97316',
+                            'Cancelled': '#ef4444',
+                            'Bulk Request Pending': '#8b5cf6',
+                            'Approved - Pending Payment': '#ec4899',
+                          };
+                          return (
+                            <Cell key={`cell-${index}`} fill={statusColors[entry.name] || COLORS[index % COLORS.length]} />
+                          );
+                        })}
+                      </Pie>
+                      <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 600 }} />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-2xl font-black text-paa-navy leading-none">
+                      {orderStatusData.reduce((s, i) => s + i.value, 0)}
+                    </span>
+                    <span className="text-[9px] font-extrabold uppercase tracking-widest text-gray-400 mt-1">Orders</span>
+                  </div>
+                </div>
+
+                {/* Symmetrical Grid Legend — Clear Visibility, No Clipping */}
+                <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {orderStatusData.map((entry, idx) => {
+                    const totalCount = orderStatusData.reduce((s, i) => s + i.value, 0);
+                    const pct = totalCount ? Math.round((entry.value / totalCount) * 100) : 0;
+                    const statusColors: Record<string, string> = {
+                      'Completed': '#10b981',
+                      'Delivered': '#059669',
+                      'Dispatched': '#3b82f6',
+                      'Pending': '#f59e0b',
+                      'Pending Verification': '#f97316',
+                      'Cancelled': '#ef4444',
+                      'Bulk Request Pending': '#8b5cf6',
+                      'Approved - Pending Payment': '#ec4899',
+                    };
+                    const color = statusColors[entry.name] || COLORS[idx % COLORS.length];
+                    return (
+                      <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/80 border border-gray-100/80 hover:bg-gray-100/80 transition-colors">
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: color }}></span>
+                          <span className="text-xs font-bold text-paa-navy truncate">{entry.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-xs font-black text-paa-navy">{entry.value}</span>
+                          <span className="text-[10px] font-semibold text-gray-400">({pct}%)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="h-48 flex items-center justify-center text-gray-400 text-xs w-full">No order status data available.</div>
+            )}
+          </div>
+        </div>
+
+        {/* ════ Performance & Leaderboards Row — 3 Equal Responsive Columns ════ */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Popular Categories */}
+          <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
+            <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-blue-500" aria-hidden="true" /> Popular by Category &amp; Genre
+            </h3>
+            <div className="h-56 w-full">
+              {categoryChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={categoryChartData} layout="vertical" margin={{ top: 5, right: 10, left: 35, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
+                    <XAxis type="number" fontSize={10} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
+                    <YAxis dataKey="name" type="category" fontSize={10} tick={{ fill: '#4B5563', fontWeight: 600 }} axisLine={false} tickLine={false} width={75} />
+                    <RechartsTooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                    <Bar dataKey="sales" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Books Sold">
+                      {categoryChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-400 text-xs">No category data.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Top Selling Authors */}
+          <div className="bg-white p-5 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
+            <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
+              <Users className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Top Selling Authors
+            </h3>
+            <div className="space-y-2.5">
+              {topAuthorsData.length > 0 ? topAuthorsData.map((a, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-indigo-50/40 border border-indigo-100/60 hover:bg-indigo-50 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0 pr-2">
+                    <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0">#{idx + 1}</div>
+                    <p className="text-xs font-bold text-paa-navy truncate">{a.name}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-xs font-black text-indigo-600">{a.sales}</span>
+                    <span className="text-[10px] text-gray-500 ml-1">Sold</span>
+                  </div>
+                </div>
+              )) : <p className="text-xs text-gray-400 py-4 text-center">No completed sales yet.</p>}
+            </div>
+          </div>
+
+          {/* Highest Selling Books */}
+          <div className="bg-white p-5 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
+            <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-emerald-500" aria-hidden="true" /> Highest Selling Books
+            </h3>
+            <div className="space-y-2.5">
+              {topBooksData.length > 0 ? topBooksData.map((b, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/40 border border-emerald-100/60 hover:bg-emerald-50 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0 pr-2">
+                    <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0">#{idx + 1}</div>
+                    <p className="text-xs font-bold text-paa-navy truncate">{b.name}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-xs font-black text-emerald-600">{b.sales}</span>
+                    <span className="text-[10px] text-gray-500 ml-1">Sold</span>
+                  </div>
+                </div>
+              )) : <p className="text-xs text-gray-400 py-4 text-center">No completed sales yet.</p>}
+            </div>
           </div>
         </div>
       </div>
