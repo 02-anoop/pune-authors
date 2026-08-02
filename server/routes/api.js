@@ -6777,7 +6777,7 @@ async function computeBookInventory(books) {
     by: ['bookId'],
     where: {
       bookId: { in: bookIds },
-      status: { in: ['Accepted', 'Dispatched', 'Completed', 'Delivered'] },
+      status: { in: ['Pending Verification', 'Accepted', 'Dispatched', 'Completed', 'Delivered'] },
       createdAt: { gte: CUTOFF_DATE }
     },
     _sum: { quantity: true },

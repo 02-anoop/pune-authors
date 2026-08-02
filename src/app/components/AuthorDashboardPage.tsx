@@ -2508,15 +2508,16 @@ function InventoryPage({ onRefresh, dashboardData }: { onRefresh: () => void, da
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Distribution Channel Split</p>
               <div className="h-[200px]">
-                {totalAirport === 0 && totalEvent === 0 ? (
+                {totalWebSold === 0 && totalAirport === 0 && totalEvent === 0 ? (
                   <div className="flex items-center justify-center h-full text-gray-400 text-xs italic">
-                    No airport or book fair distribution records yet.
+                    No distribution records yet.
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={[
+                          { name: 'Web Orders', value: totalWebSold },
                           { name: 'Airport Library', value: totalAirport },
                           { name: 'Book Fairs', value: totalEvent }
                         ].filter(item => item.value > 0)}
@@ -2528,9 +2529,10 @@ function InventoryPage({ onRefresh, dashboardData }: { onRefresh: () => void, da
                         dataKey="value"
                       >
                         {[
+                          { name: 'Web Orders', color: '#16a34a' },
                           { name: 'Airport Library', color: '#06b6d4' },
                           { name: 'Book Fairs', color: '#ec4899' }
-                        ].filter(item => (item.name === 'Airport Library' ? totalAirport : totalEvent) > 0).map((item, index) => (
+                        ].filter(item => (item.name === 'Web Orders' ? totalWebSold : item.name === 'Airport Library' ? totalAirport : totalEvent) > 0).map((item, index) => (
                           <Cell key={`cell-${index}`} fill={item.color} />
                         ))}
                       </Pie>
@@ -2546,6 +2548,7 @@ function InventoryPage({ onRefresh, dashboardData }: { onRefresh: () => void, da
             {/* Legend */}
             <div className="flex justify-center gap-6 mt-3 border-t pt-3">
               {[
+                { name: 'Web Orders', value: totalWebSold, color: '#16a34a' },
                 { name: 'Airport Library', value: totalAirport, color: '#06b6d4' },
                 { name: 'Book Fairs', value: totalEvent, color: '#ec4899' }
               ].map(item => (
