@@ -458,36 +458,20 @@ const insights = [
           </div>
           {/* ════ Low Stock (col-span-1) ════ */}
           <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-serif font-semibold text-paa-navy flex items-center gap-2">
-                  <Package className="w-5 h-5 text-red-500" aria-hidden="true" /> Low Stock Books Alert
-                </h3>
-                {lowStockBooks.length > 0 && (
-                  <button aria-label="Notify All Authors About Low Stock" onClick={handleNotifyAllLowStock} className="text-xs flex items-center gap-1 font-bold text-paa-navy bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-full transition-colors uppercase tracking-wider">
-                    <Bell size={12} className="text-amber-600" /> Notify All
-                  </button>
-                )}
-              </div>
-
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-serif font-semibold text-paa-navy flex items-center gap-2">
+                <Package className="w-5 h-5 text-red-500" aria-hidden="true" /> Low Stock Books Alert
+              </h3>
               {lowStockBooks.length > 0 && (
-                <div className="py-4 space-y-4">
-                  <div className="p-4 rounded-xl border border-red-100 bg-red-50/40 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center font-black text-2xl shrink-0">
-                      {lowStockBooks.length}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-red-900">Low Stock Books Pending</p>
-                      <p className="text-xs text-red-700/80 mt-0.5">Books with inventory below threshold require restocking attention.</p>
-                    </div>
-                  </div>
-                </div>
+                <button aria-label="Notify All Authors About Low Stock" onClick={handleNotifyAllLowStock} className="text-xs flex items-center gap-1 font-bold text-paa-navy bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-full transition-colors uppercase tracking-wider">
+                  <Bell size={12} className="text-amber-600" /> Notify All
+                </button>
               )}
             </div>
 
             <button
               onClick={() => setActiveTab('inventory')}
-              className="mt-6 w-full text-xs font-bold text-white bg-paa-navy hover:bg-[#0c1e30] rounded-xl py-3 transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+              className="mt-4 w-full text-xs font-bold text-white bg-paa-navy hover:bg-[#0c1e30] rounded-xl py-3 transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
             >
               <Package size={14} /> Go to Inventory &amp; Restock Records
             </button>
