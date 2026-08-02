@@ -19,8 +19,12 @@ router.post('/register', async (req, res) => {
     if (existing) return res.status(400).json({ error: 'Email already exists' });
     
     const hashedPassword = await bcrypt.hash(password, 10);
+    let userRole = role || 'CUSTOMER';
+    if (userRole === 'ADMIN') {
+      return res.status(403).json({ error: 'Cannot register as ADMIN via this endpoint' });
+    }
     const user = await prisma.user.create({
-      data: { name, email, password: hashedPassword, phone, address, interests, role: role || 'CUSTOMER' }
+      data: { name, email, password: hashedPassword, phone, address, interests, role: userRole }
     });
     res.status(201).json({ message: 'User created' });
   } catch (err) {
