@@ -457,51 +457,40 @@ const insights = [
             </div>
           </div>
           {/* ════ Low Stock (col-span-1) ════ */}
-          <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-serif font-semibold text-paa-navy flex items-center gap-2">
-                <Package className="w-5 h-5 text-red-500" aria-hidden="true" /> Low Stock Books Alert
-              </h3>
+          <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-serif font-semibold text-paa-navy flex items-center gap-2">
+                  <Package className="w-5 h-5 text-red-500" aria-hidden="true" /> Low Stock Books Alert
+                </h3>
+                {lowStockBooks.length > 0 && (
+                  <button aria-label="Notify All Authors About Low Stock" onClick={handleNotifyAllLowStock} className="text-xs flex items-center gap-1 font-bold text-paa-navy bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-full transition-colors uppercase tracking-wider">
+                    <Bell size={12} className="text-amber-600" /> Notify All
+                  </button>
+                )}
+              </div>
+
               {lowStockBooks.length > 0 && (
-                <button aria-label="Notify All Authors About Low Stock" onClick={handleNotifyAllLowStock} className="text-xs flex items-center gap-1 font-bold text-paa-navy bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors uppercase tracking-wider">
-                  <Bell size={12} className="text-amber-500" /> Notify All
-                </button>
+                <div className="py-4 space-y-4">
+                  <div className="p-4 rounded-xl border border-red-100 bg-red-50/40 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center font-black text-2xl shrink-0">
+                      {lowStockBooks.length}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-red-900">Low Stock Books Pending</p>
+                      <p className="text-xs text-red-700/80 mt-0.5">Books with inventory below threshold require restocking attention.</p>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
-            {lowStockBooks.length === 0 ? (
-              <div className="text-center py-8 text-sm text-paa-gray-text my-auto">All books have sufficient inventory or authors notified.</div>
-            ) : (
-              <>
-                <div className="space-y-3 overflow-y-auto pr-1" style={{ maxHeight: '420px' }}>
-                  {lowStockBooks.map((b: any) => (
-                    <div key={b.dbId || b.id} className="flex items-center justify-between p-3 rounded-xl border border-red-100 bg-red-50/30 group">
-                      <div className="flex-1 min-w-0 pr-4">
-                        <p className="text-sm font-bold text-paa-navy line-clamp-1">{b.title}</p>
-                        <p className="text-xs text-paa-gray-text">by {b.authorName}</p>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <button aria-label="Notify Author About Low Stock" onClick={() => handleNotifySingleBook(b)} className="opacity-0 group-hover:opacity-100 p-1.5 bg-white text-gray-400 hover:text-amber-500 rounded-full shadow-sm transition-all" title="Notify Author">
-                          <Bell size={14} aria-hidden="true" />
-                        </button>
-                        <button aria-label="Dismiss Low Stock Alert" onClick={(e) => handleDismiss(e, `lowstock_${b.dbId || b.id}`)} className="opacity-0 group-hover:opacity-100 p-1.5 bg-white text-gray-400 hover:text-red-500 rounded-full shadow-sm transition-all" title="Dismiss Alert">
-                          <X size={14} aria-hidden="true" />
-                        </button>
-                        <div className="text-right">
-                          <span className="text-lg font-black text-red-600">{b.inventory || 0}</span>
-                          <p className="text-[10px] uppercase tracking-widest font-bold text-red-400">Left</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setActiveTab('inventory')}
-                  className="mt-4 w-full text-xs font-bold text-paa-navy bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl py-2.5 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Package size={13} /> View All Inventory
-                </button>
-              </>
-            )}
+
+            <button
+              onClick={() => setActiveTab('inventory')}
+              className="mt-6 w-full text-xs font-bold text-white bg-paa-navy hover:bg-[#0c1e30] rounded-xl py-3 transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+            >
+              <Package size={14} /> Go to Inventory &amp; Restock Records
+            </button>
           </div>
         </div>
       </div>
