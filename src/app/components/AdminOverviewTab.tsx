@@ -36,12 +36,12 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
       orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
       completedOrders
     } = useMemo(() => {
-// Low stock books (threshold < 15)
+    // Low stock books (threshold < 10)
     // Exclude if inventory is same AND notified within 24 hours.
     const lowStockBooks = books.filter((b: any) => {
-      const inv = b.inventory || 0;
+      const inv = b.stock !== undefined ? b.stock : (b.inventory !== undefined ? b.inventory : (b.currentStock !== undefined ? b.currentStock : (b.copies !== undefined ? b.copies : 0)));
       const id = b.id || b.dbId;
-      if (inv >= 15 || b.status !== 'Approved') return false;
+      if (inv >= 10 || (b.status && b.status !== 'Approved')) return false;
       if (localDismissed.includes(`lowstock_${id}`)) return false;
       const notified = notifiedBooks[id];
       if (notified) {
