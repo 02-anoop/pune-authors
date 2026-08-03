@@ -4422,10 +4422,24 @@ router.post('/api/admin/events/:eventId/author/:authorId/approve', verifyToken, 
     const eventId = parseInt(req.params.eventId);
     const authorId = parseInt(req.params.authorId);
 
-    await prisma.eventAuthor.updateMany({
-      where: { eventId, authorId },
-      data: { optInStatus: 'Registered' }
+    const existingRegistration = await prisma.eventAuthor.findFirst({
+      where: { eventId, authorId }
     });
+
+    if (existingRegistration) {
+      await prisma.eventAuthor.update({
+        where: { id: existingRegistration.id },
+        data: { optInStatus: 'Registered' }
+      });
+    } else {
+      await prisma.eventAuthor.create({
+        data: {
+          eventId,
+          authorId,
+          optInStatus: 'Registered'
+        }
+      });
+    }
 
     const author = await prisma.author.findUnique({ where: { id: authorId } });
     const event = await prisma.event.findUnique({ where: { id: eventId } });
@@ -4479,13 +4493,25 @@ router.post('/api/admin/events/:eventId/author/:authorId/reject', verifyToken, i
     });
 
     if (existingRegistration && existingRegistration.optInStatus !== 'Rejected') {
-      await prisma.eventAuthor.updateMany({
-        where: { eventId, authorId },
+      await prisma.eventAuthor.update({
+        where: { id: existingRegistration.id },
         data: { 
           optInStatus: 'Rejected',
           rejectionReason: reason || 'Not specified'
         }
       });
+    } else if (!existingRegistration) {
+      await prisma.eventAuthor.create({
+        data: {
+          eventId,
+          authorId,
+          optInStatus: 'Rejected',
+          rejectionReason: reason || 'Not specified'
+        }
+      });
+    }
+
+    if (!existingRegistration || (existingRegistration && existingRegistration.optInStatus !== 'Rejected')) {
 
       // Restore reserved stock since registration was rejected
       const eventBooks = await prisma.eventBook.findMany({

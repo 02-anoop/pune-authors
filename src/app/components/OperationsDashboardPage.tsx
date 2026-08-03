@@ -1668,7 +1668,7 @@ export function OperationsDashboardPage() {
               evt.isLegacy ||
               evt.status === "Past" ||
               evt.status === "Legacy Archive";
-            setShowAllPlatformAuthors(isPastOrLegacy);
+            setShowAllPlatformAuthors(false);
             fetchEventRegistrations(evt.id);
             fetchAuthors(true);
             setTimeout(() => {
@@ -4158,7 +4158,7 @@ const totalAuthorsBase = eventRegistrations.length;
         evt.isLegacy ||
         evt.status === "Past" ||
         evt.status === "Legacy Archive";
-      setShowAllPlatformAuthors(isPastOrLegacy);
+      setShowAllPlatformAuthors(false);
       fetchEventRegistrations(evt.id);
       fetchAuthors(true);
       const slug = `${evt.id}-${evt.name.replace(/\s+/g, "-").toLowerCase()}`;
@@ -6380,6 +6380,12 @@ const totalAuthorsBase = eventRegistrations.length;
                 </div>
                 <div className="flex gap-2 items-center">
                   <button
+                    onClick={() => setShowAllPlatformAuthors(!showAllPlatformAuthors)}
+                    className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 border ${showAllPlatformAuthors ? 'bg-paa-navy text-white border-paa-navy' : 'text-paa-navy border-paa-navy/20 bg-gray-50 hover:bg-gray-100'}`}
+                  >
+                    {showAllPlatformAuthors ? "Show Participants Only" : "See All Platform Authors"}
+                  </button>
+                  <button
                     onClick={() =>
                       fetchEventRegistrations(selectedEventBreakdown.id)
                     }
@@ -6438,6 +6444,13 @@ const totalAuthorsBase = eventRegistrations.length;
                         const nameMatches = (a.author?.name || a.name || "")
                           .toLowerCase()
                           .includes(authorSearch.toLowerCase());
+                        
+                        if (!showAllPlatformAuthors) {
+                          const status = a.optInStatus || "Unpublished";
+                          const isParticipantOrPending = status.includes("Registered") || status === "Pending Approval" || (a.amountPaid && a.amountPaid > 0) || a.paymentStatus === "Paid";
+                          return nameMatches && isParticipantOrPending;
+                        }
+
                         return nameMatches;
                       })
                       .map((a: any) => {
@@ -6709,7 +6722,7 @@ const totalAuthorsBase = eventRegistrations.length;
                                 </td>
                                 <td className="p-3 text-center bg-inherit min-w-[220px]">
                                   <div className="flex gap-2 justify-center items-center">
-                                    {!selectedEventBreakdown.isLegacy && status !== 'Pending' && status !== 'Unpublished' && status !== 'Registered' && (
+                                    {!selectedEventBreakdown.isLegacy && status === 'Pending Approval' && (
                                         <>
                                           <button
                                             onClick={(e) => {
