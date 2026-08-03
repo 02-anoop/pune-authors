@@ -15,7 +15,7 @@ export function ContactPage() {
         <div>
           <h1 style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 800, color: "#111827", marginBottom: "1rem" }}>Get in Touch</h1>
           <p style={{ fontSize: 16, color: "#4b5563", marginBottom: "2.5rem", lineHeight: 1.6 }}>
-            Whether you're an aspiring author looking to publish, a reader with an inquiry, or an institution looking to partner, we'd love to hear from you.
+            Whether you're an aspiring author looking for support in self-publishing, a reader with an inquiry, or an institution looking to partner, we'd love to hear from you.
           </p>
           
           <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>

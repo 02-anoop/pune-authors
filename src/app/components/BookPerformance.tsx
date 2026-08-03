@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { TrendingUp, DollarSign, BookOpen, Activity, ChevronDown, ChevronRight } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -65,11 +66,44 @@ const BookPerformance: React.FC = () => {
   const uniqueEventNames = new Map<number, string>();
   let totalRevenue = 0;
   
+  // Data for the Graph
+  const graphDataMap = new Map<string, any>();
+  const allBookTitles = new Set<string>();
+
+  // First pass: collect all unique channels and books
   data.forEach(row => {
     uniqueEvents.set(row.eventId, row.investment);
     uniqueEventNames.set(row.eventId, row.eventName);
     totalRevenue += row.revenue;
+
+    if (!graphDataMap.has(row.eventName)) {
+      graphDataMap.set(row.eventName, { name: row.eventName });
+    }
+
+    if (row.bookTitle !== 'No Sales Yet' && row.booksSold > 0) {
+      allBookTitles.add(row.bookTitle);
+    }
   });
+
+  const uniqueBookTitlesArray = Array.from(allBookTitles);
+
+  // Initialize all books to 0 for all channels to ensure continuous lines
+  graphDataMap.forEach(channelObj => {
+    uniqueBookTitlesArray.forEach(title => {
+      channelObj[title] = 0;
+    });
+  });
+
+  // Second pass: populate actual sales data
+  data.forEach(row => {
+    if (row.bookTitle !== 'No Sales Yet' && row.booksSold > 0) {
+      const channelObj = graphDataMap.get(row.eventName);
+      channelObj[row.bookTitle] += row.booksSold;
+    }
+  });
+
+  const graphData = Array.from(graphDataMap.values());
+  const bookColors = ['#16a34a', '#0284c7', '#9333ea', '#eab308', '#ec4899', '#f97316', '#14b8a6', '#6366f1', '#ef4444', '#8b5cf6'];
 
   const totalFairs = uniqueEvents.size;
   let totalInvestment = 0;
@@ -122,7 +156,7 @@ const BookPerformance: React.FC = () => {
         <div className="bg-[#2ecc71] rounded-2xl p-5 shadow-sm text-white flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-2">
             <BookOpen size={16} />
-            <p className="text-xs font-bold uppercase tracking-widest">Total Fairs</p>
+            <p className="text-xs font-bold uppercase tracking-widest">Sales Channels</p>
           </div>
           <h3 className="text-3xl font-black">{totalFairs}</h3>
         </div>
@@ -138,7 +172,7 @@ const BookPerformance: React.FC = () => {
         <div className="bg-[#4b7bec] rounded-2xl p-5 shadow-sm text-white flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp size={16} />
-            <p className="text-xs font-bold uppercase tracking-widest">Total Fair Revenue</p>
+            <p className="text-xs font-bold uppercase tracking-widest">Total Revenue</p>
           </div>
           <h3 className="text-3xl font-black">₹{totalRevenue.toLocaleString()}</h3>
         </div>
@@ -154,6 +188,32 @@ const BookPerformance: React.FC = () => {
         </div>
       </div>
 
+      {/* Sales Channels Comparison Graph */}
+      {graphData.length > 0 && (
+        <div className="dash-panel p-6 mb-8 overflow-hidden">
+          <div className="mb-4 border-b border-gray-100 pb-4">
+            <h3 className="text-sm font-bold text-paa-navy uppercase tracking-widest">Sales Comparison by Channel</h3>
+            <p className="text-[11px] text-gray-500 mt-1">Quantity of books sold across different Fairs and Web Orders</p>
+          </div>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={graphData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" fontSize={10} tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} />
+                <YAxis fontSize={10} tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', fontSize: '12px' }} 
+                />
+                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                {uniqueBookTitlesArray.map((title, idx) => (
+                  <Line key={title} type="monotone" dataKey={title} stroke={bookColors[idx % bookColors.length]} strokeWidth={3} activeDot={{ r: 6 }} dot={{ strokeWidth: 2, r: 4 }} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       {/* High-Contrast Vibrant Data Table */}
       <div className="dash-panel overflow-hidden mb-7">
         <div className="dash-panel-header">
@@ -168,7 +228,7 @@ const BookPerformance: React.FC = () => {
               <tr>
                 <th className="!text-[14px] !text-indigo-800 !bg-transparent text-left w-10"></th>
                 <th className="!text-[14px] !text-indigo-800 !bg-transparent text-left">Book Title</th>
-                <th className="!text-[14px] !text-indigo-800 !bg-transparent text-center">Fairs Participated</th>
+                <th className="!text-[14px] !text-indigo-800 !bg-transparent text-center">Channels Participated</th>
                 <th className="!text-[14px] !text-indigo-800 !bg-transparent text-center">Total Units Sold</th>
                 <th className="!text-[14px] !text-indigo-800 !bg-transparent text-right">Total Revenue (₹)</th>
               </tr>
@@ -193,7 +253,7 @@ const BookPerformance: React.FC = () => {
                         </span>
                       </td>
                       <td className="font-bold text-gray-700 text-center">
-                        {group.events.length} Fairs
+                        {group.events.length} Channels
                       </td>
                       <td className="font-bold text-indigo-600 text-center text-lg">
                         {group.totalSold}
@@ -210,7 +270,7 @@ const BookPerformance: React.FC = () => {
                             <table className="w-full text-sm rounded-lg overflow-hidden border border-indigo-100/50 bg-white">
                               <thead className="text-indigo-900 bg-indigo-50/50 text-[10px] uppercase tracking-widest border-b border-indigo-100/50">
                                 <tr>
-                                  <th className="text-left py-2 px-3 font-bold">Book Fair Name</th>
+                                  <th className="text-left py-2 px-3 font-bold">Channel Name</th>
                                   <th className="text-center py-2 px-3 font-bold">Date</th>
                                   <th className="text-center py-2 px-3 font-bold">Units Sold</th>
                                   <th className="text-right py-2 px-3 font-bold">Revenue</th>
@@ -220,7 +280,7 @@ const BookPerformance: React.FC = () => {
                                 {group.events.map((ev, i) => (
                                   <tr key={i} className="border-b border-indigo-50 last:border-0 hover:bg-indigo-50/20 transition-colors">
                                     <td className="py-2.5 px-3 font-semibold text-gray-700">{ev.eventName}</td>
-                                    <td className="py-2.5 px-3 text-center text-gray-500 font-medium">{new Date(ev.date).toLocaleDateString()}</td>
+                                    <td className="py-2.5 px-3 text-center text-gray-500 font-medium">{ev.eventName === 'Web Orders' ? 'Ongoing' : new Date(ev.date).toLocaleDateString()}</td>
                                     <td className="py-2.5 px-3 text-center font-bold text-indigo-600">{ev.booksSold}</td>
                                     <td className="py-2.5 px-3 text-right font-bold text-emerald-600">₹{ev.revenue.toLocaleString()}</td>
                                   </tr>

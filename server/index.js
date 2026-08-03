@@ -255,7 +255,8 @@ setInterval(async () => {
         });
         html += `</ul><p>Please check the Operations Dashboard to issue warnings or fines.</p>`;
 
-        const adminEmail = process.env.ADMIN_EMAIL || 'admin@puneauthors.com';
+        const { getAdminEmails } = require('./utils/email');
+        const adminEmail = getAdminEmails();
         await sendNotificationEmail(adminEmail, 'Daily Late Authors Report', emailWrap('Late Authors Report', html))
           .catch(e => console.error('Failed to send daily report', e));
       }

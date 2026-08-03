@@ -55,6 +55,22 @@ ${description}`;
         message: formattedMessage
       }
     });
+    
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      const { getAdminEmails } = require('../utils/email');
+      if (typeof getAdminEmails === 'function') {
+        const adminContent = `
+          <p>A new Event Request has been submitted.</p>
+          <p><strong>Proposer:</strong> ${proposerName || name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Organisation:</strong> ${organisationName || "N/A"}</p>
+          <p><strong>Date/Location:</strong> ${proposedDate} / ${location || "N/A"}</p>
+          <p>Please log in to the admin dashboard to review this request.</p>
+        `;
+        sendNotificationEmail(getAdminEmails(), `New Event Request: ${organisationName || name}`, emailWrap("New Event Request", adminContent));
+      }
+    }
+    
     res.json({ success: true, message: "Event request submitted" });
   } catch (error) {
     console.error("Error submitting event request:", error);
@@ -82,6 +98,20 @@ router.post('/api/contact', async (req, res) => {
       }
     });
 
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      const { getAdminEmails } = require('../utils/email');
+      if (typeof getAdminEmails === 'function') {
+        const adminContent = `
+          <p>A new Contact Form inquiry has been received.</p>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Message:</strong><br/>${message.replace(/\n/g, '<br/>')}</p>
+          <p>Please log in to the admin dashboard (Helpdesk) to reply.</p>
+        `;
+        sendNotificationEmail(getAdminEmails(), `New Contact Inquiry: ${name}`, emailWrap("New Contact Inquiry", adminContent));
+      }
+    }
+
     res.status(201).json(inquiry);
   } catch (err) {
     console.error(err);
@@ -96,7 +126,7 @@ router.get('/api/books', async (req, res) => {
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
 
-  const where = { status: 'Approved', isArchived: false };
+  const where = { status: 'Approved', isArchived: false, author: { isArchived: false } };
   if (genre) where.genre = genre;
 
   const books = await prisma.book.findMany({
@@ -105,7 +135,7 @@ router.get('/api/books', async (req, res) => {
   });
 
   const filteredBooks = books.filter(b => {
-    if (!b.author || b.author.status === 'Rejected') return false;
+    if (!b.author || b.author.status === 'Rejected' || b.author.isArchived) return false;
     const extraData = b.author?.extraData;
     if (extraData && extraData.lateFines > 0 && extraData.fineDate) {
       const diffDays = (new Date().getTime() - new Date(extraData.fineDate).getTime()) / (1000 * 3600 * 24);
@@ -480,6 +510,18 @@ router.post('/api/authors/register', upload.any(), async (req, res) => {
         <p>Dashboard access will be available only after your application has been approved.</p>
       `;
       sendNotificationEmail(author.email, "Registration Received - PAA", emailWrap("Registration Received", emailContent));
+      
+      const { getAdminEmails } = require('../utils/email');
+      if (typeof getAdminEmails === 'function') {
+        const adminContent = `
+          <p>A new author has registered on the platform and is pending approval.</p>
+          <p><strong>Name:</strong> ${author.name}</p>
+          <p><strong>Email:</strong> ${author.email}</p>
+          <p><strong>Phone:</strong> ${author.phone}</p>
+          <p>Please log in to the admin dashboard to review their application.</p>
+        `;
+        sendNotificationEmail(getAdminEmails(), "New Author Registration Pending Approval", emailWrap("New Author Registration", adminContent));
+      }
     }
 
     res.status(201).json(author);
@@ -643,6 +685,18 @@ router.put('/api/author/edit-profile-full', verifyToken, upload.any(), async (re
       }
     }
 
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      const { getAdminEmails } = require('../utils/email');
+      if (typeof getAdminEmails === 'function') {
+        const adminContent = `
+          <p>Author <strong>${author.name || name}</strong> (${author.email}) has submitted full profile edits.</p>
+          <p>The profile and books are now pending admin review.</p>
+          <p>Please log in to the admin dashboard to review the changes.</p>
+        `;
+        sendNotificationEmail(getAdminEmails(), `Author Profile Edits Pending Review: ${author.name || name}`, emailWrap("Profile Edits Submitted", adminContent));
+      }
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -792,6 +846,16 @@ router.put('/api/author/reapply-full', verifyToken, upload.any(), async (req, re
         <p style="margin-top:16px;">Warm regards,<br/>Pune Authors' Association</p>
       `;
       sendNotificationEmail(author.email, "Reapplication Received – PAA", emailWrap("Reapplication Received", emailContent));
+      
+      const { getAdminEmails } = require('../utils/email');
+      if (typeof getAdminEmails === 'function') {
+        const adminContent = `
+          <p>Author <strong>${author.name || name}</strong> (${author.email}) has re-applied after a previous rejection.</p>
+          <p>Their profile and books are now pending admin review.</p>
+          <p>Please log in to the admin dashboard to review their re-application.</p>
+        `;
+        sendNotificationEmail(getAdminEmails(), `Author Re-application Pending Review: ${author.name || name}`, emailWrap("Author Re-application", adminContent));
+      }
     }
 
     res.json({ success: true });
@@ -945,6 +1009,24 @@ router.delete('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) =
   try {
     const authorId = parseInt(req.params.id);
     await prisma.author.update({ where: { id: authorId }, data: { isArchived: true } });
+    
+    // Also archive their books
+    await prisma.book.updateMany({
+      where: { authorId },
+      data: { isArchived: true, status: 'Archived' }
+    });
+
+    // Delete pre-generated catalogue.pdf if it exists so that it gets regenerated
+    const cataloguePath = path.join(__dirname, '../uploads/catalogue.pdf');
+    if (fs.existsSync(cataloguePath)) {
+      try { fs.unlinkSync(cataloguePath); } catch (e) { console.error('Failed to delete catalogue PDF file:', e); }
+    }
+
+    // Invalidate caches
+    invalidateCache('books');
+    invalidateCache('adminAuthors');
+    invalidateCache('public-stats');
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -957,6 +1039,24 @@ router.put('/api/admin/authors/:id/restore', verifyToken, isAdmin, async (req, r
   try {
     const authorId = parseInt(req.params.id);
     await prisma.author.update({ where: { id: authorId }, data: { isArchived: false } });
+    
+    // Also restore their books
+    await prisma.book.updateMany({
+      where: { authorId },
+      data: { isArchived: false, status: 'Approved' }
+    });
+
+    // Delete pre-generated catalogue.pdf if it exists so that it gets regenerated
+    const cataloguePath = path.join(__dirname, '../uploads/catalogue.pdf');
+    if (fs.existsSync(cataloguePath)) {
+      try { fs.unlinkSync(cataloguePath); } catch (e) { console.error('Failed to delete catalogue PDF file:', e); }
+    }
+
+    // Invalidate caches
+    invalidateCache('books');
+    invalidateCache('adminAuthors');
+    invalidateCache('public-stats');
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -2673,8 +2773,21 @@ router.post('/api/orders/bulk', optionalVerifyToken, async (req, res) => {
       include: { items: { include: { book: true } } }
     });
 
-    // Mock Email to Admin
-    console.log(`[EMAIL MOCK] New Bulk Order Request #${order.id} received from ${customerName}.`);
+    // Notify Admin
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      const { getAdminEmails } = require('../utils/email');
+      if (typeof getAdminEmails === 'function') {
+        const adminContent = `
+          <p>A new Bulk Order Request (#${order.id}) has been submitted.</p>
+          <p><strong>Customer:</strong> ${customerName}</p>
+          <p><strong>Email:</strong> ${emailToUse}</p>
+          <p><strong>Phone:</strong> ${customerPhone || 'N/A'}</p>
+          <p><strong>Amount Baseline:</strong> ₹${parseFloat(amount || 0)}</p>
+          <p>Please log in to the admin dashboard to review and negotiate the order.</p>
+        `;
+        sendNotificationEmail(getAdminEmails(), `Bulk Order Request #${order.id} Pending Approval`, emailWrap("New Bulk Order Request", adminContent));
+      }
+    }
 
     // Mock Email to User
     console.log(`[EMAIL MOCK] To: ${emailToUse}. Your bulk order request has been submitted and is pending admin approval.`);
@@ -4309,10 +4422,24 @@ router.post('/api/admin/events/:eventId/author/:authorId/approve', verifyToken, 
     const eventId = parseInt(req.params.eventId);
     const authorId = parseInt(req.params.authorId);
 
-    await prisma.eventAuthor.updateMany({
-      where: { eventId, authorId },
-      data: { optInStatus: 'Registered' }
+    const existingRegistration = await prisma.eventAuthor.findFirst({
+      where: { eventId, authorId }
     });
+
+    if (existingRegistration) {
+      await prisma.eventAuthor.update({
+        where: { id: existingRegistration.id },
+        data: { optInStatus: 'Registered' }
+      });
+    } else {
+      await prisma.eventAuthor.create({
+        data: {
+          eventId,
+          authorId,
+          optInStatus: 'Registered'
+        }
+      });
+    }
 
     const author = await prisma.author.findUnique({ where: { id: authorId } });
     const event = await prisma.event.findUnique({ where: { id: eventId } });
@@ -4366,13 +4493,25 @@ router.post('/api/admin/events/:eventId/author/:authorId/reject', verifyToken, i
     });
 
     if (existingRegistration && existingRegistration.optInStatus !== 'Rejected') {
-      await prisma.eventAuthor.updateMany({
-        where: { eventId, authorId },
+      await prisma.eventAuthor.update({
+        where: { id: existingRegistration.id },
         data: { 
           optInStatus: 'Rejected',
           rejectionReason: reason || 'Not specified'
         }
       });
+    } else if (!existingRegistration) {
+      await prisma.eventAuthor.create({
+        data: {
+          eventId,
+          authorId,
+          optInStatus: 'Rejected',
+          rejectionReason: reason || 'Not specified'
+        }
+      });
+    }
+
+    if (!existingRegistration || (existingRegistration && existingRegistration.optInStatus !== 'Rejected')) {
 
       // Restore reserved stock since registration was rejected
       const eventBooks = await prisma.eventBook.findMany({
@@ -4704,6 +4843,35 @@ router.get('/api/author/book-performance', verifyToken, async (req, res) => {
         Object.values(bookDataMap).forEach(data => performanceData.push(data));
       }
     });
+
+    // Add Web Orders to Performance Data
+    const webOrderItems = await prisma.orderItem.findMany({
+      where: {
+        book: { authorId: author.id },
+        status: { in: ['Pending Verification', 'Accepted', 'Dispatched', 'Completed', 'Delivered'] }
+      },
+      include: { book: true }
+    });
+
+    const webOrderMap = {};
+    webOrderItems.forEach(item => {
+      const title = item.book ? item.book.title : 'Unknown Book';
+      if (!webOrderMap[title]) {
+        webOrderMap[title] = {
+          eventId: 999999, // Dummy ID for Web Orders
+          eventName: 'Web Orders',
+          date: new Date().toISOString(),
+          bookTitle: title,
+          booksSold: 0,
+          revenue: 0,
+          investment: 0
+        };
+      }
+      webOrderMap[title].booksSold += item.quantity;
+      webOrderMap[title].revenue += (item.book?.mrp || 0) * item.quantity;
+    });
+
+    Object.values(webOrderMap).forEach(wo => performanceData.push(wo));
 
     res.json(performanceData);
   } catch (err) {
@@ -6777,7 +6945,7 @@ async function computeBookInventory(books) {
     by: ['bookId'],
     where: {
       bookId: { in: bookIds },
-      status: { in: ['Accepted', 'Dispatched', 'Completed', 'Delivered'] },
+      status: { in: ['Pending Verification', 'Accepted', 'Dispatched', 'Completed', 'Delivered'] },
       createdAt: { gte: CUTOFF_DATE }
     },
     _sum: { quantity: true },
@@ -6900,10 +7068,10 @@ async function computeBookInventory(books) {
     const eventQty = eventMap[book.id] || 0;
     const stockHistory = stockHistoryList.filter(h => h.bookId === book.id);
 
-    // Initial stock entered by author
-    const masterStock = book.stock;
-    // Dynamically deduct upcoming data (web, airport, events)
-    const currentStock = masterStock - webSold - airportQty - eventQty;
+    // Reconstruct the initial total stock entered by adding back all database decrements
+    const masterStock = book.stock + webSold + airportQty + eventQty;
+    // Current stock is simply the database stock since the database already deducts web sales, airport donations, and event listed stock
+    const currentStock = book.stock;
     const hasPending = stockHistory.some(h => h.status === 'Pending');
 
     const distributionBreakdown = [
@@ -7779,7 +7947,7 @@ router.post('/api/admin/settings', verifyToken, isAdmin, async (req, res) => {
 router.get('/api/public/authors', async (req, res) => {
   try {
     const authors = await prisma.author.findMany({
-      where: { status: 'Active' },
+      where: { status: 'Active', isArchived: false },
       include: {
         books: { where: { status: 'Approved', isArchived: false } },
         eventAuthors: { include: { event: true } }
@@ -7804,7 +7972,7 @@ router.get('/api/public/authors/:id', async (req, res) => {
         eventAuthors: { include: { event: true } }
       }
     });
-    if (!author || author.status !== 'Active') return res.status(404).json({ error: 'Author not found' });
+    if (!author || author.status !== 'Active' || author.isArchived) return res.status(404).json({ error: 'Author not found' });
     res.json(author);
   } catch (error) {
     console.error("Failed to fetch author profile:", error);

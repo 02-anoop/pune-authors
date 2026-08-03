@@ -7,8 +7,8 @@ import { toast } from "sonner";
 
 export function AuthPage({ type }: { type: "login" | "signup" }) {
   const [searchParams] = useSearchParams();
-  const initialRole = (searchParams.get("role") as "CUSTOMER" | "AUTHOR") || "CUSTOMER";
-  const [roleSelection, setRoleSelection] = useState<"CUSTOMER" | "AUTHOR">(initialRole);
+  const initialRole = (searchParams.get("role") as "CUSTOMER" | "AUTHOR" | "ADMIN") || "CUSTOMER";
+  const [roleSelection, setRoleSelection] = useState<"CUSTOMER" | "AUTHOR" | "ADMIN">(initialRole);
   const redirectParam = searchParams.get("redirect");
   const redirectQuery = redirectParam ? `&redirect=${encodeURIComponent(redirectParam)}` : "";
 
@@ -28,7 +28,7 @@ export function AuthPage({ type }: { type: "login" | "signup" }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const role = searchParams.get("role") as "CUSTOMER" | "AUTHOR";
+    const role = searchParams.get("role") as "CUSTOMER" | "AUTHOR" | "ADMIN";
     if (role) setRoleSelection(role);
     setOtpStep(false);
     setForgotPasswordStep(false);
@@ -103,7 +103,7 @@ export function AuthPage({ type }: { type: "login" | "signup" }) {
       } else {
         const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/auth/login`, { email, password });
         
-        if (res.data.role !== "ADMIN" && res.data.role !== roleSelection) {
+        if (res.data.role !== roleSelection) {
           alert(`Error: Invalid credentials for ${roleSelection} login. This account belongs to a ${res.data.role}.`);
           setLoading(false);
           return;
@@ -207,6 +207,20 @@ export function AuthPage({ type }: { type: "login" | "signup" }) {
             >
               Author
             </button>
+            {type === "login" && (
+              <button 
+                type="button" 
+                onClick={() => {
+                  setRoleSelection("ADMIN");
+                  setOtpStep(false);
+                  setForgotPasswordStep(false);
+                  setSignupError("");
+                }}
+                className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all duration-300 mb-[-1px] ${roleSelection === "ADMIN" ? "text-paa-navy border-b-2 border-paa-navy" : "text-gray-400 border-b-2 border-transparent hover:text-paa-navy/70"}`}
+              >
+                Admin
+              </button>
+            )}
           </div>
 
           <FocusTrap focusTrapOptions={{ initialFocus: false, escapeDeactivates: true, clickOutsideDeactivates: true }}>

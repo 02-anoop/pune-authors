@@ -406,7 +406,7 @@ const SettingsTabComponent = ({
                     landing_hero_title: e.target.value,
                   })
                 }
-                placeholder="e.g. Helping indie authors publish, promote and sell."
+                placeholder="e.g. Helping indie authors self-publish, promote and sell."
                 className="w-full border border-paa-navy/20 bg-gray-50 rounded-lg p-3 text-sm outline-none focus:border-paa-navy focus:bg-white transition-colors"
               />
             </div>
@@ -653,7 +653,7 @@ const SettingsTabComponent = ({
                     author_hero_subtitle: e.target.value,
                   })
                 }
-                placeholder="e.g. Join Pune Authors' Association to publish, promote, and sell your books..."
+                placeholder="e.g. Join Pune Authors' Association to self-publish, promote, and sell your books..."
                 className="w-full border border-paa-navy/20 bg-gray-50 rounded-lg p-3 text-sm outline-none focus:border-paa-navy focus:bg-white transition-colors h-24 resize-none"
               />
             </div>
@@ -753,32 +753,48 @@ const parseEventDateHelper = (dateStr: string) => {
 };
 
 export const getAuthorParticipationStats = (author: any, allEvents: any[]) => {
+  if (!author) return { participated: 0, total: 0, percentage: 0 };
+
   const joinDate = author.groupJoiningDate
     ? new Date(author.groupJoiningDate)
-    : new Date(author.createdAt);
-  const joinTime = joinDate.getTime();
+    : (author.createdAt ? new Date(author.createdAt) : new Date(0));
 
-  // To avoid events that happened before joining, we check event date >= join date.
-  // We use start of day for join date to be safe.
   const joinDayStart = new Date(joinDate);
-  joinDayStart.setHours(0, 0, 0, 0);
+  if (!isNaN(joinDayStart.getTime())) {
+    joinDayStart.setHours(0, 0, 0, 0);
+  }
 
-  const eligibleEvents = allEvents.filter((ev: any) => {
-    const evTime = parseEventDateHelper(ev.date || ev.startDate).getTime();
-    return evTime >= joinDayStart.getTime();
+  const eligibleEvents = (allEvents || []).filter((ev: any) => {
+    if (!ev) return false;
+    const evDateStr = ev.date || ev.startDate || ev.createdAt;
+    if (!evDateStr) return true;
+    const evTime = parseEventDateHelper(evDateStr).getTime();
+    return isNaN(joinDayStart.getTime()) || evTime >= joinDayStart.getTime() || evTime === 0;
   });
   const eligibleEventIds = eligibleEvents.map((e: any) => e.id);
 
-  const participatedCount = (author.eventAuthors || []).filter(
-    (ea: any) =>
-      ea.optInStatus !== "Pending" &&
-      ea.optInStatus !== "Rejected" &&
-      eligibleEventIds.includes(ea.eventId),
-  ).length;
+  let participatedCount = 0;
+  if (typeof author.aggParticipatedEvents === 'number' && author.aggParticipatedEvents > 0) {
+    participatedCount = author.aggParticipatedEvents;
+  } else {
+    const participationList = author.eventParticipation || author.eventAuthors || author.eventRegistrations || [];
+    participatedCount = participationList.filter(
+      (ea: any) =>
+        ea &&
+        ea.optInStatus !== "Pending" &&
+        ea.optInStatus !== "Rejected" &&
+        ea.optInStatus !== "Awaiting Approval" &&
+        ea.status !== "Pending" &&
+        ea.status !== "Rejected" &&
+        ea.status !== "Pending Approval"
+    ).length;
+  }
 
-  const total = eligibleEventIds.length;
-  const percentage =
-    total === 0 ? 0 : Math.round((participatedCount / total) * 100);
+  const total = (typeof author.aggEligibleEvents === 'number' && author.aggEligibleEvents > 0)
+    ? author.aggEligibleEvents
+    : (eligibleEventIds.length > 0 ? eligibleEventIds.length : (allEvents?.length || 0));
+
+  const percentage = total === 0 ? 0 : Math.min(100, Math.round((participatedCount / total) * 100));
   return { participated: participatedCount, total, percentage };
 };
 
@@ -1652,7 +1668,7 @@ export function OperationsDashboardPage() {
               evt.isLegacy ||
               evt.status === "Past" ||
               evt.status === "Legacy Archive";
-            setShowAllPlatformAuthors(isPastOrLegacy);
+            setShowAllPlatformAuthors(false);
             fetchEventRegistrations(evt.id);
             fetchAuthors(true);
             setTimeout(() => {
@@ -1761,9 +1777,22 @@ export function OperationsDashboardPage() {
         toast.success("Author Removed");
         fetchAuthors();
         fetchOverview();
+        autoRegenerateCompleteCatalogue();
       } catch (err) {
         toast.error("Failed to remove author");
       }
+    }
+  };
+
+  const handleRestoreAuthor = async (id: number) => {
+    try {
+      await axios.put(`${API}/api/admin/authors/${id}/restore`);
+      toast.success("Author Restored from Archive");
+      fetchAuthors();
+      fetchOverview();
+      autoRegenerateCompleteCatalogue();
+    } catch (err) {
+      toast.error("Failed to restore author");
     }
   };
 
@@ -4129,7 +4158,7 @@ const totalAuthorsBase = eventRegistrations.length;
         evt.isLegacy ||
         evt.status === "Past" ||
         evt.status === "Legacy Archive";
-      setShowAllPlatformAuthors(isPastOrLegacy);
+      setShowAllPlatformAuthors(false);
       fetchEventRegistrations(evt.id);
       fetchAuthors(true);
       const slug = `${evt.id}-${evt.name.replace(/\s+/g, "-").toLowerCase()}`;
@@ -6351,6 +6380,12 @@ const totalAuthorsBase = eventRegistrations.length;
                 </div>
                 <div className="flex gap-2 items-center">
                   <button
+                    onClick={() => setShowAllPlatformAuthors(!showAllPlatformAuthors)}
+                    className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 border ${showAllPlatformAuthors ? 'bg-paa-navy text-white border-paa-navy' : 'text-paa-navy border-paa-navy/20 bg-gray-50 hover:bg-gray-100'}`}
+                  >
+                    {showAllPlatformAuthors ? "Show Participants Only" : "See All Platform Authors"}
+                  </button>
+                  <button
                     onClick={() =>
                       fetchEventRegistrations(selectedEventBreakdown.id)
                     }
@@ -6409,6 +6444,13 @@ const totalAuthorsBase = eventRegistrations.length;
                         const nameMatches = (a.author?.name || a.name || "")
                           .toLowerCase()
                           .includes(authorSearch.toLowerCase());
+                        
+                        if (!showAllPlatformAuthors) {
+                          const status = a.optInStatus || "Unpublished";
+                          const isParticipantOrPending = status.includes("Registered") || status === "Pending Approval" || (a.amountPaid && a.amountPaid > 0) || a.paymentStatus === "Paid";
+                          return nameMatches && isParticipantOrPending;
+                        }
+
                         return nameMatches;
                       })
                       .map((a: any) => {
@@ -6680,7 +6722,7 @@ const totalAuthorsBase = eventRegistrations.length;
                                 </td>
                                 <td className="p-3 text-center bg-inherit min-w-[220px]">
                                   <div className="flex gap-2 justify-center items-center">
-                                    {!selectedEventBreakdown.isLegacy && status !== 'Pending' && status !== 'Unpublished' && status !== 'Registered' && (
+                                    {!selectedEventBreakdown.isLegacy && status === 'Pending Approval' && (
                                         <>
                                           <button
                                             onClick={(e) => {
@@ -8130,7 +8172,7 @@ const totalAuthorsBase = eventRegistrations.length;
                           {revenue}
                         </td>
                         <td className="px-1 py-3 text-right">
-                          <div className="flex gap-1 justify-end flex-wrap">
+                          <div className="flex gap-1 justify-end flex-nowrap min-w-[120px]">
                             {evt.isProposed ? (
                               <button
                                 title="Discard Proposed Event"
@@ -8218,11 +8260,11 @@ const totalAuthorsBase = eventRegistrations.length;
                               </>
                             ) : (
                               <button
-                                title="View Breakdown"
+                                title="Manage Participants"
                                 onClick={() => handleOpenBreakdown(evt)}
-                                className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white border border-indigo-200 rounded-lg shadow-sm transition-colors relative"
+                                className="py-1.5 px-2.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white border border-indigo-200 rounded-lg shadow-sm transition-colors relative flex items-center justify-center"
                               >
-                                <Eye className="w-4 h-4" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest">EDIT</span>
                                 {evt.registrations?.filter(
                                   (r: any) =>
                                     r.optInStatus === "Pending" ||
@@ -9195,7 +9237,6 @@ const totalAuthorsBase = eventRegistrations.length;
     const combinedGalleryItems = [
       ...events.map((e: any) => ({ ...e, itemType: "Event" })),
       ...libraries
-        .filter((l) => l.type === "Airport Library")
         .map((l: any) => {
           // Use the oldest drive's registrationEndDate as the gallery date.
           // announcements are returned sorted asc by registrationEndDate from the backend.
@@ -9397,6 +9438,10 @@ const totalAuthorsBase = eventRegistrations.length;
                       <option value="Book Fair">Book Fair</option>
                       <option value="Literary Event">Literary Event</option>
                       <option value="Airport Library">Flybraries</option>
+                      <option value="Public Library">Public Library</option>
+                      <option value="Institutional Library">Institutional Library</option>
+                      <option value="Military Library">Military Library</option>
+                      <option value="Café Library">Café Library</option>
                     </select>
                     <input
                       type="date"
@@ -10858,6 +10903,7 @@ const totalAuthorsBase = eventRegistrations.length;
                   openRejectAuthorModal={openRejectAuthorModal}
                   handleViewEditAuthor={handleViewEditAuthor}
                   handleDeleteAuthor={handleDeleteAuthor}
+                  handleRestoreAuthor={handleRestoreAuthor}
                   books={books}
                   authorsMeta={authorsMeta}
                   authorsPage={authorsPage}
@@ -12118,7 +12164,7 @@ const totalAuthorsBase = eventRegistrations.length;
               >
                 <option value="Literary Events">Literary Events</option>
                 <option value="Book Fairs">Book Fairs</option>
-                <option value="Flybraries">Flybraries</option>
+                <option value="Flybraries & Libraries">Flybraries & Libraries</option>
                 <option value="Book CafÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©">
                   Book CafÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©
                 </option>
@@ -12278,6 +12324,10 @@ const totalAuthorsBase = eventRegistrations.length;
                     Corporate Activation
                   </option>
                   <option value="Airport Library">Airport Library</option>
+                  <option value="Public Library">Public Library</option>
+                  <option value="Institutional Library">Institutional Library</option>
+                  <option value="Military Library">Military Library</option>
+                  <option value="Café Library">Café Library</option>
                 </select>
               </div>
             </div>
@@ -12448,6 +12498,10 @@ const totalAuthorsBase = eventRegistrations.length;
                       Corporate Activation
                     </option>
                     <option value="Airport Library">Airport Library</option>
+                    <option value="Public Library">Public Library</option>
+                    <option value="Institutional Library">Institutional Library</option>
+                    <option value="Military Library">Military Library</option>
+                    <option value="Café Library">Café Library</option>
                   </select>
                 </div>
               </div>

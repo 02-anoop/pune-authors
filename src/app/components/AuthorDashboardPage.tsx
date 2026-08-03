@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import FocusTrap from 'focus-trap-react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router';
 import { Home, Check, AlertCircle, Upload, Download, Loader2, LogOut, User, Bell, Search, ShoppingCart, BookOpen, CalendarIcon, BarChart3, Package, TrendingUp, TrendingDown, X, MapPin, Menu, ChevronDown, ChevronUp, DollarSign, CheckCircle2, FileText, Image as ImageIcon, Star, Plus, Minus, Eye, Edit2, Mail, Phone, Clock, Trash2, MessageSquare, ExternalLink, Send, ChevronLeft, ChevronRight, RefreshCw, Users, Megaphone } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell , AreaChart, Area, LabelList } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell , AreaChart, Area, LabelList, Legend } from 'recharts';
 import axios from 'axios';
 // exceljs and file-saver are dynamically imported inside export handlers to reduce initial bundle size
 import { toast } from 'sonner';
@@ -771,7 +771,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
   const authorOrders = data.authorOrders;
 
   const titlesData = authorBooks.map((b: any, index: number) => {
-    const webSales = authorOrders.filter((o: any) => o.bookTitle === b.title && o.paymentVerified).reduce((acc: number, curr: any) => acc + curr.quantity, 0);
+    const webSales = authorOrders.filter((o: any) => (o.bookId === b.id || o.bookTitle === b.title) && ['Pending Verification', 'Completed', 'Processing', 'Delivered', 'Dispatched', 'Accepted', 'Paid'].includes(o.status || o.orderStatus)).reduce((acc: number, curr: any) => acc + (curr.quantity || 1), 0);
     const eventSales = (data.listedBooks || []).filter((lb: any) => lb.bookId === b.id).reduce((acc: number, curr: any) => acc + (curr.soldStock || 0), 0);
     const totalSold = webSales + eventSales;
     return {
@@ -883,7 +883,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
     }
     return acc;
   }, 0);
-  const totalFeesPaid = 1000 + totalEventFees;
+  const totalFeesPaid = 3000 + totalEventFees;
 
   const actionItems: any[] = [];
 
@@ -2044,6 +2044,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       formatter={(value: any, name: any, props: any) => [`${value} web orders`, props.payload?.fullTitle || props.name]}
                     />
+                    <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
                   </PieChart>
                 ) : (
                   <div className="h-full flex items-center justify-center text-sm text-gray-400 italic">No web orders yet.</div>
@@ -2069,6 +2070,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
                     contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }} 
                     formatter={(value: any, name: any, props: any) => [`${value} copies`, `${name} (${props.payload?.fullTitle || props.name})`]}
                   />
+                  <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
                   <Bar dataKey="Web Sold" stackId="dist" fill="#16a34a" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="Airport Qty" stackId="dist" fill="#0284c7" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="Book Fair Qty" stackId="dist" fill="#9333ea" radius={[6, 6, 0, 0]} />
@@ -2508,15 +2510,16 @@ function InventoryPage({ onRefresh, dashboardData }: { onRefresh: () => void, da
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Distribution Channel Split</p>
               <div className="h-[200px]">
-                {totalAirport === 0 && totalEvent === 0 ? (
+                {totalWebSold === 0 && totalAirport === 0 && totalEvent === 0 ? (
                   <div className="flex items-center justify-center h-full text-gray-400 text-xs italic">
-                    No airport or book fair distribution records yet.
+                    No distribution records yet.
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={[
+                          { name: 'Web Orders', value: totalWebSold },
                           { name: 'Airport Library', value: totalAirport },
                           { name: 'Book Fairs', value: totalEvent }
                         ].filter(item => item.value > 0)}
@@ -2528,9 +2531,10 @@ function InventoryPage({ onRefresh, dashboardData }: { onRefresh: () => void, da
                         dataKey="value"
                       >
                         {[
+                          { name: 'Web Orders', color: '#16a34a' },
                           { name: 'Airport Library', color: '#06b6d4' },
                           { name: 'Book Fairs', color: '#ec4899' }
-                        ].filter(item => (item.name === 'Airport Library' ? totalAirport : totalEvent) > 0).map((item, index) => (
+                        ].filter(item => (item.name === 'Web Orders' ? totalWebSold : item.name === 'Airport Library' ? totalAirport : totalEvent) > 0).map((item, index) => (
                           <Cell key={`cell-${index}`} fill={item.color} />
                         ))}
                       </Pie>
@@ -2546,6 +2550,7 @@ function InventoryPage({ onRefresh, dashboardData }: { onRefresh: () => void, da
             {/* Legend */}
             <div className="flex justify-center gap-6 mt-3 border-t pt-3">
               {[
+                { name: 'Web Orders', value: totalWebSold, color: '#16a34a' },
                 { name: 'Airport Library', value: totalAirport, color: '#06b6d4' },
                 { name: 'Book Fairs', value: totalEvent, color: '#ec4899' }
               ].map(item => (
@@ -4165,7 +4170,7 @@ function FormsWrapper() {
     }
   };
 
-  const tabs = ['Literary Events', 'Book Fairs', 'Flybraries', 'Book CafÃ©'];
+  const tabs = ['Literary Events', 'Book Fairs', 'Flybraries & Libraries', 'Book CafÃ©'];
   const filteredForms = forms.filter(f => f.type === activeTab);
 
 
@@ -6444,7 +6449,7 @@ function AuthorSalesReport({ data, onRefresh }: { data: any, onRefresh: () => vo
   }, 0);
   
   const joinDate = new Date(data.authorProfile?.groupJoiningDate || data.authorProfile?.createdAt || new Date());
-  const platformFeePaid = (joinDate >= startLimit && joinDate <= endLimit) ? 1000 : 0;
+  const platformFeePaid = (joinDate >= startLimit && joinDate <= endLimit) ? 3000 : 0;
   const totalFeesPaid = platformFeePaid + totalEventFees;
 
   const exportCSV = async () => {

@@ -9,7 +9,7 @@ export function Footer() {
             <img src="/logo.webp" alt="Pune Authors' Association Logo" style={{ height: 40, objectFit: "contain" }} />
             <span style={{ fontSize: 13, fontWeight: 900, color: "#111", letterSpacing: "0.05em", fontFamily: "'Playfair Display', serif", textTransform: "uppercase" }}>Pune Authors' Association</span>
           </div>
-          <p style={{ lineHeight: 1.6, fontWeight: 500 }}>A dedicated, self-governing independent collective system built to publish, distribute, promote, and establish high visibility for modern Indian writers.</p>
+          <p style={{ lineHeight: 1.6, fontWeight: 500 }}>A group that collaborates to reach the readers, takes initiatives to revive book reading by organising literary events, participation in book fairs, promoting books at airport flybraries, thereby, promoting Indian authors, Indian literature and Indian culture</p>
         </div>
         <div>
           <h4 style={{ color: "#111", fontSize: 13, fontWeight: 800, letterSpacing: "0.1em", marginBottom: "1.5rem", textTransform: "uppercase", fontFamily: "'Playfair Display', serif" }}>Quick Navigation</h4>

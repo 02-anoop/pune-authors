@@ -568,7 +568,7 @@ export function AuthorLandingPage() {
             </h1>
 
             <p className="hero-desc" style={{ fontSize: "1.1rem", color: C.text, fontWeight: 600, maxWidth: 500, marginBottom: "2.5rem", lineHeight: 1.6 }}>
-              Join Pune Authors' Association to SELL, PROMOTE, AND GET PUBLISHING SUPPORT IN A COST-EFFECTIVE WAY (CROWD FUNDED). We provide comprehensive services from editing to distribution.
+              Join Pune Authors' Association to SELL, PROMOTE, AND GET SUPPORT IN SELF-PUBLISHING IN A COST-EFFECTIVE WAY (CROWD FUNDED). We provide comprehensive services from editing to reader outreach.
             </p>
 
             <div className="button-wrapper" style={{ display: "flex", flexDirection: "column", gap: "1rem", alignItems: "flex-start" }}>

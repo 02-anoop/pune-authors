@@ -66,4 +66,11 @@ const emailWrap = (heading, content) => `
     <div class="footer">This is an automated message from the PAA platform. Please do not reply directly to this email.</div>
   </div>
 </body></html>`;
-module.exports = { sendNotificationEmail, emailWrap };
+const getAdminEmails = () => {
+  return [
+    process.env.ADMIN_EMAIL || 'admin@puneauthors.com',
+    'Info@puneauthorsassociation.com'
+  ].join(',');
+};
+
+module.exports = { sendNotificationEmail, emailWrap, getAdminEmails };

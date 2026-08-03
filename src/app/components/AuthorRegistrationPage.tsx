@@ -66,7 +66,7 @@ function WizardAboutStep() {
           The group was conceived in <strong className="text-paa-navy font-semibold">December 2024</strong> following the Pune Book Fair. While networking at a local stall, several authors recognized a shared challenge: the immense difficulty of selling independently in a saturated market.
         </p>
         <p>
-          The idea to form a unified coalition of Pune authors was spearheaded by <strong className="text-paa-navy font-semibold">Cdr Shiv Mathur</strong>. Having witnessed firsthand the struggles authors face with visibility and distribution, the vision became clear: find a way to promote literature collaboratively rather than competitively.
+          The idea to form a unified coalition of Pune authors was spearheaded by <strong className="text-paa-navy font-semibold">Cdr Shiv Mathur</strong>. Having witnessed firsthand the struggles authors face with visibility and reaching readers, the vision became clear: find a way to promote literature collaboratively rather than competitively.
         </p>
         <p>
           By pooling resources, we discovered that financial barriers to self-marketing drastically decreased. Shared costs allow us to execute large-scale activities, prominent stall placements, and robust marketing campaigns that would be prohibitively expensive for an individual author.
@@ -202,15 +202,15 @@ function WizardEventsStep() {
 
 function WizardServicesStep() {
   const services = [
-    { num: "I.", title: "Publishing Support", desc: "We provide professional end-to-end manuscript production to ensure your book meets exact industry standards before hitting the market.", items: ["Formatting of Manuscript", "Book Cover Design", "Editing & Proof Reading", "Printing as low as 50 copies at minimal cost"] },
+    { num: "I.", title: "Support in Self-Publishing", desc: "We provide professional end-to-end manuscript production to ensure your book meets exact industry standards before hitting the market.", items: ["Formatting of Manuscript", "Book Cover Design", "Editing & Proof Reading", "Printing as low as 50 copies at minimal cost"] },
     { num: "II.", title: "Promotional Support", desc: "Strategic visibility is crucial. We position your literature directly in front of discerning audiences using collective brand power.", items: ["Catalogue of fiction and non-fiction books", "Giving books to the Airport Libraries", "Donating books to well known local libraries", "LinkedIn page management"] },
-    { num: "III.", title: "Selling Books", desc: "Securing reliable revenue streams through vetted physical and digital distribution networks.", items: ["Participation in book fairs all over India (NBT)", "Literary Events in large housing societies & Educational Institutes", "Setting up stalls in housing societies"] }
+    { num: "III.", title: "Selling Books", desc: "Securing reliable revenue streams through vetted physical and digital channels.", items: ["Participation in book fairs all over India (NBT)", "Literary Events in large housing societies & Educational Institutes", "Setting up stalls in housing societies"] }
   ];
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <h2 className="font-serif text-2xl font-medium text-paa-navy mb-2">Our Services</h2>
-      <p className="text-sm text-paa-gray-text mb-8">Empowering independent authors through collaborative publishing, strategic promotion, and widespread distribution.</p>
+      <p className="text-sm text-paa-gray-text mb-8">Empowering independent authors through collaborative support in self-publishing, strategic promotion, and collaborative initiatives to reach readers.</p>
       <div className="space-y-6">
         {services.map((service, idx) => (
           <div key={idx} className="bg-white p-6 md:p-8 rounded-2xl border border-paa-navy/5 shadow-sm flex flex-col md:flex-row gap-6 md:gap-10 hover:shadow-md transition-shadow">
@@ -770,6 +770,11 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
   const handledTargetAction = useRef(false);
   useEffect(() => {
     if (hasInitialized.current && targetAction && !handledTargetAction.current) {
+       // If editing a book, wait for the books state to be populated
+       if (targetAction === 'edit_book' && targetBookId && books.length === 0) {
+         return;
+       }
+       
        handledTargetAction.current = true;
        if (targetAction === 'add_book' || targetAction === 'edit_book') {
           setStep(1);
@@ -1299,7 +1304,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
             {formStepIndex === 1 && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <h2 className="font-serif text-2xl font-medium text-paa-navy mb-2">Book Details</h2>
-                <p className="text-sm text-paa-gray-text mb-8">Information about the book(s) you wish to publish or register with PAA.</p>
+                <p className="text-sm text-paa-gray-text mb-8">Information about the book(s) you wish to receive support in self-publishing or register with PAA.</p>
 
                 {books.length > 0 && (
                   <div className="mb-8 flex flex-col gap-3">
@@ -1711,13 +1716,13 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
             {formStepIndex === 3 && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <h2 className="font-serif text-2xl font-medium text-paa-navy mb-2">Application Fee Payment</h2>
-                <p className="text-sm text-paa-gray-text mb-8">A one-time registration fee of ₹1000 secures your PAA membership and editorial review.</p>
+                <p className="text-sm text-paa-gray-text mb-8">A one-time registration fee of ₹3000 secures your PAA membership and editorial review.</p>
 
                 <div className="flex flex-col items-center mb-10">
                   <div className="p-2 bg-white rounded-2xl border border-paa-navy/10 shadow-sm mb-4">
                     <img src={qrCode} alt="Payment QR" className="w-48 h-48 object-cover rounded-xl" />
                   </div>
-                  <p className="text-sm font-bold uppercase tracking-widest text-paa-navy bg-paa-gold/20 px-4 py-1.5 rounded-full">Scan QR to Pay ₹1000</p>
+                  <p className="text-sm font-bold uppercase tracking-widest text-paa-navy bg-paa-gold/20 px-4 py-1.5 rounded-full">Scan QR to Pay ₹3000</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1727,7 +1732,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                     {errors.transactionId && <div className="text-red-500 text-xs mt-1 font-medium">{errors.transactionId}</div>}
 
                     <div className="mt-8 bg-[#ebd8c0]/50 border border-emerald-100 rounded-2xl p-5 text-sm text-emerald-800 leading-relaxed shadow-sm">
-                      <strong className="font-bold text-emerald-900 block mb-1">Application Fee: ₹1000</strong>
+                      <strong className="font-bold text-emerald-900 block mb-1">Application Fee: ₹3000</strong>
                       <span className="opacity-90 text-xs">Your application will be reviewed within 5-7 business days. You will be notified via email once approved.</span>
                     </div>
                   </div>
@@ -2205,7 +2210,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                   { label: "Author Name", value: initialData?.name || form.name || "—" },
                   { label: "Book Title(s)", value: [...books.map(b => b.title), form.title].filter(Boolean).join(", ") || "—" },
                   { label: "Genre", value: Array.from(new Set([...books.map(b => b.genre), form.genre].filter(Boolean))).join(", ") || "—" },
-                  { label: "Fee Paid", value: isAuthorEdit ? "₹0 (Update)" : "₹1000" },
+                  { label: "Fee Paid", value: isAuthorEdit ? "₹0 (Update)" : "₹3000" },
                   { label: "Status", value: "Pending Review", isStatus: true },
                 ].map((item) => (
                   <div key={item.label} className="flex justify-between items-center text-xs pb-2 border-b border-paa-navy/5 last:border-0 last:pb-0">
