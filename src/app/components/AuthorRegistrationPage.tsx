@@ -317,6 +317,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
 
   const getImageDiffUi = (key: string, currentUrl: string | null) => {
     if (!isAdminEdit || !initialData?.extraData?.originalProfileData) return null;
+    const API = import.meta.env.VITE_API_URL || "http://localhost:3001";
     const origData = initialData.extraData.originalProfileData;
     let origVal = origData[key] ? String(origData[key]) : "";
     if (origVal && !origVal.startsWith('http')) origVal = API + origVal;
