@@ -814,6 +814,9 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
     setCoverFileUrl(bookToEdit.coverFileUrl || (bookToEdit.coverUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${bookToEdit.coverUrl}` : null));
     setBackCoverFileUrl(bookToEdit.backCoverFileUrl || (bookToEdit.backCoverUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${bookToEdit.backCoverUrl}` : null));
     setShowAddBookForm(true);
+    setTimeout(() => {
+      document.getElementById('book-form-container')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   const handledTargetAction = useRef(false);
@@ -1383,13 +1386,16 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                   </div>
                 )}
 
-                <div className={`space-y-6 ${books.length > 0 ? 'p-8 bg-gray-50/50 rounded-3xl-2xl border border-paa-navy/5' : ''}`}>
+                <div id="book-form-container" className={`space-y-6 ${books.length > 0 ? 'p-8 bg-gray-50/50 rounded-3xl-2xl border border-paa-navy/5' : ''}`}>
                   {books.length > 0 && !showAddBookForm ? (
                     <button
                       type="button"
                       onClick={() => {
                         editingBookIndexRef.current = null;
                         setShowAddBookForm(true);
+                        setTimeout(() => {
+                          document.getElementById('book-form-container')?.scrollIntoView({ behavior: 'smooth' });
+                        }, 100);
                       }}
                       className="px-6 py-2.5 bg-paa-navy text-white hover:bg-paa-navy/90 transition-colors rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-2 mb-2"
                     >
@@ -1826,7 +1832,6 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                     </div>
                   </div>
                 </div>
-              </div>
             )}
 
             {/* Navigation buttons */}
