@@ -79,10 +79,7 @@ const emailWrap = (heading, content) => `
   </div>
 </body></html>`;
 const getAdminEmails = () => {
-  return [
-    process.env.ADMIN_EMAIL || 'admin@puneauthors.com',
-    'Info@puneauthorsassociation.com'
-  ].join(',');
+  return '"ADMIN" <info@puneauthorsassociation.com>';
 };
 
 module.exports = { sendNotificationEmail, emailWrap, getAdminEmails };
