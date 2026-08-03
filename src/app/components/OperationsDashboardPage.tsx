@@ -1777,9 +1777,22 @@ export function OperationsDashboardPage() {
         toast.success("Author Removed");
         fetchAuthors();
         fetchOverview();
+        autoRegenerateCompleteCatalogue();
       } catch (err) {
         toast.error("Failed to remove author");
       }
+    }
+  };
+
+  const handleRestoreAuthor = async (id: number) => {
+    try {
+      await axios.put(`${API}/api/admin/authors/${id}/restore`);
+      toast.success("Author Restored from Archive");
+      fetchAuthors();
+      fetchOverview();
+      autoRegenerateCompleteCatalogue();
+    } catch (err) {
+      toast.error("Failed to restore author");
     }
   };
 
@@ -10874,6 +10887,7 @@ const totalAuthorsBase = eventRegistrations.length;
                   openRejectAuthorModal={openRejectAuthorModal}
                   handleViewEditAuthor={handleViewEditAuthor}
                   handleDeleteAuthor={handleDeleteAuthor}
+                  handleRestoreAuthor={handleRestoreAuthor}
                   books={books}
                   authorsMeta={authorsMeta}
                   authorsPage={authorsPage}

@@ -96,7 +96,7 @@ router.get('/api/books', async (req, res) => {
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
 
-  const where = { status: 'Approved', isArchived: false };
+  const where = { status: 'Approved', isArchived: false, author: { isArchived: false } };
   if (genre) where.genre = genre;
 
   const books = await prisma.book.findMany({
@@ -105,7 +105,7 @@ router.get('/api/books', async (req, res) => {
   });
 
   const filteredBooks = books.filter(b => {
-    if (!b.author || b.author.status === 'Rejected') return false;
+    if (!b.author || b.author.status === 'Rejected' || b.author.isArchived) return false;
     const extraData = b.author?.extraData;
     if (extraData && extraData.lateFines > 0 && extraData.fineDate) {
       const diffDays = (new Date().getTime() - new Date(extraData.fineDate).getTime()) / (1000 * 3600 * 24);
@@ -945,6 +945,24 @@ router.delete('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) =
   try {
     const authorId = parseInt(req.params.id);
     await prisma.author.update({ where: { id: authorId }, data: { isArchived: true } });
+    
+    // Also archive their books
+    await prisma.book.updateMany({
+      where: { authorId },
+      data: { isArchived: true, status: 'Archived' }
+    });
+
+    // Delete pre-generated catalogue.pdf if it exists so that it gets regenerated
+    const cataloguePath = path.join(__dirname, '../uploads/catalogue.pdf');
+    if (fs.existsSync(cataloguePath)) {
+      try { fs.unlinkSync(cataloguePath); } catch (e) { console.error('Failed to delete catalogue PDF file:', e); }
+    }
+
+    // Invalidate caches
+    invalidateCache('books');
+    invalidateCache('adminAuthors');
+    invalidateCache('public-stats');
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -957,6 +975,24 @@ router.put('/api/admin/authors/:id/restore', verifyToken, isAdmin, async (req, r
   try {
     const authorId = parseInt(req.params.id);
     await prisma.author.update({ where: { id: authorId }, data: { isArchived: false } });
+    
+    // Also restore their books
+    await prisma.book.updateMany({
+      where: { authorId },
+      data: { isArchived: false, status: 'Approved' }
+    });
+
+    // Delete pre-generated catalogue.pdf if it exists so that it gets regenerated
+    const cataloguePath = path.join(__dirname, '../uploads/catalogue.pdf');
+    if (fs.existsSync(cataloguePath)) {
+      try { fs.unlinkSync(cataloguePath); } catch (e) { console.error('Failed to delete catalogue PDF file:', e); }
+    }
+
+    // Invalidate caches
+    invalidateCache('books');
+    invalidateCache('adminAuthors');
+    invalidateCache('public-stats');
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -7808,7 +7844,7 @@ router.post('/api/admin/settings', verifyToken, isAdmin, async (req, res) => {
 router.get('/api/public/authors', async (req, res) => {
   try {
     const authors = await prisma.author.findMany({
-      where: { status: 'Active' },
+      where: { status: 'Active', isArchived: false },
       include: {
         books: { where: { status: 'Approved', isArchived: false } },
         eventAuthors: { include: { event: true } }
@@ -7833,7 +7869,7 @@ router.get('/api/public/authors/:id', async (req, res) => {
         eventAuthors: { include: { event: true } }
       }
     });
-    if (!author || author.status !== 'Active') return res.status(404).json({ error: 'Author not found' });
+    if (!author || author.status !== 'Active' || author.isArchived) return res.status(404).json({ error: 'Author not found' });
     res.json(author);
   } catch (error) {
     console.error("Failed to fetch author profile:", error);
