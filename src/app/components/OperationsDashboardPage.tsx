@@ -8260,11 +8260,11 @@ const totalAuthorsBase = eventRegistrations.length;
                               </>
                             ) : (
                               <button
-                                title="View Breakdown"
+                                title="Manage Participants"
                                 onClick={() => handleOpenBreakdown(evt)}
                                 className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white border border-indigo-200 rounded-lg shadow-sm transition-colors relative"
                               >
-                                <Eye className="w-4 h-4" />
+                                <Users className="w-4 h-4" />
                                 {evt.registrations?.filter(
                                   (r: any) =>
                                     r.optInStatus === "Pending" ||
