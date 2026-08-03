@@ -282,10 +282,59 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
   const getDiffUi = (key: string) => {
     if (!isAdminEdit || !initialData?.extraData?.originalProfileData) return null;
     const origData = initialData.extraData.originalProfileData;
-    const origVal = origData[key] !== undefined ? String(origData[key]) : "";
-    const curVal = form[key] !== undefined ? String(form[key]) : "";
+    const origVal = origData[key] !== undefined && origData[key] !== null ? String(origData[key]) : "";
+    const curVal = form[key] !== undefined && form[key] !== null ? String(form[key]) : "";
     if (origVal !== curVal) {
        return <div className="text-xs text-blue-600 mt-1 font-bold bg-blue-50 px-2 py-1 rounded inline-block shadow-sm border border-blue-100">Original: {origVal || '(empty)'}</div>;
+    }
+    return null;
+  };
+
+  const getArrayDiffUi = (key: string, currentArr: string[]) => {
+    if (!isAdminEdit || !initialData?.extraData?.originalProfileData) return null;
+    const origData = initialData.extraData.originalProfileData;
+    let origArr: string[] = [];
+    try {
+      if (key === 'skills' || key === 'hobbies') {
+        const jsonKey = key === 'skills' ? 'skillsJson' : 'hobbiesJson';
+        origArr = typeof origData[jsonKey] === 'string' ? JSON.parse(origData[jsonKey]) : (origData[jsonKey] || []);
+        if (origArr.length === 0) {
+          origArr = typeof origData[key] === 'string' ? JSON.parse(origData[key]) : (origData[key] || []);
+        }
+      } else {
+        origArr = typeof origData[key] === 'string' ? JSON.parse(origData[key]) : (origData[key] || []);
+      }
+    } catch(e) {}
+    
+    const origStr = origArr.map(s => String(s).toLowerCase().trim()).sort().join(',');
+    const curStr = (currentArr || []).map(s => String(s).toLowerCase().trim()).sort().join(',');
+    
+    if (origStr !== curStr) {
+       return <div className="text-xs text-blue-600 mt-1 font-bold bg-blue-50 px-2 py-1 rounded inline-block shadow-sm border border-blue-100">Original: {origArr.length > 0 ? origArr.join(', ') : '(empty)'}</div>;
+    }
+    return null;
+  };
+
+  const getImageDiffUi = (key: string, currentUrl: string | null) => {
+    if (!isAdminEdit || !initialData?.extraData?.originalProfileData) return null;
+    const origData = initialData.extraData.originalProfileData;
+    let origVal = origData[key] ? String(origData[key]) : "";
+    if (origVal && !origVal.startsWith('http')) origVal = API + origVal;
+    
+    let curVal = currentUrl || "";
+    if (curVal && !curVal.startsWith('http') && curVal.startsWith('/uploads')) curVal = API + curVal;
+
+    // Check if both are empty/null
+    if (!origVal && !curVal) return null;
+    
+    // If they differ, it was changed
+    if (origVal !== curVal) {
+       return (
+         <div className="text-xs text-blue-600 mt-2 font-bold bg-blue-50 px-2 py-1 rounded inline-block shadow-sm border border-blue-100">
+           New Image Uploaded
+           {origVal && <a href={origVal} target="_blank" rel="noreferrer" className="ml-2 text-blue-500 underline text-[10px]">View Original</a>}
+         </div>
+       );
     }
     return null;
   };
@@ -1167,6 +1216,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         <input type="text" enterKeyHint="enter" value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const val = skillInput.trim().toLowerCase(); if (val && !(form.skills || []).map((s: string) => s.toLowerCase()).includes(val)) { update("skills", [...(form.skills || []), val]); } setSkillInput(""); } }} className="flex-1 min-w-[120px] outline-none text-sm bg-transparent" placeholder="Type and press Enter" />
                       </div>
                       {errors.skills && <div className="text-red-500 text-xs mt-1 font-medium">{errors.skills}</div>}
+                      {getArrayDiffUi("skills", form.skills)}
                     </div>
                     <div>
                       <label className="dash-label">Hobbies * <span className="font-normal opacity-70">(Press Enter to add)</span></label>
@@ -1179,6 +1229,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         <input type="text" enterKeyHint="enter" value={hobbyInput} onChange={(e) => setHobbyInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const val = hobbyInput.trim().toLowerCase(); if (val && !(form.hobbies || []).map((h: string) => h.toLowerCase()).includes(val)) { update("hobbies", [...(form.hobbies || []), val]); } setHobbyInput(""); } }} className="flex-1 min-w-[120px] outline-none text-sm bg-transparent" placeholder="Type and press Enter" />
                       </div>
                       {errors.hobbies && <div className="text-red-500 text-xs mt-1 font-medium">{errors.hobbies}</div>}
+                      {getArrayDiffUi("hobbies", form.hobbies)}
                     </div>
                   </div>
 
@@ -1192,7 +1243,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       className={`dash-input w-full resize-y ${errors.bio ? '!border-red-500' : ''} ${getDiffClass("bio")}`}
                     />
                     <div className="flex justify-between items-start mt-1">
-                      {errors.bio ? <div className="text-red-500 text-xs font-medium">{errors.bio}</div> : <div></div>}
+                      {errors.bio ? <div className="text-red-500 text-xs font-medium">{errors.bio}</div> : <div>{getDiffUi("bio")}</div>}
                       <div className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text">
                         {form.bio.split(/\s+/).filter(Boolean).length} / 150 words (min 100)
                       </div>
@@ -1256,6 +1307,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                           }
                         }}
                       />
+                      {getImageDiffUi("photoUrl", authorPhotoUrl)}
                     </div>
 
                     {/* QR Code upload */}
@@ -1293,6 +1345,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                           }
                         }}
                       />
+                      {getImageDiffUi("qrCodeUrl", qrCodeUrl)}
                     </div>
 
                 </div>
@@ -1769,6 +1822,8 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         }
                       }}
                     />
+                      {getImageDiffUi("paymentScreenshot", paymentScreenshotUrl)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2176,29 +2231,36 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
           </div>
         ) : (
           /* Success state */
+          isAuthorEdit ? (
+            <div className="bg-white rounded-3xl-2xl border border-paa-navy/5 p-12 text-center shadow-premium animate-in fade-in zoom-in-95 duration-500">
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              </div>
+              <h3 className="text-2xl font-serif text-paa-navy font-medium mb-4">Edits Pending Approval</h3>
+              <p className="text-paa-gray-text max-w-lg mx-auto mb-8">
+                You have already submitted profile updates that are currently under review by our editorial team. You will be able to edit your profile again once these changes are approved.
+              </p>
+              <div className="flex justify-center gap-4">
+                <button type="button" onClick={() => onReapplySuccess && onReapplySuccess()} className="dash-btn dash-btn-primary rounded-full px-8 py-3">
+                  Go to Author Dashboard
+                </button>
+              </div>
+            </div>
+          ) : (
           <div className="bg-white rounded-3xl-2xl border border-paa-navy/5 p-10 md:p-14 text-center shadow-premium animate-in fade-in zoom-in-95 duration-500">
             <div className="w-20 h-20 bg-[#ebd8c0] rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-emerald-100">
               <CheckCircle className="w-10 h-10 text-emerald-500" />
             </div>
             <h2 className="font-serif text-3xl font-medium text-paa-navy mb-3">
-              {isAuthorEdit ? "Profile Edits Submitted!" : isReapply ? "Application Resubmitted!" : "Application Submitted!"}
+              {isReapply ? "Application Resubmitted!" : "Application Submitted!"}
             </h2>
             <p className="text-sm text-paa-gray-text leading-relaxed max-w-md mx-auto mb-8">
-              {isAuthorEdit ? (
-                 <>
-                   Thank you, <strong className="text-paa-navy font-bold">{initialData?.name || form.name || "Author"}</strong>! 
-                   Your profile edits have been submitted and are now under admin review. Once approved, the changes will reflect on your profile.
-                 </>
-              ) : (
-                 <>
-                   Thank you, <strong className="text-paa-navy font-bold">{initialData?.name || form.name || "Author"}</strong>! 
-                   Your application is under review. An email confirmation has been sent to you.
-                   <br /><br />
-                   <strong className="text-paa-gold">Approval Pending:</strong> Our editorial team will review your application within 5-7 working days. Once approved, you will be able to log in to your Author Dashboard.
-                   <br /><br />
-                   While you wait, you can continue browsing our website.
-                 </>
-              )}
+               Thank you, <strong className="text-paa-navy font-bold">{initialData?.name || form.name || "Author"}</strong>! 
+               Your application is under review. An email confirmation has been sent to you.
+               <br /><br />
+               <strong className="text-paa-gold">Approval Pending:</strong> Our editorial team will review your application within 5-7 working days. Once approved, you will be able to log in to your Author Dashboard.
+               <br /><br />
+               While you wait, you can continue browsing our website.
             </p>
 
             {/* Receipt */}
@@ -2210,7 +2272,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                   { label: "Author Name", value: initialData?.name || form.name || "—" },
                   { label: "Book Title(s)", value: [...books.map(b => b.title), form.title].filter(Boolean).join(", ") || "—" },
                   { label: "Genre", value: Array.from(new Set([...books.map(b => b.genre), form.genre].filter(Boolean))).join(", ") || "—" },
-                  { label: "Fee Paid", value: isAuthorEdit ? "₹0 (Update)" : "₹3000" },
+                  { label: "Fee Paid", value: "₹3000" },
                   { label: "Status", value: "Pending Review", isStatus: true },
                 ].map((item) => (
                   <div key={item.label} className="flex justify-between items-center text-xs pb-2 border-b border-paa-navy/5 last:border-0 last:pb-0">
@@ -2222,17 +2284,12 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
             </div>
 
             <div className="flex justify-center gap-4">
-              {isAuthorEdit ? (
-                <button type="button" onClick={() => onReapplySuccess && onReapplySuccess()} className="dash-btn dash-btn-primary rounded-full px-8 py-3">
-                  Go to Author Dashboard
-                </button>
-              ) : (
                 <a href="/login" className="dash-btn dash-btn-primary rounded-full px-8 py-3">
                   Go to Author Dashboard
                 </a>
-              )}
             </div>
           </div>
+          )
         )}
         </div>
       </div>

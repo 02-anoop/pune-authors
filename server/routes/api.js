@@ -3011,7 +3011,7 @@ router.post('/api/orders', optionalVerifyToken, upload.single('paymentScreenshot
             <tr><td><strong>Delivery Address</strong></td><td>${address}</td></tr>
             ${transactionId ? `<tr><td><strong>Transaction ID</strong></td><td>${transactionId}</td></tr>` : ''}
           </table>
-          <p><span class="badge">⚡ Action Needed</span> &nbsp;Log in at <a href="http://localhost:5173/author/dashboard">your dashboard</a> to approve or reject this order.</p>
+          <p><span class="badge">⚡ Action Needed</span> &nbsp;Log in at <a href="https://puneauthorsassociation.com/dashboard">your dashboard</a> to approve or reject this order.</p>
         `)
       );
 
@@ -5306,7 +5306,7 @@ router.post('/api/admin/events', verifyToken, isAdmin, upload.single('banner'), 
         </div>
         
         <div style="text-align: center; margin-top: 35px; margin-bottom: 15px;">
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/events" style="background-color: #dc2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px rgba(220, 38, 38, 0.2);">Register Now</a>
+          <a href="https://puneauthorsassociation.com/dashboard/events" style="background-color: #dc2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px rgba(220, 38, 38, 0.2);">Register Now</a>
         </div>
         <p style="text-align: center; font-size: 13px; color: #6b7280; margin-top: 15px;">
           You can also access the registration page from the "Events Ecosystem" tab in your Author Portal.
