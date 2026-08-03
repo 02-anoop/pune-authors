@@ -2212,7 +2212,7 @@ export function LibraryDonationsTab() {
                       <option>Public Library</option>
                       <option>Institutional Library</option>
                       <option>Military Library</option>
-                      <option>CafAc Library</option>
+                      <option>Café Library</option>
                     </select>
                   </div>
                   <div>

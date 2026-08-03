@@ -9224,7 +9224,6 @@ const totalAuthorsBase = eventRegistrations.length;
     const combinedGalleryItems = [
       ...events.map((e: any) => ({ ...e, itemType: "Event" })),
       ...libraries
-        .filter((l) => l.type === "Airport Library")
         .map((l: any) => {
           // Use the oldest drive's registrationEndDate as the gallery date.
           // announcements are returned sorted asc by registrationEndDate from the backend.
@@ -9426,6 +9425,10 @@ const totalAuthorsBase = eventRegistrations.length;
                       <option value="Book Fair">Book Fair</option>
                       <option value="Literary Event">Literary Event</option>
                       <option value="Airport Library">Flybraries</option>
+                      <option value="Public Library">Public Library</option>
+                      <option value="Institutional Library">Institutional Library</option>
+                      <option value="Military Library">Military Library</option>
+                      <option value="Café Library">Café Library</option>
                     </select>
                     <input
                       type="date"
@@ -12148,7 +12151,7 @@ const totalAuthorsBase = eventRegistrations.length;
               >
                 <option value="Literary Events">Literary Events</option>
                 <option value="Book Fairs">Book Fairs</option>
-                <option value="Flybraries">Flybraries</option>
+                <option value="Flybraries & Libraries">Flybraries & Libraries</option>
                 <option value="Book CafÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©">
                   Book CafÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©
                 </option>
@@ -12308,6 +12311,10 @@ const totalAuthorsBase = eventRegistrations.length;
                     Corporate Activation
                   </option>
                   <option value="Airport Library">Airport Library</option>
+                  <option value="Public Library">Public Library</option>
+                  <option value="Institutional Library">Institutional Library</option>
+                  <option value="Military Library">Military Library</option>
+                  <option value="Café Library">Café Library</option>
                 </select>
               </div>
             </div>
@@ -12478,6 +12485,10 @@ const totalAuthorsBase = eventRegistrations.length;
                       Corporate Activation
                     </option>
                     <option value="Airport Library">Airport Library</option>
+                    <option value="Public Library">Public Library</option>
+                    <option value="Institutional Library">Institutional Library</option>
+                    <option value="Military Library">Military Library</option>
+                    <option value="Café Library">Café Library</option>
                   </select>
                 </div>
               </div>
