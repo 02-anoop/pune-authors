@@ -1716,7 +1716,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
             {formStepIndex === 3 && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <h2 className="font-serif text-2xl font-medium text-paa-navy mb-2">Application Fee Payment</h2>
-                <p className="text-sm text-paa-gray-text mb-8">A one-time registration fee of ₹3000 secures your PAA membership and editorial review.</p>
+                <p className="text-sm text-paa-gray-text mb-8">A one-time joining fee of ₹3000 (₹2000 registration + ₹1000 website charges) secures your PAA membership and editorial review.</p>
 
                 <div className="flex flex-col items-center mb-10">
                   <div className="p-2 bg-white rounded-2xl border border-paa-navy/10 shadow-sm mb-4">
@@ -2386,8 +2386,8 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
               <p className="mb-2">Long-term non-participation, lack of response, or remaining inactive may result in removal from the association. Registration fees are non-refundable.</p>
               <p className="mb-6">Members may also be removed if they misuse the community or join for purposes unrelated to the association's objectives.</p>
 
-              <h4 className="text-paa-navy font-bold uppercase tracking-widest text-xs mb-2 mt-6">15. Registration Fee</h4>
-              <p className="mb-6">The annual registration fee of ₹2,000 exists to ensure seriousness and commitment among members. It is not intended as payment for unlimited services.</p>
+              <h4 className="text-paa-navy font-bold uppercase tracking-widest text-xs mb-2 mt-6">15. Joining Fee</h4>
+              <p className="mb-6">The one-time joining fee of ₹3,000 includes ₹2,000 towards the registration fee to ensure seriousness and commitment among members, plus ₹1,000 towards website charges. It is not intended as payment for unlimited services.</p>
 
               <h4 className="text-paa-navy font-bold uppercase tracking-widest text-xs mb-2 mt-6">16. Purpose of the Registration Fee</h4>
               <p className="mb-2">The fee helps cover:</p>
