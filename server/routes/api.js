@@ -55,6 +55,22 @@ ${description}`;
         message: formattedMessage
       }
     });
+    
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      const { getAdminEmails } = require('../utils/email');
+      if (typeof getAdminEmails === 'function') {
+        const adminContent = `
+          <p>A new Event Request has been submitted.</p>
+          <p><strong>Proposer:</strong> ${proposerName || name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Organisation:</strong> ${organisationName || "N/A"}</p>
+          <p><strong>Date/Location:</strong> ${proposedDate} / ${location || "N/A"}</p>
+          <p>Please log in to the admin dashboard to review this request.</p>
+        `;
+        sendNotificationEmail(getAdminEmails(), `New Event Request: ${organisationName || name}`, emailWrap("New Event Request", adminContent));
+      }
+    }
+    
     res.json({ success: true, message: "Event request submitted" });
   } catch (error) {
     console.error("Error submitting event request:", error);
@@ -81,6 +97,20 @@ router.post('/api/contact', async (req, res) => {
         status: 'Pending'
       }
     });
+
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      const { getAdminEmails } = require('../utils/email');
+      if (typeof getAdminEmails === 'function') {
+        const adminContent = `
+          <p>A new Contact Form inquiry has been received.</p>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Message:</strong><br/>${message.replace(/\n/g, '<br/>')}</p>
+          <p>Please log in to the admin dashboard (Helpdesk) to reply.</p>
+        `;
+        sendNotificationEmail(getAdminEmails(), `New Contact Inquiry: ${name}`, emailWrap("New Contact Inquiry", adminContent));
+      }
+    }
 
     res.status(201).json(inquiry);
   } catch (err) {
@@ -480,6 +510,18 @@ router.post('/api/authors/register', upload.any(), async (req, res) => {
         <p>Dashboard access will be available only after your application has been approved.</p>
       `;
       sendNotificationEmail(author.email, "Registration Received - PAA", emailWrap("Registration Received", emailContent));
+      
+      const { getAdminEmails } = require('../utils/email');
+      if (typeof getAdminEmails === 'function') {
+        const adminContent = `
+          <p>A new author has registered on the platform and is pending approval.</p>
+          <p><strong>Name:</strong> ${author.name}</p>
+          <p><strong>Email:</strong> ${author.email}</p>
+          <p><strong>Phone:</strong> ${author.phone}</p>
+          <p>Please log in to the admin dashboard to review their application.</p>
+        `;
+        sendNotificationEmail(getAdminEmails(), "New Author Registration Pending Approval", emailWrap("New Author Registration", adminContent));
+      }
     }
 
     res.status(201).json(author);
@@ -643,6 +685,18 @@ router.put('/api/author/edit-profile-full', verifyToken, upload.any(), async (re
       }
     }
 
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      const { getAdminEmails } = require('../utils/email');
+      if (typeof getAdminEmails === 'function') {
+        const adminContent = `
+          <p>Author <strong>${author.name || name}</strong> (${author.email}) has submitted full profile edits.</p>
+          <p>The profile and books are now pending admin review.</p>
+          <p>Please log in to the admin dashboard to review the changes.</p>
+        `;
+        sendNotificationEmail(getAdminEmails(), `Author Profile Edits Pending Review: ${author.name || name}`, emailWrap("Profile Edits Submitted", adminContent));
+      }
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -792,6 +846,16 @@ router.put('/api/author/reapply-full', verifyToken, upload.any(), async (req, re
         <p style="margin-top:16px;">Warm regards,<br/>Pune Authors' Association</p>
       `;
       sendNotificationEmail(author.email, "Reapplication Received – PAA", emailWrap("Reapplication Received", emailContent));
+      
+      const { getAdminEmails } = require('../utils/email');
+      if (typeof getAdminEmails === 'function') {
+        const adminContent = `
+          <p>Author <strong>${author.name || name}</strong> (${author.email}) has re-applied after a previous rejection.</p>
+          <p>Their profile and books are now pending admin review.</p>
+          <p>Please log in to the admin dashboard to review their re-application.</p>
+        `;
+        sendNotificationEmail(getAdminEmails(), `Author Re-application Pending Review: ${author.name || name}`, emailWrap("Author Re-application", adminContent));
+      }
     }
 
     res.json({ success: true });
@@ -2673,8 +2737,21 @@ router.post('/api/orders/bulk', optionalVerifyToken, async (req, res) => {
       include: { items: { include: { book: true } } }
     });
 
-    // Mock Email to Admin
-    console.log(`[EMAIL MOCK] New Bulk Order Request #${order.id} received from ${customerName}.`);
+    // Notify Admin
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      const { getAdminEmails } = require('../utils/email');
+      if (typeof getAdminEmails === 'function') {
+        const adminContent = `
+          <p>A new Bulk Order Request (#${order.id}) has been submitted.</p>
+          <p><strong>Customer:</strong> ${customerName}</p>
+          <p><strong>Email:</strong> ${emailToUse}</p>
+          <p><strong>Phone:</strong> ${customerPhone || 'N/A'}</p>
+          <p><strong>Amount Baseline:</strong> ₹${parseFloat(amount || 0)}</p>
+          <p>Please log in to the admin dashboard to review and negotiate the order.</p>
+        `;
+        sendNotificationEmail(getAdminEmails(), `Bulk Order Request #${order.id} Pending Approval`, emailWrap("New Bulk Order Request", adminContent));
+      }
+    }
 
     // Mock Email to User
     console.log(`[EMAIL MOCK] To: ${emailToUse}. Your bulk order request has been submitted and is pending admin approval.`);
