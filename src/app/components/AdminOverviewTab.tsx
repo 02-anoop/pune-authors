@@ -10,32 +10,32 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, orders, events, stats, prevQueries, lastAdminVisit, setActiveTab, setAuthorStatusFilter, API }: any) => {
 
-    const [localDismissed, setLocalDismissed] = useState<string[]>(() => {
-      const saved = localStorage.getItem('paa_dismissed_actions');
-      return saved ? JSON.parse(saved) : [];
-    });
-    const [notifiedBooks, setNotifiedBooks] = useState<Record<string, { inv: number, time: number }>>(() => {
-      const saved = localStorage.getItem('paa_notified_lowstock_v2');
-      return saved ? JSON.parse(saved) : {};
-    });
+  const [localDismissed, setLocalDismissed] = useState<string[]>(() => {
+    const saved = localStorage.getItem('paa_dismissed_actions');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [notifiedBooks, setNotifiedBooks] = useState<Record<string, { inv: number, time: number }>>(() => {
+    const saved = localStorage.getItem('paa_notified_lowstock_v2');
+    return saved ? JSON.parse(saved) : {};
+  });
 
-    const handleDismiss = (e: React.MouseEvent, id: string) => {
-      e.stopPropagation();
-      setLocalDismissed(prev => {
-        const next = [...prev, id];
-        localStorage.setItem('paa_dismissed_actions', JSON.stringify(next));
-        return next;
-      });
-    };
+  const handleDismiss = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setLocalDismissed(prev => {
+      const next = [...prev, id];
+      localStorage.setItem('paa_dismissed_actions', JSON.stringify(next));
+      return next;
+    });
+  };
 
-    
-    // Memoize heavy calculations to prevent layout thrashing and high main-thread execution time
-    const { 
-      lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries, pendingFines,
-      delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
-      orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
-      completedOrders
-    } = useMemo(() => {
+
+  // Memoize heavy calculations to prevent layout thrashing and high main-thread execution time
+  const {
+    lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries, pendingFines,
+    delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
+    orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
+    completedOrders, topParticipatingAuthors
+  } = useMemo(() => {
     // Low stock books (threshold < 10)
     // Exclude if inventory is same AND notified within 24 hours.
     const lowStockBooks = books.filter((b: any) => {
@@ -76,18 +76,18 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     };
 
     const pendingAuthors = authors.filter((a: any) => a.status === 'Pending').length;
-    const pendingEdits = authors.filter((a: any) => { const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData) } catch(e) { return {} } })() : (a.extraData || {}); return a.status === 'Edited' || ed?.hasPendingEdits; }).length;
+    const pendingEdits = authors.filter((a: any) => { const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData) } catch (e) { return {} } })() : (a.extraData || {}); return a.status === 'Edited' || ed?.hasPendingEdits; }).length;
     const pendingEvents = authors.filter((a: any) => a.eventParticipation && a.eventParticipation.length > 0 && a.eventParticipation.some((e: any) => e.status === 'Pending Approval')).length;
-    
+
     const newWebOrders = orders.filter((o: any) => !o.isArchived && !o.isBulk && ['Pending Verification', 'Pending'].includes(getAggregateStatusText(o))).length;
     const pendingBulkOrders = orders.filter((o: any) => !o.isArchived && o.isBulk && ['Bulk Req Pending', 'Pending Payment'].includes(getAggregateStatusText(o))).length;
-    
+
     const recentDispatchedOrders = lastAdminVisit ? orders.filter((o: any) => !o.isArchived && o.items?.some((it: any) => it.dispatchedAt && new Date(it.dispatchedAt).getTime() > lastAdminVisit)).length : 0;
     const recentDeliveredOrders = lastAdminVisit ? orders.filter((o: any) => !o.isArchived && o.items?.some((it: any) => it.deliveredAt && new Date(it.deliveredAt).getTime() > lastAdminVisit)).length : 0;
     const pendingQueries = prevQueries || 0;
-    const pendingFines = authors.filter((a: any) => { 
-        const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData) } catch(e) { return {} } })() : (a.extraData || {}); 
-        return (ed?.fineStatus === 'Pending Verification' || (!ed?.fineStatus && ed?.finePaymentScreenshot)) && ed?.finePaymentScreenshot; 
+    const pendingFines = authors.filter((a: any) => {
+      const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData) } catch (e) { return {} } })() : (a.extraData || {});
+      return (ed?.fineStatus === 'Pending Verification' || (!ed?.fineStatus && ed?.finePaymentScreenshot)) && ed?.finePaymentScreenshot;
     }).length;
 
     const activeWebOrders = orders.filter((o: any) => !o.isArchived && !o.isBulk && o.status !== 'Cancelled');
@@ -179,376 +179,418 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     const completedOrdersCount = orders.filter((o: any) => o.status === 'Completed' || o.status === 'Dispatched').length;
     const avgOrderValue = completedOrdersCount > 0 ? Math.round(totalRevenueWeb / completedOrdersCount) : 0;
 
-    
-      return {
-        lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries: prevQueries, pendingFines,
-        delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
-        orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
-        completedOrders: completedOrdersCount
-      };
-    }, [books, authors, orders, events, stats, localDismissed, notifiedBooks, prevQueries, lastAdminVisit]);
+    // Chart Data 5: Top 20 Authors by Participation
+    const topParticipatingAuthors = [...authors]
+      .map(a => {
+        const stats = getAuthorParticipationStats(a, events);
+        return { name: a.name, percentage: stats.percentage, participated: stats.participated, total: stats.total };
+      })
+      .sort((a, b) => b.percentage - a.percentage || b.participated - a.participated)
+      .slice(0, 20);
 
-    const handleNotifyAllLowStock = async () => {
-      setNotifiedBooks((prev: any) => {
-        const next = { ...prev };
-        lowStockBooks.forEach((b: any) => {
-          next[b.id || b.dbId] = { inv: b.inventory || 0, time: Date.now() };
-        });
-        localStorage.setItem('paa_notified_lowstock_v2', JSON.stringify(next));
-        return next;
-      });
-      toast.success(`Notified ${lowStockBooks.length} authors about low stock!`);
-
-      for (const b of lowStockBooks) {
-        try {
-          await axios.post(`${API}/api/admin/authors/${b.authorId}/notify-low-stock`, { bookId: b.id || b.dbId, title: b.title }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-        } catch (e) { }
-      }
+    return {
+      lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries: prevQueries, pendingFines,
+      delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
+      orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
+      completedOrders: completedOrdersCount, topParticipatingAuthors
     };
+  }, [books, authors, orders, events, stats, localDismissed, notifiedBooks, prevQueries, lastAdminVisit]);
 
-    const handleNotifySingleBook = async (b: any) => {
-      const id = b.id || b.dbId;
-      const currentInventory = b.inventory || 0;
-      setNotifiedBooks((prev: any) => {
-        const next = { ...prev, [id]: { inv: currentInventory, time: Date.now() } };
-        localStorage.setItem('paa_notified_lowstock_v2', JSON.stringify(next));
-        return next;
+  const handleNotifyAllLowStock = async () => {
+    setNotifiedBooks((prev: any) => {
+      const next = { ...prev };
+      lowStockBooks.forEach((b: any) => {
+        next[b.id || b.dbId] = { inv: b.inventory || 0, time: Date.now() };
       });
-      toast.success('Author notified about low stock!');
+      localStorage.setItem('paa_notified_lowstock_v2', JSON.stringify(next));
+      return next;
+    });
+    toast.success(`Notified ${lowStockBooks.length} authors about low stock!`);
+
+    for (const b of lowStockBooks) {
       try {
-        await axios.post(`${API}/api/admin/authors/${b.authorId}/notify-low-stock`, { bookId: id, title: b.title }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+        await axios.post(`${API}/api/admin/authors/${b.authorId}/notify-low-stock`, { bookId: b.id || b.dbId, title: b.title }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
       } catch (e) { }
-    };
-const insights = [
-      { label: 'Event Participation', value: `${avgParticipation}%`, desc: 'Avg author participation rate', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-      { label: '% Orders Delayed', value: `${delayedOrdersRate}%`, desc: 'Of all web orders', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-      { label: 'Web Orders Received', value: totalBooksSoldWeb, desc: 'Total web orders received online', icon: ShoppingCart, color: 'text-purple-600', bg: 'bg-purple-50' },
-    ];
+    }
+  };
 
-    const pendingActionItems = [
-      { id: 'authors', show: !localDismissed.includes('authors') && pendingAuthors > 0, icon: Users, color: 'bg-blue-50 text-blue-600 border-blue-200', label: 'Approve New Authors', count: pendingAuthors, unit: 'waiting', tab: 'authors', filter: null },
-      { id: 'edits', show: !localDismissed.includes('edits') && pendingEdits > 0, icon: Edit, color: 'bg-orange-50 text-orange-600 border-orange-200', label: 'Profile Edits', count: pendingEdits, unit: 'pending', tab: 'authors', filter: 'Edited' },
-      { id: 'events', show: !localDismissed.includes('events') && pendingEvents > 0, icon: CalendarIcon, color: 'bg-amber-50 text-amber-600 border-amber-200', label: 'Event Registrations', count: pendingEvents, unit: 'pending', tab: 'events', filter: null },
-      { id: 'web_orders', show: !localDismissed.includes('web_orders') && newWebOrders > 0, icon: ShoppingCart, color: 'bg-emerald-50 text-emerald-600 border-emerald-200', label: 'New Web Orders', count: newWebOrders, unit: 'new orders', tab: 'web_orders', filter: null },
-      { id: 'bulk_orders', show: !localDismissed.includes('bulk_orders') && pendingBulkOrders > 0, icon: Package, color: 'bg-cyan-50 text-cyan-600 border-cyan-200', label: 'Pending Bulk Orders', count: pendingBulkOrders, unit: 'to process', tab: 'web_orders', filter: null },
-      { id: 'dispatched_orders', show: !localDismissed.includes('dispatched_orders') && recentDispatchedOrders > 0, icon: Package, color: 'bg-blue-50 text-blue-600 border-blue-200', label: 'Dispatched Orders', count: recentDispatchedOrders, unit: 'recently', tab: 'web_orders', filter: null },
-      { id: 'delivered_orders', show: !localDismissed.includes('delivered_orders') && recentDeliveredOrders > 0, icon: CheckCircle, color: 'bg-green-50 text-green-600 border-green-200', label: 'Delivered Orders', count: recentDeliveredOrders, unit: 'recently', tab: 'web_orders', filter: null },
-      { id: 'fines', show: !localDismissed.includes('fines') && pendingFines > 0, icon: AlertCircle, color: 'bg-red-50 text-red-600 border-red-200', label: 'Fine Payments', count: pendingFines, unit: 'received', tab: 'late_authors', filter: null },
-      { id: 'helpdesk', show: !localDismissed.includes('helpdesk') && pendingQueries > 0, icon: MessageSquare, color: 'bg-purple-50 text-purple-600 border-purple-200', label: 'Author Queries', count: pendingQueries, unit: 'unread', tab: 'helpdesk', filter: null },
-    ].filter(a => a.show);
+  const handleNotifySingleBook = async (b: any) => {
+    const id = b.id || b.dbId;
+    const currentInventory = b.inventory || 0;
+    setNotifiedBooks((prev: any) => {
+      const next = { ...prev, [id]: { inv: currentInventory, time: Date.now() } };
+      localStorage.setItem('paa_notified_lowstock_v2', JSON.stringify(next));
+      return next;
+    });
+    toast.success('Author notified about low stock!');
+    try {
+      await axios.post(`${API}/api/admin/authors/${b.authorId}/notify-low-stock`, { bookId: id, title: b.title }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+    } catch (e) { }
+  };
+  const insights = [
+    { label: 'Event Participation', value: `${avgParticipation}%`, desc: 'Avg author participation rate', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: '% Orders Delayed', value: `${delayedOrdersRate}%`, desc: 'Of all web orders', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Web Orders Received', value: totalBooksSoldWeb, desc: 'Total web orders received online', icon: ShoppingCart, color: 'text-purple-600', bg: 'bg-purple-50' },
+  ];
 
-    return (
-      <div className="space-y-6">
-        {/* ════ Pending Actions — Full Width Strip Above KPIs ════ */}
-        <div className="bg-white rounded-2xl border border-paa-navy/5 shadow-sm px-6 py-5">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertCircle className="w-5 h-5 text-amber-500 animate-pulse" aria-hidden="true" />
-            <h3 className="text-base font-serif font-semibold text-paa-navy">Pending Actions</h3>
-            {pendingActionItems.length > 0 && (
-              <span className="ml-1 text-xs font-bold bg-amber-100 text-amber-700 rounded-full px-2.5 py-0.5">{pendingActionItems.length}</span>
-            )}
-          </div>
-          {pendingActionItems.length === 0 ? (
-            <p className="text-sm text-paa-gray-text py-1">✓ All caught up — no pending actions.</p>
-          ) : (
-            <div className="flex flex-wrap gap-3">
-              {pendingActionItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => { if (item.filter) { setActiveTab(item.tab); setAuthorStatusFilter(item.filter); } else setActiveTab(item.tab); }}
-                    className={`group relative flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 w-full sm:w-auto ${item.color}`}
-                  >
-                    <Icon size={18} aria-hidden="true" />
-                    <div className="leading-tight flex-1 min-w-0">
-                      <p className="text-sm font-bold text-wrap break-words">{item.label}</p>
-                      <p className="text-xs opacity-70">{item.count} {item.unit}</p>
-                    </div>
-                    <button
-                      aria-label={`Dismiss ${item.label}`}
-                      onClick={(e) => handleDismiss(e, item.id)}
-                      className="ml-1 p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/10 transition-all"
-                    >
-                      <X size={13} aria-hidden="true" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+  const pendingActionItems = [
+    { id: 'authors', show: !localDismissed.includes('authors') && pendingAuthors > 0, icon: Users, color: 'bg-blue-50 text-blue-600 border-blue-200', label: 'Approve New Authors', count: pendingAuthors, unit: 'waiting', tab: 'authors', filter: null },
+    { id: 'edits', show: !localDismissed.includes('edits') && pendingEdits > 0, icon: Edit, color: 'bg-orange-50 text-orange-600 border-orange-200', label: 'Profile Edits', count: pendingEdits, unit: 'pending', tab: 'authors', filter: 'Edited' },
+    { id: 'events', show: !localDismissed.includes('events') && pendingEvents > 0, icon: CalendarIcon, color: 'bg-amber-50 text-amber-600 border-amber-200', label: 'Event Registrations', count: pendingEvents, unit: 'pending', tab: 'events', filter: null },
+    { id: 'web_orders', show: !localDismissed.includes('web_orders') && newWebOrders > 0, icon: ShoppingCart, color: 'bg-emerald-50 text-emerald-600 border-emerald-200', label: 'New Web Orders', count: newWebOrders, unit: 'new orders', tab: 'web_orders', filter: null },
+    { id: 'bulk_orders', show: !localDismissed.includes('bulk_orders') && pendingBulkOrders > 0, icon: Package, color: 'bg-cyan-50 text-cyan-600 border-cyan-200', label: 'Pending Bulk Orders', count: pendingBulkOrders, unit: 'to process', tab: 'web_orders', filter: null },
+    { id: 'dispatched_orders', show: !localDismissed.includes('dispatched_orders') && recentDispatchedOrders > 0, icon: Package, color: 'bg-blue-50 text-blue-600 border-blue-200', label: 'Dispatched Orders', count: recentDispatchedOrders, unit: 'recently', tab: 'web_orders', filter: null },
+    { id: 'delivered_orders', show: !localDismissed.includes('delivered_orders') && recentDeliveredOrders > 0, icon: CheckCircle, color: 'bg-green-50 text-green-600 border-green-200', label: 'Delivered Orders', count: recentDeliveredOrders, unit: 'recently', tab: 'web_orders', filter: null },
+    { id: 'fines', show: !localDismissed.includes('fines') && pendingFines > 0, icon: AlertCircle, color: 'bg-red-50 text-red-600 border-red-200', label: 'Fine Payments', count: pendingFines, unit: 'received', tab: 'late_authors', filter: null },
+    { id: 'helpdesk', show: !localDismissed.includes('helpdesk') && pendingQueries > 0, icon: MessageSquare, color: 'bg-purple-50 text-purple-600 border-purple-200', label: 'Author Queries', count: pendingQueries, unit: 'unread', tab: 'helpdesk', filter: null },
+  ].filter(a => a.show);
+
+  return (
+    <div className="space-y-6">
+      {/* ════ Pending Actions — Full Width Strip Above KPIs ════ */}
+      <div className="bg-white rounded-2xl border border-paa-navy/5 shadow-sm px-6 py-5">
+        <div className="flex items-center gap-2 mb-4">
+          <AlertCircle className="w-5 h-5 text-amber-500 animate-pulse" aria-hidden="true" />
+          <h3 className="text-base font-serif font-semibold text-paa-navy">Pending Actions</h3>
+          {pendingActionItems.length > 0 && (
+            <span className="ml-1 text-xs font-bold bg-amber-100 text-amber-700 rounded-full px-2.5 py-0.5">{pendingActionItems.length}</span>
           )}
         </div>
-
-        {/* ════ High Level KPIs ════ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
-          {[
-            { label: 'Total Authors', value: stats?.totalAuthors || 0, icon: Users, colorClass: 'blue' },
-            { label: 'Books Listed', value: stats?.totalBooks || 0, icon: BookOpen, colorClass: 'green' },
-            { label: 'No of Events', value: stats?.totalEvents || 0, icon: CalendarIcon, colorClass: 'amber' },
-            { label: 'No of Libraries', value: stats?.totalLibraries || 0, icon: Library, colorClass: 'purple' },
-            { label: 'Total Revenue', value: `₹${(stats?.totalRevenue || 0).toLocaleString()}`, icon: TrendingUp, colorClass: 'red' },
-          ].map((kpi, i) => (
-            <div key={i} className={`dash-kpi-card ${kpi.colorClass}`}>
-              <div className="flex items-start justify-between mb-4">
-                <div className={`dash-kpi-icon ${kpi.colorClass}`}><kpi.icon className="w-5 h-5" /></div>
-              </div>
-              <p className="text-xs font-semibold tracking-wide uppercase text-paa-gray-text mb-1">{kpi.label}</p>
-              <h3 className="text-3xl font-bold text-paa-navy tracking-tight">{kpi.value}</h3>
-            </div>
-          ))}
-        </div>
-
-        {/* ════ Operational Insights Row — 4 Symmetrical Mini Cards ════ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-          {insights.map((insight, idx) => (
-            <div key={idx} className="p-4 rounded-2xl border border-paa-navy/5 bg-white shadow-sm hover:shadow-md transition-all relative group flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${insight.bg} ${insight.color}`}>
-                    <insight.icon size={18} aria-hidden="true" />
+        {pendingActionItems.length === 0 ? (
+          <p className="text-sm text-paa-gray-text py-1">✓ All caught up — no pending actions.</p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {pendingActionItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => { if (item.filter) { setActiveTab(item.tab); setAuthorStatusFilter(item.filter); } else setActiveTab(item.tab); }}
+                  className={`group relative flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 w-full sm:w-auto ${item.color}`}
+                >
+                  <Icon size={18} aria-hidden="true" />
+                  <div className="leading-tight flex-1 min-w-0">
+                    <p className="text-sm font-bold text-wrap break-words">{item.label}</p>
+                    <p className="text-xs opacity-70">{item.count} {item.unit}</p>
                   </div>
-                  {(insight as any).hoverData && <Eye size={14} className="cursor-pointer text-indigo-400 hover:text-indigo-600" />}
+                  <button
+                    aria-label={`Dismiss ${item.label}`}
+                    onClick={(e) => handleDismiss(e, item.id)}
+                    className="ml-1 p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/10 transition-all"
+                  >
+                    <X size={13} aria-hidden="true" />
+                  </button>
                 </div>
-                <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{insight.value}</h4>
-                <p className="text-xs font-bold text-gray-800 mb-0.5">{insight.label}</p>
-                <p className="text-[11px] text-paa-gray-text">{insight.desc}</p>
-              </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-              {(insight as any).hoverData && (
-                <div className="absolute z-10 bottom-full left-0 mb-2 w-52 bg-white border border-gray-100 shadow-xl rounded-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text mb-2 border-b pb-1">Last 3 Events</p>
-                  <div className="space-y-2">
-                    {(insight as any).hoverData.map((ev: any, i: number) => (
-                      <div key={i} className="flex justify-between items-center text-xs">
-                        <span className="text-gray-600 truncate mr-2">{ev.name}</span>
-                        <span className="font-bold text-paa-navy">{ev.rate}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+      {/* ════ High Level KPIs ════ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
+        {[
+          { label: 'Total Authors', value: stats?.totalAuthors || 0, icon: Users, colorClass: 'blue' },
+          { label: 'Books Listed', value: stats?.totalBooks || 0, icon: BookOpen, colorClass: 'green' },
+          { label: 'No of Events', value: stats?.totalEvents || 0, icon: CalendarIcon, colorClass: 'amber' },
+          { label: 'No of Libraries', value: stats?.totalLibraries || 0, icon: Library, colorClass: 'purple' },
+          { label: 'Total Revenue', value: `₹${(stats?.totalRevenue || 0).toLocaleString()}`, icon: TrendingUp, colorClass: 'red' },
+        ].map((kpi, i) => (
+          <div key={i} className={`dash-kpi-card ${kpi.colorClass}`}>
+            <div className="flex items-start justify-between mb-4">
+              <div className={`dash-kpi-icon ${kpi.colorClass}`}><kpi.icon className="w-5 h-5" /></div>
             </div>
-          ))}
+            <p className="text-xs font-semibold tracking-wide uppercase text-paa-gray-text mb-1">{kpi.label}</p>
+            <h3 className="text-3xl font-bold text-paa-navy tracking-tight">{kpi.value}</h3>
+          </div>
+        ))}
+      </div>
 
-          {/* Low Stock Alert Mini Card */}
-          <div className="p-4 rounded-2xl border border-red-100 bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+      {/* ════ Operational Insights Row — 4 Symmetrical Mini Cards ════ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {insights.map((insight, idx) => (
+          <div key={idx} className="p-4 rounded-2xl border border-paa-navy/5 bg-white shadow-sm hover:shadow-md transition-all relative group flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-                  <Package size={18} aria-hidden="true" />
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${insight.bg} ${insight.color}`}>
+                  <insight.icon size={18} aria-hidden="true" />
                 </div>
-                {lowStockBooks.length > 0 && (
-                  <button
-                    aria-label="Notify All Authors About Low Stock"
-                    onClick={handleNotifyAllLowStock}
-                    className="text-[10px] flex items-center gap-1 font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 px-2 py-0.5 rounded-full transition-colors uppercase tracking-wider"
-                  >
-                    <Bell size={10} className="text-amber-600" /> Notify All
-                  </button>
-                )}
+                {(insight as any).hoverData && <Eye size={14} className="cursor-pointer text-indigo-400 hover:text-indigo-600" />}
               </div>
-              <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{lowStockBooks.length}</h4>
-              <p className="text-xs font-bold text-gray-800 mb-0.5">Low Stock Titles</p>
-              <p className="text-[11px] text-paa-gray-text">Titles requiring restocking</p>
+              <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{insight.value}</h4>
+              <p className="text-xs font-bold text-gray-800 mb-0.5">{insight.label}</p>
+              <p className="text-[11px] text-paa-gray-text">{insight.desc}</p>
             </div>
 
-            <button
-              onClick={() => setActiveTab('inventory')}
-              className="mt-3 w-full text-xs font-bold text-white bg-paa-navy hover:bg-[#0c1e30] rounded-xl py-2 transition-all flex items-center justify-center gap-1.5 shadow-xs hover:shadow-sm"
-            >
-              <Package size={13} /> View Inventory
-            </button>
+            {(insight as any).hoverData && (
+              <div className="absolute z-10 bottom-full left-0 mb-2 w-52 bg-white border border-gray-100 shadow-xl rounded-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text mb-2 border-b pb-1">Last 3 Events</p>
+                <div className="space-y-2">
+                  {(insight as any).hoverData.map((ev: any, i: number) => (
+                    <div key={i} className="flex justify-between items-center text-xs">
+                      <span className="text-gray-600 truncate mr-2">{ev.name}</span>
+                      <span className="font-bold text-paa-navy">{ev.rate}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        ))}
 
-        {/* ════ Analytics Row — 2 Equal Balanced Columns ════ */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* Revenue Trend Chart */}
-          <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-serif font-semibold text-paa-navy flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-500" aria-hidden="true" /> Recent Revenue Trend
-              </h3>
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">Last 7 Active Dates</span>
-            </div>
-            <div className="h-60 w-full">
-              {revenueTrendData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={revenueTrendData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="date" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                    <YAxis fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                    <RechartsTooltip cursor={{ stroke: '#10b981', strokeWidth: 1, strokeDasharray: '3 3' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                    <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4, fill: '#fff', stroke: '#10b981', strokeWidth: 2 }} activeDot={{ r: 7 }} name="Revenue (₹)" />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-gray-400 text-xs">No revenue data available.</div>
+        {/* Low Stock Alert Mini Card */}
+        <div className="p-4 rounded-2xl border border-red-100 bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                <Package size={18} aria-hidden="true" />
+              </div>
+              {lowStockBooks.length > 0 && (
+                <button
+                  aria-label="Notify All Authors About Low Stock"
+                  onClick={handleNotifyAllLowStock}
+                  className="text-[10px] flex items-center gap-1 font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 px-2 py-0.5 rounded-full transition-colors uppercase tracking-wider"
+                >
+                  <Bell size={10} className="text-amber-600" /> Notify All
+                </button>
               )}
             </div>
+            <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{lowStockBooks.length}</h4>
+            <p className="text-xs font-bold text-gray-800 mb-0.5">Low Stock Titles</p>
+            <p className="text-[11px] text-paa-gray-text">Titles requiring restocking</p>
           </div>
 
-          {/* Order Status Distribution Chart */}
-          <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-serif font-semibold text-paa-navy flex items-center gap-2">
-                <PieChart className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Order Status Distribution
-              </h3>
-              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
-                {orderStatusData.reduce((s, i) => s + i.value, 0)} Total Orders
-              </span>
-            </div>
+          <button
+            onClick={() => setActiveTab('inventory')}
+            className="mt-3 w-full text-xs font-bold text-white bg-paa-navy hover:bg-[#0c1e30] rounded-xl py-2 transition-all flex items-center justify-center gap-1.5 shadow-xs hover:shadow-sm"
+          >
+            <Package size={13} /> View Inventory
+          </button>
+        </div>
+      </div>
 
-            {orderStatusData.length > 0 ? (
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                {/* Donut Chart with Center Label */}
-                <div className="relative w-44 h-44 shrink-0 flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                      <Pie
-                        data={orderStatusData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={52}
-                        outerRadius={75}
-                        paddingAngle={3}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        {orderStatusData.map((entry, index) => {
-                          const statusColors: Record<string, string> = {
-                            'Completed': '#10b981',
-                            'Delivered': '#059669',
-                            'Dispatched': '#3b82f6',
-                            'Pending': '#f59e0b',
-                            'Pending Verification': '#f97316',
-                            'Cancelled': '#ef4444',
-                            'Bulk Request Pending': '#8b5cf6',
-                            'Approved - Pending Payment': '#ec4899',
-                          };
-                          return (
-                            <Cell key={`cell-${index}`} fill={statusColors[entry.name] || COLORS[index % COLORS.length]} />
-                          );
-                        })}
-                      </Pie>
-                      <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 600 }} />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-2xl font-black text-paa-navy leading-none">
-                      {orderStatusData.reduce((s, i) => s + i.value, 0)}
-                    </span>
-                    <span className="text-[9px] font-extrabold uppercase tracking-widest text-gray-400 mt-1">Orders</span>
-                  </div>
-                </div>
-
-                {/* Symmetrical Grid Legend — Clear Visibility, No Clipping */}
-                <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {orderStatusData.map((entry, idx) => {
-                    const totalCount = orderStatusData.reduce((s, i) => s + i.value, 0);
-                    const pct = totalCount ? Math.round((entry.value / totalCount) * 100) : 0;
-                    const statusColors: Record<string, string> = {
-                      'Completed': '#10b981',
-                      'Delivered': '#059669',
-                      'Dispatched': '#3b82f6',
-                      'Pending': '#f59e0b',
-                      'Pending Verification': '#f97316',
-                      'Cancelled': '#ef4444',
-                      'Bulk Request Pending': '#8b5cf6',
-                      'Approved - Pending Payment': '#ec4899',
-                    };
-                    const color = statusColors[entry.name] || COLORS[idx % COLORS.length];
-                    return (
-                      <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/80 border border-gray-100/80 hover:bg-gray-100/80 transition-colors">
-                        <div className="flex items-center gap-2 min-w-0 pr-2">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: color }}></span>
-                          <span className="text-xs font-bold text-paa-navy truncate">{entry.name}</span>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span className="text-xs font-black text-paa-navy">{entry.value}</span>
-                          <span className="text-[10px] font-semibold text-gray-400">({pct}%)</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+      {/* ════ Analytics Row — 2 Equal Balanced Columns ════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Revenue Trend Chart */}
+        <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-serif font-semibold text-paa-navy flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-500" aria-hidden="true" /> Recent Revenue Trend
+            </h3>
+            <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">Last 7 Active Dates</span>
+          </div>
+          <div className="h-60 w-full">
+            {revenueTrendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={revenueTrendData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="date" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
+                  <YAxis fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
+                  <RechartsTooltip cursor={{ stroke: '#10b981', strokeWidth: 1, strokeDasharray: '3 3' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                  <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4, fill: '#fff', stroke: '#10b981', strokeWidth: 2 }} activeDot={{ r: 7 }} name="Revenue (₹)" />
+                </LineChart>
+              </ResponsiveContainer>
             ) : (
-              <div className="h-48 flex items-center justify-center text-gray-400 text-xs w-full">No order status data available.</div>
+              <div className="h-full flex items-center justify-center text-gray-400 text-xs">No revenue data available.</div>
             )}
           </div>
         </div>
 
-        {/* ════ Performance & Leaderboards Row — 3 Equal Responsive Columns ════ */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Popular Categories */}
-          <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
-            <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-              <BarChart2 className="w-4 h-4 text-blue-500" aria-hidden="true" /> Popular by Category &amp; Genre
+        {/* Order Status Distribution Chart */}
+        <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-serif font-semibold text-paa-navy flex items-center gap-2">
+              <PieChart className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Order Status Distribution
             </h3>
-            <div className="h-56 w-full">
-              {categoryChartData.length > 0 ? (
+            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
+              {orderStatusData.reduce((s, i) => s + i.value, 0)} Total Orders
+            </span>
+          </div>
+
+          {orderStatusData.length > 0 ? (
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              {/* Donut Chart with Center Label */}
+              <div className="relative w-44 h-44 shrink-0 flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={categoryChartData} layout="vertical" margin={{ top: 5, right: 10, left: 35, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
-                    <XAxis type="number" fontSize={10} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                    <YAxis dataKey="name" type="category" fontSize={10} tick={{ fill: '#4B5563', fontWeight: 600 }} axisLine={false} tickLine={false} width={75} />
-                    <RechartsTooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                    <Bar dataKey="sales" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Books Sold">
-                      {categoryChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
+                  <RechartsPieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <Pie
+                      data={orderStatusData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={52}
+                      outerRadius={75}
+                      paddingAngle={3}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {orderStatusData.map((entry, index) => {
+                        const statusColors: Record<string, string> = {
+                          'Completed': '#10b981',
+                          'Delivered': '#059669',
+                          'Dispatched': '#3b82f6',
+                          'Pending': '#f59e0b',
+                          'Pending Verification': '#f97316',
+                          'Cancelled': '#ef4444',
+                          'Bulk Request Pending': '#8b5cf6',
+                          'Approved - Pending Payment': '#ec4899',
+                        };
+                        return (
+                          <Cell key={`cell-${index}`} fill={statusColors[entry.name] || COLORS[index % COLORS.length]} />
+                        );
+                      })}
+                    </Pie>
+                    <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 600 }} />
+                  </RechartsPieChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-gray-400 text-xs">No category data.</div>
-              )}
-            </div>
-          </div>
-
-          {/* Top Selling Authors */}
-          <div className="bg-white p-5 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
-            <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-              <Users className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Top Selling Authors
-            </h3>
-            <div className="space-y-2.5">
-              {topAuthorsData.length > 0 ? topAuthorsData.map((a, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-indigo-50/40 border border-indigo-100/60 hover:bg-indigo-50 transition-colors">
-                  <div className="flex items-center gap-3 min-w-0 pr-2">
-                    <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0">#{idx + 1}</div>
-                    <p className="text-xs font-bold text-paa-navy truncate">{a.name}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-xs font-black text-indigo-600">{a.sales}</span>
-                    <span className="text-[10px] text-gray-500 ml-1">Sold</span>
-                  </div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-2xl font-black text-paa-navy leading-none">
+                    {orderStatusData.reduce((s, i) => s + i.value, 0)}
+                  </span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-gray-400 mt-1">Orders</span>
                 </div>
-              )) : <p className="text-xs text-gray-400 py-4 text-center">No completed sales yet.</p>}
-            </div>
-          </div>
+              </div>
 
-          {/* Highest Selling Books */}
-          <div className="bg-white p-5 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
-            <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-emerald-500" aria-hidden="true" /> Highest Selling Books
-            </h3>
-            <div className="space-y-2.5">
-              {topBooksData.length > 0 ? topBooksData.map((b, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/40 border border-emerald-100/60 hover:bg-emerald-50 transition-colors">
-                  <div className="flex items-center gap-3 min-w-0 pr-2">
-                    <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0">#{idx + 1}</div>
-                    <p className="text-xs font-bold text-paa-navy truncate">{b.name}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-xs font-black text-emerald-600">{b.sales}</span>
-                    <span className="text-[10px] text-gray-500 ml-1">Sold</span>
-                  </div>
-                </div>
-              )) : <p className="text-xs text-gray-400 py-4 text-center">No completed sales yet.</p>}
+              {/* Symmetrical Grid Legend — Clear Visibility, No Clipping */}
+              <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {orderStatusData.map((entry, idx) => {
+                  const totalCount = orderStatusData.reduce((s, i) => s + i.value, 0);
+                  const pct = totalCount ? Math.round((entry.value / totalCount) * 100) : 0;
+                  const statusColors: Record<string, string> = {
+                    'Completed': '#10b981',
+                    'Delivered': '#059669',
+                    'Dispatched': '#3b82f6',
+                    'Pending': '#f59e0b',
+                    'Pending Verification': '#f97316',
+                    'Cancelled': '#ef4444',
+                    'Bulk Request Pending': '#8b5cf6',
+                    'Approved - Pending Payment': '#ec4899',
+                  };
+                  const color = statusColors[entry.name] || COLORS[idx % COLORS.length];
+                  return (
+                    <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/80 border border-gray-100/80 hover:bg-gray-100/80 transition-colors">
+                      <div className="flex items-center gap-2 min-w-0 pr-2">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: color }}></span>
+                        <span className="text-xs font-bold text-paa-navy truncate">{entry.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-xs font-black text-paa-navy">{entry.value}</span>
+                        <span className="text-[10px] font-semibold text-gray-400">({pct}%)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+          ) : (
+            <div className="h-48 flex items-center justify-center text-gray-400 text-xs w-full">No order status data available.</div>
+          )}
+        </div>
+      </div>
+
+      {/* ════ Performance & Leaderboards Row — 3 Equal Responsive Columns ════ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Popular Categories */}
+        <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
+          <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
+            <BarChart2 className="w-4 h-4 text-blue-500" aria-hidden="true" /> Popular by Category &amp; Genre
+          </h3>
+          <div className="h-56 w-full">
+            {categoryChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryChartData} layout="vertical" margin={{ top: 5, right: 10, left: 35, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
+                  <XAxis type="number" fontSize={10} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="name" type="category" fontSize={10} tick={{ fill: '#4B5563', fontWeight: 600 }} axisLine={false} tickLine={false} width={75} />
+                  <RechartsTooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                  <Bar dataKey="sales" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Books Sold">
+                    {categoryChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400 text-xs">No category data.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Top Selling Authors */}
+        <div className="bg-white p-5 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
+          <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
+            <Users className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Top Selling Authors
+          </h3>
+          <div className="space-y-2.5">
+            {topAuthorsData.length > 0 ? topAuthorsData.map((a, idx) => (
+              <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-indigo-50/40 border border-indigo-100/60 hover:bg-indigo-50 transition-colors">
+                <div className="flex items-center gap-3 min-w-0 pr-2">
+                  <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0">#{idx + 1}</div>
+                  <p className="text-xs font-bold text-paa-navy truncate">{a.name}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-black text-indigo-600">{a.sales}</span>
+                  <span className="text-[10px] text-gray-500 ml-1">Sold</span>
+                </div>
+              </div>
+            )) : <p className="text-xs text-gray-400 py-4 text-center">No completed sales yet.</p>}
+          </div>
+        </div>
+
+        {/* Highest Selling Books */}
+        <div className="bg-white p-5 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
+          <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-emerald-500" aria-hidden="true" /> Highest Selling Books
+          </h3>
+          <div className="space-y-2.5">
+            {topBooksData.length > 0 ? topBooksData.map((b, idx) => (
+              <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/40 border border-emerald-100/60 hover:bg-emerald-50 transition-colors">
+                <div className="flex items-center gap-3 min-w-0 pr-2">
+                  <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0">#{idx + 1}</div>
+                  <p className="text-xs font-bold text-paa-navy truncate">{b.name}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-black text-emerald-600">{b.sales}</span>
+                  <span className="text-[10px] text-gray-500 ml-1">Sold</span>
+                </div>
+              </div>
+            )) : <p className="text-xs text-gray-400 py-4 text-center">No completed sales yet.</p>}
           </div>
         </div>
       </div>
-    );
+
+      {/* ════ Participation Graph Row ════ */}
+      <div className="grid grid-cols-1 gap-5">
+        <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
+          <h3 className="text-base font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-purple-500" aria-hidden="true" /> Top 20 Authors by Participation
+          </h3>
+          <div className="h-80 w-full">
+            {topParticipatingAuthors && topParticipatingAuthors.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topParticipatingAuthors} margin={{ top: 15, right: 10, left: 0, bottom: 45 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="name" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} angle={-45} textAnchor="end" interval={0} height={60} />
+                  <YAxis fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
+                  <RechartsTooltip
+                    cursor={{ fill: '#f3f4f6' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                    formatter={(value: any, name: any, props: any) => {
+                      return [`${value}% (${props.payload.participated}/${props.payload.total} events)`, 'Participation'];
+                    }}
+                  />
+                  <Bar dataKey="percentage" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Participation">
+                    {topParticipatingAuthors.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400 text-xs">No participation data available.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 });
