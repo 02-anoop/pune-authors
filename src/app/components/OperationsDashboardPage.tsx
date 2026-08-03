@@ -8262,9 +8262,9 @@ const totalAuthorsBase = eventRegistrations.length;
                               <button
                                 title="Manage Participants"
                                 onClick={() => handleOpenBreakdown(evt)}
-                                className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white border border-indigo-200 rounded-lg shadow-sm transition-colors relative"
+                                className="py-1.5 px-2.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white border border-indigo-200 rounded-lg shadow-sm transition-colors relative flex items-center justify-center"
                               >
-                                <Users className="w-4 h-4" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest">EDIT</span>
                                 {evt.registrations?.filter(
                                   (r: any) =>
                                     r.optInStatus === "Pending" ||
