@@ -21,6 +21,12 @@ router.post('/api/upload', upload.single('file'), (req, res) => {
 });
 
 // --- BOOKS & AUTHORS ---
+const deleteCatalogueCache = () => {
+  const cataloguePath = path.join(__dirname, '../uploads/catalogue.pdf');
+  if (fs.existsSync(cataloguePath)) {
+    try { fs.unlinkSync(cataloguePath); } catch (e) { console.error('Failed to delete catalogue PDF file:', e); }
+  }
+};
 
 // --- PUBLIC FORMS --- //
 
@@ -1200,6 +1206,7 @@ router.put('/api/admin/authors/:id/full-update-and-approve', verifyToken, isAdmi
       sendNotificationEmail(author.email, wasEditing ? "PAA Profile Updates Approved!" : "Welcome to PAA - Your Profile is Approved!", emailWrap(wasEditing ? "Updates Approved" : "Profile Approved", emailContent));
     }
 
+    deleteCatalogueCache();
     res.json({ success: true });
   } catch (error) {
     console.error(error);
@@ -1254,6 +1261,7 @@ router.post('/api/admin/authors/:id/approve', verifyToken, isAdmin, async (req, 
     }
   }
 
+  deleteCatalogueCache();
   res.json(author);
 });
 
@@ -1436,6 +1444,7 @@ router.put('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) => {
       }
     }
 
+    deleteCatalogueCache();
     res.json(author);
   } catch (err) {
     console.error(err);
@@ -2419,6 +2428,7 @@ router.put('/api/author/books/:id', verifyToken, async (req, res) => {
         rejectionReason: null
       }
     });
+    deleteCatalogueCache();
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -2453,6 +2463,7 @@ router.put('/api/author/books/:id/cover', verifyToken, upload.single('cover'), a
         ...(mrp !== undefined && pages !== undefined && printFormat !== undefined && { overpriced: isOverpriced }), coverUrl
       }
     });
+    deleteCatalogueCache();
     res.json(updated);
   } catch (err) {
     console.error(err);
