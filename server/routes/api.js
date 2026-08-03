@@ -2338,6 +2338,7 @@ router.put('/api/author/profile/bio', verifyToken, upload.single('photo'), async
       currentExtraData.editedProfileFields = editedFields;
       currentExtraData.originalProfileData = originalData;
       updateData.extraData = currentExtraData;
+      updateData.status = 'Edited'; // FIX: actually mark them as Edited so they appear in Admin Portal
     }
 
     // Also update User record name and address if they changed
@@ -2361,6 +2362,19 @@ router.put('/api/author/profile/bio', verifyToken, upload.single('photo'), async
     console.error(err);
     res.status(500).json({ error: 'Failed to update profile' });
   }
+});
+
+router.get('/api/debug-stuck-authors', async (req, res) => {
+  const all = await prisma.author.findMany({
+    select: { name: true, status: true, extraData: true }
+  });
+  const stuck = all.filter(a => {
+    try {
+      const ed = typeof a.extraData === 'string' ? JSON.parse(a.extraData) : (a.extraData || {});
+      return ed.hasPendingEdits === true || a.status === 'Edited';
+    } catch(e) { return false; }
+  });
+  res.json({ count: stuck.length, authors: stuck.map(a => ({name: a.name, status: a.status})) });
 });
 
 // Author: Update book details (reapply)

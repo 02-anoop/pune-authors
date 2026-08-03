@@ -69,48 +69,76 @@ export const AuthorFullProfileView = ({ author, onBack }: { author: any, onBack:
           <div className="bg-white border border-paa-navy/5 p-6 shadow-premium hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-500 ease-out">
             <h3 className="text-2xl font-serif font-semibold text-paa-navy tracking-tight mb-4 border-l-4 border-paa-navy pl-2">Author Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
-              <div><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Full Name</span><span className="text-sm text-paa-navy font-medium">{authorProfile.name}</span></div>
-              <div><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Pen Name</span><span className="text-sm text-paa-navy font-medium">{authorProfile.penName || '-'}</span></div>
-              <div><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Email</span><span className="text-sm text-paa-navy font-medium">{authorProfile.email}</span></div>
-              <div><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Phone / WhatsApp</span><span className="text-sm text-paa-navy font-medium">{authorProfile.phone} {authorProfile.whatsapp ? `/ ${authorProfile.whatsapp}` : ''}</span></div>
-              <div><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Location</span><span className="text-sm text-paa-navy font-medium">{authorProfile.city ? `${authorProfile.city}, ${authorProfile.state}` : '-'}</span></div>
-              <div><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Social Profiles</span>
-                <span className="text-sm text-paa-navy font-medium flex gap-3 flex-wrap">
-                   {authorProfile.instagram && <a href={authorProfile.instagram} target="_blank" className="text-blue-600 hover:underline">Instagram</a>} 
-                   {authorProfile.facebook && <a href={authorProfile.facebook} target="_blank" className="text-blue-600 hover:underline">Facebook</a>}
-                   {authorProfile.extraData?.linkedin && <a href={authorProfile.extraData.linkedin} target="_blank" className="text-blue-600 hover:underline">LinkedIn</a>}
-                   {authorProfile.extraData?.youtube && <a href={authorProfile.extraData.youtube} target="_blank" className="text-blue-600 hover:underline">YouTube</a>}
-                   {!authorProfile.instagram && !authorProfile.facebook && !authorProfile.extraData?.linkedin && !authorProfile.extraData?.youtube && '-'}
-                </span>
-              </div>
-              <div className="md:col-span-2"><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Full Address</span><span className="text-sm text-paa-navy font-medium">{authorProfile.address || '-'}</span></div>
-              <div><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Aadhar/Voter ID/DL</span><span className="text-sm text-paa-navy font-medium">{authorProfile.aadharNumber || '-'}</span></div>
-              <div><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">DOB</span><span className="text-sm text-paa-navy font-medium">{authorProfile.age ? (() => { try { const d = new Date(authorProfile.age); if (!isNaN(d.getTime())) return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }); } catch(e) {} return authorProfile.age; })() : '-'}</span></div>
-              <div className="md:col-span-2"><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Qualifications</span>
-                {(() => {
-                   let qText = authorProfile.qualification || '-';
-                   try {
-                     const qArr = JSON.parse(authorProfile.qualification);
-                     if (Array.isArray(qArr)) {
-                        return (
-                          <div className="space-y-2 mt-1">
-                            {qArr.map((q: any, i: number) => (
-                               <div key={i} className="bg-gray-50 p-2 border border-gray-100 rounded text-sm text-paa-navy">
-                                 <strong>{q.qualification}</strong> at {q.institution} ({q.subject}) {q.certificateUrl && <a href={API + q.certificateUrl} target="_blank" className="text-blue-600 ml-2 hover:underline font-bold text-xs">View Certificate</a>}
-                               </div>
-                            ))}
-                          </div>
-                        );
-                     }
-                   } catch(e) {}
-                   return <span className="text-sm text-paa-navy font-medium block whitespace-pre-wrap">{qText}</span>;
-                })()}
-              </div>
-              <div><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Experience</span><span className="text-sm text-paa-navy font-medium">{authorProfile.experience || '-'}</span></div>
-              <div><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Skills</span><span className="text-sm text-paa-navy font-medium">{authorProfile.skills || '-'}</span></div>
-              <div><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Hobbies</span><span className="text-sm text-paa-navy font-medium">{authorProfile.hobbies || '-'}</span></div>
-              <div className="md:col-span-2"><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Bio</span><span className="text-sm text-paa-navy font-medium block whitespace-pre-wrap">{authorProfile.bio || '-'}</span></div>
-              <div className="md:col-span-2"><span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">Why Joining? (If traditionally published)</span><span className="text-sm text-paa-navy font-medium block whitespace-pre-wrap">{authorProfile.whyJoining || '-'}</span></div>
+              {(() => {
+                const edFields = authorProfile.extraData?.editedProfileFields || [];
+                const orig = authorProfile.extraData?.originalProfileData || {};
+                
+                const renderField = (key: string, label: string, value: any, colSpan2 = false, customRender?: React.ReactNode) => {
+                  const isEdited = edFields.includes(key);
+                  return (
+                    <div className={`${colSpan2 ? 'md:col-span-2' : ''} ${isEdited ? 'border-2 border-orange-400 bg-orange-50/50 p-2 rounded-lg' : 'p-2'}`}>
+                      <span className="text-xs font-bold text-paa-gray-text uppercase block mb-1">
+                        {label}
+                        {isEdited && <span className="ml-2 text-[9px] bg-orange-200 text-orange-800 px-1 py-0.5 rounded font-bold uppercase tracking-widest">Edited</span>}
+                      </span>
+                      {customRender ? customRender : <span className="text-sm text-paa-navy font-medium block whitespace-pre-wrap">{value}</span>}
+                      {isEdited && (
+                        <div className="mt-1 text-xs bg-white/60 p-1.5 rounded border border-orange-100 flex items-start gap-1">
+                          <span className="text-orange-800/60 font-bold uppercase text-[9px] mt-0.5">From:</span>
+                          <span className="line-through text-red-500/80 font-medium whitespace-pre-wrap">{orig[key] || '-'}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                };
+
+                return (
+                  <>
+                    {renderField('name', 'Full Name', authorProfile.name)}
+                    {renderField('penName', 'Pen Name', authorProfile.penName || '-')}
+                    {renderField('email', 'Email', authorProfile.email)}
+                    {renderField('phone', 'Phone / WhatsApp', `${authorProfile.phone} ${authorProfile.whatsapp ? `/ ${authorProfile.whatsapp}` : ''}`)}
+                    {renderField('city', 'Location', authorProfile.city ? `${authorProfile.city}, ${authorProfile.state}` : '-')}
+                    {renderField('socials', 'Social Profiles', null, false, (
+                      <span className="text-sm text-paa-navy font-medium flex gap-3 flex-wrap">
+                        {authorProfile.instagram && <a href={authorProfile.instagram} target="_blank" className="text-blue-600 hover:underline">Instagram</a>} 
+                        {authorProfile.facebook && <a href={authorProfile.facebook} target="_blank" className="text-blue-600 hover:underline">Facebook</a>}
+                        {authorProfile.extraData?.linkedin && <a href={authorProfile.extraData.linkedin} target="_blank" className="text-blue-600 hover:underline">LinkedIn</a>}
+                        {authorProfile.extraData?.youtube && <a href={authorProfile.extraData.youtube} target="_blank" className="text-blue-600 hover:underline">YouTube</a>}
+                        {!authorProfile.instagram && !authorProfile.facebook && !authorProfile.extraData?.linkedin && !authorProfile.extraData?.youtube && '-'}
+                      </span>
+                    ))}
+                    {renderField('address', 'Full Address', authorProfile.address || '-', true)}
+                    {renderField('aadharNumber', 'Aadhar/Voter ID/DL', authorProfile.aadharNumber || '-')}
+                    {renderField('age', 'DOB', authorProfile.age ? (() => { try { const d = new Date(authorProfile.age); if (!isNaN(d.getTime())) return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }); } catch(e) {} return authorProfile.age; })() : '-')}
+                    
+                    {renderField('qualification', 'Qualifications', null, true, (() => {
+                       let qText = authorProfile.qualification || '-';
+                       try {
+                         const qArr = JSON.parse(authorProfile.qualification);
+                         if (Array.isArray(qArr)) {
+                            return (
+                              <div className="space-y-2 mt-1">
+                                {qArr.map((q: any, i: number) => (
+                                   <div key={i} className="bg-gray-50 p-2 border border-gray-100 rounded text-sm text-paa-navy">
+                                     <strong>{q.qualification}</strong> at {q.institution} ({q.subject}) {q.certificateUrl && <a href={API + q.certificateUrl} target="_blank" className="text-blue-600 ml-2 hover:underline font-bold text-xs">View Certificate</a>}
+                                   </div>
+                                ))}
+                              </div>
+                            );
+                         }
+                       } catch(e) {}
+                       return <span className="text-sm text-paa-navy font-medium block whitespace-pre-wrap">{qText}</span>;
+                    })())}
+                    
+                    {renderField('experience', 'Experience', authorProfile.experience || '-')}
+                    {renderField('skills', 'Skills', authorProfile.skills || '-')}
+                    {renderField('hobbies', 'Hobbies', authorProfile.hobbies || '-')}
+                    {renderField('bio', 'Bio', authorProfile.bio || '-', true)}
+                    {renderField('whyJoining', 'Why Joining? (If traditionally published)', authorProfile.whyJoining || '-', true)}
+                  </>
+                );
+              })()}
             </div>
           </div>
 
