@@ -8172,7 +8172,7 @@ const totalAuthorsBase = eventRegistrations.length;
                           {revenue}
                         </td>
                         <td className="px-1 py-3 text-right">
-                          <div className="flex gap-1 justify-end flex-wrap">
+                          <div className="flex gap-1 justify-end flex-nowrap min-w-[120px]">
                             {evt.isProposed ? (
                               <button
                                 title="Discard Proposed Event"
