@@ -1507,7 +1507,7 @@ export function CataloguePage() {
                                src={book.coverUrl || getCatImg(activeCategory === "All" ? book.genre : activeCategory)} 
                                alt={book.title} 
                                onError={(e) => { e.currentTarget.src = getCatImg(activeCategory === "All" ? book.genre : activeCategory); }}
-                               style={{ height: "90%", width: "auto", aspectRatio: "3/4", objectFit: "contain", borderRadius: "8px", boxShadow: "0 10px 20px rgba(0,0,0,0.08)", transition: "transform 0.5s" }} 
+                               style={{ height: "100%", width: "100%", aspectRatio: "3/4", objectFit: "cover", borderRadius: "8px", boxShadow: "0 10px 20px rgba(0,0,0,0.08)", transition: "transform 0.5s" }} 
                                className="book-cover-img" 
                             />
                           </div>
