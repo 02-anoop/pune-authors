@@ -605,7 +605,10 @@ export function CataloguePage() {
     const params = new URLSearchParams(window.location.search);
     return params.get("subcategory") || "All";
   });
-  const [activeSubSubcategory, setActiveSubSubcategory] = useState<string>("All");
+  const [activeSubSubcategory, setActiveSubSubcategory] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("subsubcategory") || "All";
+  });
   const [searchQuery, setSearchQuery] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("search") || "";
@@ -646,6 +649,9 @@ export function CataloguePage() {
     const subCat = params.get("subcategory");
     if (subCat) setActiveSubcategory(subCat);
     
+    const subSubCat = params.get("subsubcategory");
+    if (subSubCat) setActiveSubSubcategory(subSubCat);
+    
     const search = params.get("search");
     if (search !== null) setSearchQuery(search);
   }, [location.search]);
@@ -667,6 +673,27 @@ export function CataloguePage() {
       })
       .catch(e => console.error(e));
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    let changed = false;
+    
+    if (activeCategory !== "All") { if(params.get("category") !== activeCategory) { params.set("category", activeCategory); changed = true; } }
+    else if (params.has("category")) { params.delete("category"); changed = true; }
+    
+    if (activeSubcategory !== "All") { if(params.get("subcategory") !== activeSubcategory) { params.set("subcategory", activeSubcategory); changed = true; } }
+    else if (params.has("subcategory")) { params.delete("subcategory"); changed = true; }
+    
+    if (activeSubSubcategory !== "All") { if(params.get("subsubcategory") !== activeSubSubcategory) { params.set("subsubcategory", activeSubSubcategory); changed = true; } }
+    else if (params.has("subsubcategory")) { params.delete("subsubcategory"); changed = true; }
+    
+    if (searchQuery) { if(params.get("search") !== searchQuery) { params.set("search", searchQuery); changed = true; } }
+    else if (params.has("search")) { params.delete("search"); changed = true; }
+    
+    if (changed) {
+      window.history.replaceState(null, '', '?' + params.toString());
+    }
+  }, [activeCategory, activeSubcategory, activeSubSubcategory, searchQuery]);
 
   const [isLoading, setIsLoading] = useState(() => {
     const w = window as any;
