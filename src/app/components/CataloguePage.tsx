@@ -492,19 +492,19 @@ export async function downloadCataloguePDF(label: string, books: CatalogueBook[]
             <div style="font-size: 15px; line-height: 1.8; font-family: system-ui, sans-serif; text-align: justify; display: flex; flex-direction: column; gap: 20px;">
               <div>
                 <h3 style="margin: 0 0 15px 0; font-size: 26px; color: #b44d28; font-family: 'Playfair Display', serif;">Achievements</h3>
-                <ul style="margin: 0 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 8px;">
-                  <li>a) Since inception the group has organised nearly ${stats?.events || 34} Literary Events in housing societies, educational institutions and corporate offices. Prominent places are like NOFRA Mumbai, AFMC, Tata Motors, HCL technologies, Persistent Systems, a few prominent housing societies, etc.</li>
-                  <li>b) The group has helped setup Flybraries at six of the prominent airports in India and donated till date ${stats?.totalDonatedBooks || 1600} copies of books to the airport Flybraries. They are Pune, Chennai, Kolkata, Mangalore, Thiruvananthapuram, & Bhubaneshwar airports.</li>
-                  <li>c) The group also takes part in Book Festivals organised by the National Book Trust of India.</li>
+                <ul style="margin: 0 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 8px; list-style-type: none;">
+                  <li>1. Since inception the group has organised nearly ${stats?.events || 34} Literary Events in housing societies, educational institutions and corporate offices. Prominent places are like NOFRA Mumbai, AFMC, Tata Motors, HCL technologies, Persistent Systems, a few prominent housing societies, etc.</li>
+                  <li>2. The group has helped setup Flybraries at six of the prominent airports in India and donated till date ${stats?.totalDonatedBooks || 1600} copies of books to the airport Flybraries. They are Pune, Chennai, Kolkata, Mangalore, Thiruvananthapuram, & Bhubaneshwar airports.</li>
+                  <li>3. The group also takes part in Book Festivals organised by the National Book Trust of India.</li>
                 </ul>
               </div>
               
               <div>
                 <h3 style="margin: 20px 0 15px 0; font-size: 26px; color: #b44d28; font-family: 'Playfair Display', serif;">Way Ahead</h3>
-                <ul style="margin: 0 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 8px;">
-                  <li>a) Continue to organize literary event in educational institutions, corporate offices, and housing societies to revive book reading.</li>
-                  <li>b) The aim is to reach every corner of India.</li>
-                  <li>c) Encourage young generation to write books and help them publish and reach the readers.</li>
+                <ul style="margin: 0 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 8px; list-style-type: none;">
+                  <li>1. Continue to organize literary event in educational institutions, corporate offices, and housing societies to revive book reading.</li>
+                  <li>2. The aim is to reach every corner of India.</li>
+                  <li>3. Encourage young generation to write books and help them publish and reach the readers.</li>
                 </ul>
               </div>
             </div>
@@ -1507,7 +1507,7 @@ export function CataloguePage() {
                                src={book.coverUrl || getCatImg(activeCategory === "All" ? book.genre : activeCategory)} 
                                alt={book.title} 
                                onError={(e) => { e.currentTarget.src = getCatImg(activeCategory === "All" ? book.genre : activeCategory); }}
-                               style={{ height: "90%", width: "auto", aspectRatio: "3/4", objectFit: "contain", borderRadius: "8px", boxShadow: "0 10px 20px rgba(0,0,0,0.08)", transition: "transform 0.5s" }} 
+                               style={{ height: "100%", width: "100%", aspectRatio: "3/4", objectFit: "cover", borderRadius: "8px", boxShadow: "0 10px 20px rgba(0,0,0,0.08)", transition: "transform 0.5s" }} 
                                className="book-cover-img" 
                             />
                           </div>

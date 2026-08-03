@@ -1,10 +1,22 @@
 const nodemailer = require('nodemailer');
 let mailTransporter;
 if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-  mailTransporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-  });
+  const isGmail = process.env.EMAIL_USER.includes('@gmail.com') || process.env.EMAIL_USER.includes('@nitj.ac.in');
+  
+  if (isGmail) {
+    mailTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    });
+  } else {
+    // Titan Mail (Hostinger/GoDaddy) SMTP settings
+    mailTransporter = nodemailer.createTransport({
+      host: 'smtp.titan.email',
+      port: 587,
+      secure: false,
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    });
+  }
 } else {
   mailTransporter = nodemailer.createTransport({ streamTransport: true, newline: 'windows' });
 }
