@@ -2189,7 +2189,7 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
       }
     });
     const notifications = await prisma.notification.findMany({
-      where: { OR: [{ target: 'ALL' }, { target: authorProfile.name }, { target: `@${authorProfile.name}` }] },
+      where: { OR: [{ target: 'ALL' }, { target: 'SILENT_ALL' }, { target: authorProfile.name }, { target: `@${authorProfile.name}` }] },
       orderBy: { createdAt: 'desc' }
     });
     let activeDonations = [];
