@@ -70,8 +70,14 @@ export const AuthorFullProfileView = ({ author, onBack }: { author: any, onBack:
             <h3 className="text-2xl font-serif font-semibold text-paa-navy tracking-tight mb-4 border-l-4 border-paa-navy pl-2">Author Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
               {(() => {
-                const edFields = authorProfile.extraData?.editedProfileFields || [];
-                const orig = authorProfile.extraData?.originalProfileData || {};
+                let parsedExtraData: any = {};
+                if (authorProfile.extraData) {
+                  try {
+                    parsedExtraData = typeof authorProfile.extraData === 'string' ? JSON.parse(authorProfile.extraData) : authorProfile.extraData;
+                  } catch (e) {}
+                }
+                const edFields = parsedExtraData.editedProfileFields || [];
+                const orig = parsedExtraData.originalProfileData || {};
                 
                 const renderField = (key: string, label: string, value: any, colSpan2 = false, customRender?: React.ReactNode) => {
                   const isEdited = edFields.includes(key);
@@ -103,9 +109,9 @@ export const AuthorFullProfileView = ({ author, onBack }: { author: any, onBack:
                       <span className="text-sm text-paa-navy font-medium flex gap-3 flex-wrap">
                         {authorProfile.instagram && <a href={authorProfile.instagram} target="_blank" className="text-blue-600 hover:underline">Instagram</a>} 
                         {authorProfile.facebook && <a href={authorProfile.facebook} target="_blank" className="text-blue-600 hover:underline">Facebook</a>}
-                        {authorProfile.extraData?.linkedin && <a href={authorProfile.extraData.linkedin} target="_blank" className="text-blue-600 hover:underline">LinkedIn</a>}
-                        {authorProfile.extraData?.youtube && <a href={authorProfile.extraData.youtube} target="_blank" className="text-blue-600 hover:underline">YouTube</a>}
-                        {!authorProfile.instagram && !authorProfile.facebook && !authorProfile.extraData?.linkedin && !authorProfile.extraData?.youtube && '-'}
+                        {parsedExtraData.linkedin && <a href={parsedExtraData.linkedin} target="_blank" className="text-blue-600 hover:underline">LinkedIn</a>}
+                        {parsedExtraData.youtube && <a href={parsedExtraData.youtube} target="_blank" className="text-blue-600 hover:underline">YouTube</a>}
+                        {!authorProfile.instagram && !authorProfile.facebook && !parsedExtraData.linkedin && !parsedExtraData.youtube && '-'}
                       </span>
                     ))}
                     {renderField('address', 'Full Address', authorProfile.address || '-', true)}
