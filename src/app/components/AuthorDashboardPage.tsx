@@ -883,7 +883,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
     }
     return acc;
   }, 0);
-  const totalFeesPaid = 1000 + totalEventFees;
+  const totalFeesPaid = 3000 + totalEventFees;
 
   const actionItems: any[] = [];
 
@@ -6449,7 +6449,7 @@ function AuthorSalesReport({ data, onRefresh }: { data: any, onRefresh: () => vo
   }, 0);
   
   const joinDate = new Date(data.authorProfile?.groupJoiningDate || data.authorProfile?.createdAt || new Date());
-  const platformFeePaid = (joinDate >= startLimit && joinDate <= endLimit) ? 1000 : 0;
+  const platformFeePaid = (joinDate >= startLimit && joinDate <= endLimit) ? 3000 : 0;
   const totalFeesPaid = platformFeePaid + totalEventFees;
 
   const exportCSV = async () => {
