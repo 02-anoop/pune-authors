@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import FocusTrap from 'focus-trap-react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router';
 import { Home, Check, AlertCircle, Upload, Download, Loader2, LogOut, User, Bell, Search, ShoppingCart, BookOpen, CalendarIcon, BarChart3, Package, TrendingUp, TrendingDown, X, MapPin, Menu, ChevronDown, ChevronUp, DollarSign, CheckCircle2, FileText, Image as ImageIcon, Star, Plus, Minus, Eye, Edit2, Mail, Phone, Clock, Trash2, MessageSquare, ExternalLink, Send, ChevronLeft, ChevronRight, RefreshCw, Users, Megaphone } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell , AreaChart, Area, LabelList, Legend } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell , AreaChart, Area, LabelList, Legend, ScatterChart, Scatter, ZAxis, Label } from 'recharts';
 import axios from 'axios';
 // exceljs and file-saver are dynamically imported inside export handlers to reduce initial bundle size
 import { toast } from 'sonner';
@@ -6210,7 +6210,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
 }
 
 function AuthorSalesReport({ data, onRefresh }: { data: any, onRefresh: () => void }) {
-  const [filterType, setFilterType] = useState('lifetime'); // today, weekly, monthly, this_month, ytd, select_month, lifetime, custom
+  const authorProfile = data?.authorProfile || {};  const [filterType, setFilterType] = useState('lifetime'); // today, weekly, monthly, this_month, ytd, select_month, lifetime, custom
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedMonthValue, setSelectedMonthValue] = useState(new Date().toISOString().slice(0, 7));
@@ -6745,7 +6745,51 @@ function AuthorSalesReport({ data, onRefresh }: { data: any, onRefresh: () => vo
             <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Fairs</span></div>
           </div>
         </div>
+      </div>
 
+      {/* Row 2.5: Author Standing / Participation vs Books Sold */}
+      <div className="bg-white border border-paa-navy/5 p-5 md:p-6 rounded-2xl shadow-sm mb-8">
+        <h4 className="text-xs font-bold text-paa-navy uppercase tracking-widest mb-2 flex items-center gap-2">
+          <Users className="w-4 h-4 text-indigo-500" /> Community Standing
+        </h4>
+        <p className="text-[10px] text-gray-400 mb-6 font-medium">Compare your participation & sales against the community (Your stats are highlighted in <span className="text-emerald-500 font-bold">Green</span>).</p>
+        <div className="h-[300px] w-full">
+          {data.authorScatterData && data.authorScatterData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 20, right: 20, left: 0, bottom: 25 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="percentage" type="number" fontSize={11} tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} domain={[0, 100]} name="Participation" tickFormatter={(val) => `${val}%`}>
+                  <Label value="Participation %" offset={0} position="bottom" style={{ fontSize: '11px', fill: '#9CA3AF', fontWeight: 'bold' }} />
+                </XAxis>
+                <YAxis dataKey="booksSold" type="number" fontSize={11} tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} name="Books Sold">
+                  <Label value="Total Books Sold" angle={-90} position="left" style={{ textAnchor: 'middle', fontSize: '11px', fill: '#9CA3AF', fontWeight: 'bold' }} />
+                </YAxis>
+                <ZAxis dataKey="name" name="Author" />
+                <Tooltip
+                  cursor={{ strokeDasharray: '3 3' }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                  formatter={(value: any, name: any, props: any) => {
+                    const isSelf = props.payload.id === authorProfile.id;
+                    if (name === 'Author') return [isSelf ? value + ' (You)' : 'Anonymous Author', 'Author'];
+                    if (name === 'Participation') return [`${value}%`, 'Participation'];
+                    if (name === 'Books Sold') return [value, 'Books Sold'];
+                    return [value, name];
+                  }}
+                />
+                <Scatter data={data.authorScatterData} shape="circle">
+                  {data.authorScatterData.map((entry: any, index: number) => {
+                    const isSelf = entry.id === authorProfile.id;
+                    return (
+                      <Cell key={`cell-${index}`} fill={isSelf ? '#10b981' : '#cbd5e1'} opacity={isSelf ? 1 : 0.6} stroke={isSelf ? '#047857' : 'none'} strokeWidth={isSelf ? 2 : 0} />
+                    );
+                  })}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          ) : (
+             <div className="h-full flex items-center justify-center text-gray-400 text-sm italic">Community data not available.</div>
+          )}
+        </div>
       </div>
 
       {/* Row 3: Granular Data Table */}
