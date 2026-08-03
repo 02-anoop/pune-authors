@@ -336,10 +336,11 @@ export function CheckoutPage() {
       } else {
         setPaymentDone(true);
       }
-    } catch (e) {
+    } catch (e: any) {
       setUploading(false);
       console.error(e);
-      alert("Order placement failed");
+      const serverError = e.response?.data?.error || "Order placement failed. Please check your connection and try again.";
+      alert(serverError);
     }
   };
 

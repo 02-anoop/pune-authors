@@ -753,32 +753,48 @@ const parseEventDateHelper = (dateStr: string) => {
 };
 
 export const getAuthorParticipationStats = (author: any, allEvents: any[]) => {
+  if (!author) return { participated: 0, total: 0, percentage: 0 };
+
   const joinDate = author.groupJoiningDate
     ? new Date(author.groupJoiningDate)
-    : new Date(author.createdAt);
-  const joinTime = joinDate.getTime();
+    : (author.createdAt ? new Date(author.createdAt) : new Date(0));
 
-  // To avoid events that happened before joining, we check event date >= join date.
-  // We use start of day for join date to be safe.
   const joinDayStart = new Date(joinDate);
-  joinDayStart.setHours(0, 0, 0, 0);
+  if (!isNaN(joinDayStart.getTime())) {
+    joinDayStart.setHours(0, 0, 0, 0);
+  }
 
-  const eligibleEvents = allEvents.filter((ev: any) => {
-    const evTime = parseEventDateHelper(ev.date || ev.startDate).getTime();
-    return evTime >= joinDayStart.getTime();
+  const eligibleEvents = (allEvents || []).filter((ev: any) => {
+    if (!ev) return false;
+    const evDateStr = ev.date || ev.startDate || ev.createdAt;
+    if (!evDateStr) return true;
+    const evTime = parseEventDateHelper(evDateStr).getTime();
+    return isNaN(joinDayStart.getTime()) || evTime >= joinDayStart.getTime() || evTime === 0;
   });
   const eligibleEventIds = eligibleEvents.map((e: any) => e.id);
 
-  const participatedCount = (author.eventAuthors || []).filter(
-    (ea: any) =>
-      ea.optInStatus !== "Pending" &&
-      ea.optInStatus !== "Rejected" &&
-      eligibleEventIds.includes(ea.eventId),
-  ).length;
+  let participatedCount = 0;
+  if (typeof author.aggParticipatedEvents === 'number' && author.aggParticipatedEvents > 0) {
+    participatedCount = author.aggParticipatedEvents;
+  } else {
+    const participationList = author.eventParticipation || author.eventAuthors || author.eventRegistrations || [];
+    participatedCount = participationList.filter(
+      (ea: any) =>
+        ea &&
+        ea.optInStatus !== "Pending" &&
+        ea.optInStatus !== "Rejected" &&
+        ea.optInStatus !== "Awaiting Approval" &&
+        ea.status !== "Pending" &&
+        ea.status !== "Rejected" &&
+        ea.status !== "Pending Approval"
+    ).length;
+  }
 
-  const total = eligibleEventIds.length;
-  const percentage =
-    total === 0 ? 0 : Math.round((participatedCount / total) * 100);
+  const total = (typeof author.aggEligibleEvents === 'number' && author.aggEligibleEvents > 0)
+    ? author.aggEligibleEvents
+    : (eligibleEventIds.length > 0 ? eligibleEventIds.length : (allEvents?.length || 0));
+
+  const percentage = total === 0 ? 0 : Math.min(100, Math.round((participatedCount / total) * 100));
   return { participated: participatedCount, total, percentage };
 };
 
@@ -1761,9 +1777,22 @@ export function OperationsDashboardPage() {
         toast.success("Author Removed");
         fetchAuthors();
         fetchOverview();
+        autoRegenerateCompleteCatalogue();
       } catch (err) {
         toast.error("Failed to remove author");
       }
+    }
+  };
+
+  const handleRestoreAuthor = async (id: number) => {
+    try {
+      await axios.put(`${API}/api/admin/authors/${id}/restore`);
+      toast.success("Author Restored from Archive");
+      fetchAuthors();
+      fetchOverview();
+      autoRegenerateCompleteCatalogue();
+    } catch (err) {
+      toast.error("Failed to restore author");
     }
   };
 
@@ -10858,6 +10887,7 @@ const totalAuthorsBase = eventRegistrations.length;
                   openRejectAuthorModal={openRejectAuthorModal}
                   handleViewEditAuthor={handleViewEditAuthor}
                   handleDeleteAuthor={handleDeleteAuthor}
+                  handleRestoreAuthor={handleRestoreAuthor}
                   books={books}
                   authorsMeta={authorsMeta}
                   authorsPage={authorsPage}
