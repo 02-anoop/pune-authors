@@ -26,7 +26,7 @@ const sendNotificationEmail = async (to, subject, htmlBody) => {
     const textBody = htmlBody.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
     if (mailTransporter && process.env.EMAIL_USER) {
       await mailTransporter.sendMail({
-        from: '"Pune Authors\' Association" <noreply@puneauthors.com>',
+        from: `"Pune Authors' Association" <${process.env.EMAIL_USER}>`,
         to, 
         subject, 
         html: htmlBody, 
