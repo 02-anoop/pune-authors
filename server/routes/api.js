@@ -6965,10 +6965,10 @@ async function computeBookInventory(books) {
     const eventQty = eventMap[book.id] || 0;
     const stockHistory = stockHistoryList.filter(h => h.bookId === book.id);
 
-    // Initial stock entered by author
-    const masterStock = book.stock;
-    // Dynamically deduct upcoming data (web, airport, events)
-    const currentStock = masterStock - webSold - airportQty - eventQty;
+    // Reconstruct the initial total stock entered by adding back all database decrements
+    const masterStock = book.stock + webSold + airportQty + eventQty;
+    // Current stock is simply the database stock since the database already deducts web sales, airport donations, and event listed stock
+    const currentStock = book.stock;
     const hasPending = stockHistory.some(h => h.status === 'Pending');
 
     const distributionBreakdown = [
