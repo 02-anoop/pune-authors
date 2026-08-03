@@ -502,8 +502,9 @@ export async function downloadCataloguePDF(label: string, books: CatalogueBook[]
               <div>
                 <h3 style="margin: 20px 0 15px 0; font-size: 26px; color: #b44d28; font-family: 'Playfair Display', serif;">Way Ahead</h3>
                 <ul style="margin: 0 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 8px;">
-                  <li>a) Some of the forthcoming events are at Goa University, Naval Base – Visakhapatnam.</li>
+                  <li>a) Continue to organize literary event in educational institutions, corporate offices, and housing societies to revive book reading.</li>
                   <li>b) The aim is to reach every corner of India.</li>
+                  <li>c) Encourage young generation to write books and help them publish and reach the readers.</li>
                 </ul>
               </div>
             </div>
