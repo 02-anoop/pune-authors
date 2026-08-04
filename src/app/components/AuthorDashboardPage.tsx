@@ -3677,8 +3677,8 @@ function AuthorOrders({ orders, onRefresh, dashboardData }: { orders: any[], onR
                     </div>
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-500">Payment Verification</span>
-                      <span className={`font-bold ${viewBuyerInfoOrder.paymentVerified ? 'text-green-600' : viewBuyerInfoOrder.paymentFailed ? 'text-red-600' : 'text-yellow-600'}`}>
-                        {viewBuyerInfoOrder.paymentVerified ? 'Verified' : viewBuyerInfoOrder.paymentFailed ? 'Failed' : 'Pending'}
+                      <span className={`font-bold ${(viewBuyerInfoOrder.paymentVerified || ['Approved', 'Processing', 'Dispatched', 'Delivered', 'Completed'].includes(viewBuyerInfoOrder.status)) ? 'text-green-600' : viewBuyerInfoOrder.paymentFailed ? 'text-red-600' : 'text-yellow-600'}`}>
+                        {(viewBuyerInfoOrder.paymentVerified || ['Approved', 'Processing', 'Dispatched', 'Delivered', 'Completed'].includes(viewBuyerInfoOrder.status)) ? 'Verified' : viewBuyerInfoOrder.paymentFailed ? 'Failed' : 'Pending'}
                       </span>
                     </div>
                     {viewBuyerInfoOrder.paymentScreenshot && (

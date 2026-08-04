@@ -6296,6 +6296,51 @@ router.post('/api/admin/notifications', verifyToken, isAdmin, upload.single('doc
         documentName
       }
     });
+
+    // Send Emails Asynchronously
+    if (target !== 'SILENT_ALL') {
+      (async () => {
+        try {
+          let authorsToEmail = [];
+          if (target === 'ALL' || !target) {
+            authorsToEmail = await prisma.author.findMany({
+              where: { status: 'Approved', isArchived: false },
+              select: { email: true, name: true }
+            });
+          } else {
+            const authorName = target.startsWith('@') ? target.substring(1) : target;
+            const author = await prisma.author.findFirst({
+              where: { name: authorName, status: 'Approved', isArchived: false },
+              select: { email: true, name: true }
+            });
+            if (author) authorsToEmail = [author];
+          }
+
+          const emailSubject = "New Announcement from Admin - Pune Authors' Association";
+          const emailContent = emailWrap(
+            "New Admin Announcement",
+            `<p>Hello,</p>
+             <p>A new announcement has been posted on your Author Dashboard:</p>
+             <div style="padding: 15px; background: #f8fafc; border-left: 4px solid #3b82f6; margin: 15px 0; font-size: 15px; color: #1e293b;">
+               ${message.replace(/\\n/g, '<br/>')}
+             </div>
+             ${documentUrl ? `<p><strong>Attachment:</strong> <a href="https://puneauthorsassociation.com${documentUrl}" style="color: #3b82f6; text-decoration: underline;">${documentName || 'Download Document'}</a></p>` : ''}
+             <p>Please log in to your dashboard to view the full details or take any necessary actions.</p>`
+          );
+
+          for (const author of authorsToEmail) {
+            if (author.email) {
+              await sendNotificationEmail(author.email, emailSubject, emailContent);
+              // Small delay to prevent rate limits
+              await new Promise(r => setTimeout(r, 100));
+            }
+          }
+        } catch (e) {
+          console.error('Failed to send broadcast emails:', e);
+        }
+      })();
+    }
+
     res.json(notification);
   } catch (err) {
     console.error(err);
