@@ -6341,12 +6341,25 @@ router.post('/api/admin/notifications', verifyToken, isAdmin, upload.single('doc
               select: { email: true, name: true }
             });
           } else {
-            const authorName = target.startsWith('@') ? target.substring(1) : target;
-            const author = await prisma.author.findFirst({
-              where: { name: authorName, status: { in: ['Active', 'Approved'] }, isArchived: false },
+            const rawTargets = Array.isArray(target)
+              ? target
+              : String(target).split(',').map(t => t.trim()).filter(Boolean);
+
+            const targetCleaned = rawTargets.map(t => String(t).replace(/^@/, '').trim());
+            const numericIds = targetCleaned.map(t => parseInt(t)).filter(n => !isNaN(n));
+
+            authorsToEmail = await prisma.author.findMany({
+              where: {
+                status: { in: ['Active', 'Approved'] },
+                isArchived: false,
+                OR: [
+                  ...(numericIds.length > 0 ? [{ id: { in: numericIds } }] : []),
+                  { name: { in: targetCleaned } },
+                  { email: { in: targetCleaned } }
+                ]
+              },
               select: { email: true, name: true }
             });
-            if (author) authorsToEmail = [author];
           }
 
           const emailSubject = "New Announcement from Admin - Pune Authors' Association";

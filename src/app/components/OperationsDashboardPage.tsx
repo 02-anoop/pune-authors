@@ -2097,11 +2097,11 @@ export function OperationsDashboardPage() {
       } else if (forceTarget === true) {
         target = "ALL";
       } else {
-        const mentionedAuthor = authors?.find((a) =>
+        const mentionedAuthors = authors?.filter((a) =>
           newNotification.includes(`@${a.name}`),
         );
-        if (mentionedAuthor) {
-          target = mentionedAuthor.name;
+        if (mentionedAuthors && mentionedAuthors.length > 0) {
+          target = mentionedAuthors.map(a => a.name).join(",");
         }
       }
 
