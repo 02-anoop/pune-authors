@@ -57,7 +57,7 @@ export default function EventExcelManager({
         optInStatus: "Registered",
         manualTotalSold: null,
         manualTotalRevenue: null,
-          amountPaid: author.amountPaid || null
+        amountPaid: null
       };
       await axios.post(`${API}/api/admin/events/registration`, payload, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
@@ -460,12 +460,24 @@ export default function EventExcelManager({
                               >
                                 <Trash size={12} /> Remove
                               </button>
-                              {(author.optInStatus === "Pending Approval" || author.optInStatus === "Pending") && (
-                                <div className="flex gap-1 mt-1 w-full">
-                                  <button onClick={() => handleApprove(author.authorId)} className="bg-green-600 text-white w-full py-1 text-[9px] font-bold rounded hover:bg-green-700">✓</button>
-                                  <button onClick={() => handleReject(author.authorId)} className="bg-red-600 text-white w-full py-1 text-[9px] font-bold rounded hover:bg-red-700">✗</button>
-                                </div>
-                              )}
+                              <div className="flex flex-col gap-1 mt-2">
+                                {author.paymentScreenshot && (
+                                  <a href={`${import.meta.env.VITE_API_URL || "http://localhost:3001"}${author.paymentScreenshot}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-600 underline font-semibold text-center block mb-1 hover:text-blue-800">
+                                    View Payment Proof
+                                  </a>
+                                )}
+                                {author.transactionId && (
+                                  <div className="text-[10px] text-gray-500 font-medium text-center truncate mb-1">
+                                    Txn ID: {author.transactionId}
+                                  </div>
+                                )}
+                                {(author.optInStatus === "Pending Approval" || author.optInStatus === "Pending") && (
+                                  <div className="flex gap-1 w-full">
+                                    <button onClick={() => handleApprove(author.authorId)} className="bg-green-600 text-white w-full py-1 text-[9px] font-bold rounded hover:bg-green-700">✓ Approve</button>
+                                    <button onClick={() => handleReject(author.authorId)} className="bg-red-600 text-white w-full py-1 text-[9px] font-bold rounded hover:bg-red-700">✗ Reject</button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
                       </td>

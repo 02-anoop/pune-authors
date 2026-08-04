@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import FocusTrap from 'focus-trap-react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router';
-import { Home, Check, AlertCircle, Upload, Download, Loader2, LogOut, User, Bell, Search, ShoppingCart, BookOpen, CalendarIcon, BarChart3, Package, TrendingUp, TrendingDown, X, MapPin, Menu, ChevronDown, ChevronUp, DollarSign, CheckCircle2, FileText, Image as ImageIcon, Star, Plus, Minus, Eye, Edit2, Mail, Phone, Clock, Trash2, MessageSquare, ExternalLink, Send, ChevronLeft, ChevronRight, RefreshCw, Users, Megaphone } from 'lucide-react';
+import { Home, Check, AlertCircle, Upload, Download, Loader2, LogOut, User, Bell, Search, ShoppingCart, BookOpen, CalendarIcon, BarChart3, Package, TrendingUp, TrendingDown, X, MapPin, Menu, ChevronDown, ChevronUp, DollarSign, CheckCircle2, FileText, Image as ImageIcon, Star, Plus, Minus, Eye, Edit2, Mail, Phone, Clock, Trash2, MessageSquare, ExternalLink, Send, ChevronLeft, ChevronRight, RefreshCw, Users, Megaphone, Archive } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell , AreaChart, Area, LabelList, Legend } from 'recharts';
 import axios from 'axios';
 // exceljs and file-saver are dynamically imported inside export handlers to reduce initial bundle size
@@ -1279,18 +1279,17 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
 
 
 
-
-  const upcomingInvites = (data.eventInvites || []).filter((inv: any) => inv.event?.status === 'Upcoming');
   const rejectedInvites = (data.eventInvites || []).filter((inv: any) => inv.optInStatus === 'Rejected' || inv.optInStatus === 'Declined');
-  const latestUpcomingEvent = upcomingInvites.length > 0 ? upcomingInvites[0].event : null;
+  const availableEvents = data.availableEvents || [];
+  const latestUpcomingEvent = availableEvents.length > 0 ? availableEvents[0] : null;
   const eventSubtext = latestUpcomingEvent
     ? (
       <>
         Don't miss out on <strong className="text-amber-300 font-bold text-[15px]">{latestUpcomingEvent.name}</strong> 
-        <span className="opacity-80 ml-1">({new Date(latestUpcomingEvent.date).toLocaleDateString('en-GB')})</span>.
+        <span className="opacity-80 ml-1">({new Date(latestUpcomingEvent.date || latestUpcomingEvent.startDate).toLocaleDateString('en-GB')})</span>.
       </>
     )
-    : "Don't miss out on upcoming literary events and book fairs.";
+    : "No new upcoming events at the moment. Check back later!";
 
   return (
     <div>
@@ -1326,8 +1325,9 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
 
       {/* ── CTA: Live POS Events ── */}
       {(() => {
+         const isSpecialAuthor = data?.authorProfile?.email === 'arvindpuri1492@gmail.com';
          const livePosEvents = (data.eventInvites || [])
-            .filter((inv: any) => inv.event?.livePosEnabled && inv.event?.status === 'Live' && (inv.optInStatus === 'Registered' || inv.optInStatus === 'Approved'))
+            .filter((inv: any) => ((inv.event?.livePosEnabled && inv.event?.status === 'Live') || isSpecialAuthor) && (inv.optInStatus === 'Registered' || inv.optInStatus === 'Approved'))
             .map((inv: any) => inv.event);
             
          if (livePosEvents.length === 0) return null;
@@ -1369,7 +1369,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
          );
       })()}
 
-      {/* ── CTA: Seeking Registrations ── */}
+      {/* ── CTA: Upcoming Event Registration ── */}
       <div className="mb-8 relative group cursor-pointer">
         <Link 
           to="/dashboard/events" 
@@ -1385,7 +1385,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
             </div>
             <div className="flex flex-col items-start text-left">
               <span className="font-bold text-[17px] tracking-wide text-white drop-shadow-sm flex items-center gap-2">
-                📢 Active Events: Seeking Registration
+                📢 Upcoming Events
               </span>
               <span className="text-indigo-100 text-sm font-medium opacity-90 mt-0.5">
                 {eventSubtext}
@@ -1394,7 +1394,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
           </div>
           
           <div className="relative z-10 flex items-center gap-2 bg-white/10 hover:bg-white/20 px-5 py-2.5 rounded-xl backdrop-blur-sm transition-colors border border-white/10 shrink-0">
-            <span className="text-sm font-bold uppercase tracking-wider">Explore Ecosystem</span>
+            <span className="text-sm font-bold uppercase tracking-wider">Register Now</span>
             <svg className="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
@@ -4845,7 +4845,8 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
       {activeTab === 'events' && (
         <div className="space-y-6">
           {(() => {
-             const livePosEvents = allEvents.filter((evt: any) => evt.livePosEnabled && evt.status === 'Live' && (evt.registration === 'Registered' || evt.registration === 'Approved'));
+             const isSpecialAuthor = dashboardData?.authorProfile?.email === 'arvindpuri1492@gmail.com';
+             const livePosEvents = allEvents.filter((evt: any) => ((evt.livePosEnabled && evt.status === 'Live') || isSpecialAuthor) && (evt.registration === 'Registered' || evt.registration === 'Approved'));
              if (livePosEvents.length === 0) return null;
              return (
                <div className="mb-8 animate-fade-in-up space-y-4">
@@ -5384,7 +5385,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${statusColors}`}>
                                     {statusText}
                                   </span>
-                                  {evt.livePosEnabled && evt.status === 'Live' && (evt.registration === 'Registered' || evt.registration === 'Approved') && (
+                                  {((evt.livePosEnabled && evt.status === 'Live') || dashboardData?.authorProfile?.email === 'arvindpuri1492@gmail.com') && (evt.registration === 'Registered' || evt.registration === 'Approved') && (
                                     <button onClick={(e) => { e.stopPropagation(); window.open('/dashboard/pos/' + evt.id, '_blank'); }} className="mt-1.5 w-full max-w-[110px] flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 whitespace-nowrap" title="Launch Point of Sale System">
                                       <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span> LAUNCH POS
                                     </button>
@@ -5435,7 +5436,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                                             <div>
                                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 flex items-center gap-1"><CalendarIcon className="w-3 h-3"/> Date & Timings</p>
                                                <p className="text-sm text-paa-navy font-semibold">{new Date(evt.startDate || evt.date).toLocaleDateString()} • {(evt.startTime && evt.endTime) ? `${evt.startTime}-${evt.endTime}` : 'TBA'}</p>
-                                               {evt.livePosEnabled && (evt.registration === 'Registered' || evt.registration === 'Approved' || evt.registration === 'Participated') && (
+                                               {((evt.livePosEnabled) || dashboardData?.authorProfile?.email === 'arvindpuri1492@gmail.com') && (evt.registration === 'Registered' || evt.registration === 'Approved' || evt.registration === 'Participated') && (
                                                    <div className="mt-5">
                                                       <button onClick={(e) => { e.stopPropagation(); window.open('/dashboard/pos/' + evt.id + '?summary=true', '_blank'); }} className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-widest transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 w-max flex items-center gap-2 border border-indigo-500">
                                                          Day-Wise Sales Report
@@ -5465,6 +5466,11 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                                         
                                         <p className="text-[11px] text-gray-500 mb-3 italic bg-gray-50 p-2 rounded border border-gray-100">Check the box to include a book, and input the exact stock you want to list for this event.</p>
                                         <div className="flex-1 overflow-y-auto max-h-[250px] space-y-2 mb-4 pr-2">
+                                            {optInBooks.length === 0 && (
+                                                <div className="text-center p-4 bg-gray-50 border border-dashed border-gray-300 rounded text-gray-500 text-xs font-medium">
+                                                    You do not have any approved books in your catalogue. Only approved books can be submitted for an event.
+                                                </div>
+                                            )}
                                             {optInBooks.map((b, idx) => (
                                               <div key={idx} className="flex items-center gap-3 p-2 bg-gray-50 rounded border border-gray-200">
                                                 <input type="checkbox" checked={b.included} onChange={e => { const newB = [...optInBooks]; newB[idx].included = e.target.checked; setOptInBooks(newB); }} className="text-paa-navy focus:ring-paa-navy rounded" />

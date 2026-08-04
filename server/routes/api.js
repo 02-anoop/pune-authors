@@ -2297,7 +2297,16 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
       totalBulkSales = completed.filter(o => o.isBulk).reduce((sum, o) => sum + (o.amount || 0), 0);
     }
 
-    const result = { authorProfile, authorOrders, dynamicFields, eventInvites, listedBooks, posOrders, notifications, activeDonations, totalWebAndBulkSales, totalWebSales, totalBulkSales };
+    const invitedEventIds = eventInvites ? eventInvites.map(ei => ei.eventId) : [];
+    const availableEvents = await prisma.event.findMany({
+      where: {
+        id: { notIn: invitedEventIds },
+        status: { in: ['Upcoming', 'Upcoming/Live'] }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const result = { authorProfile, authorOrders, dynamicFields, eventInvites, listedBooks, posOrders, notifications, activeDonations, totalWebAndBulkSales, totalWebSales, totalBulkSales, availableEvents };
     setCache(cacheKey, result, 20 * 1000); // 20s cache for dashboard
     res.json(result);
   } catch (err) {

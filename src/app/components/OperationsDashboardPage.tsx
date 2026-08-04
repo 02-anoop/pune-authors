@@ -6454,7 +6454,7 @@ const totalAuthorsBase = eventRegistrations.length;
                             : (evt.eventBooks?.reduce(
                                 (s: number, eb: any) => s + (eb.soldStock || 0),
                                 0,
-                              ) || 0) + (evt.livePosSold || 0);
+                              ) || 0);
                       return acc + (Number(books) || 0);
                     },
                     0,
@@ -6494,7 +6494,7 @@ const totalAuthorsBase = eventRegistrations.length;
                                     (eb.soldStock || 0) *
                                       ((parseFloat(eb.overrideMrp) || parseFloat(eb.mrp) || parseFloat(eb.book?.mrp)) || 0),
                                   0,
-                                ) || 0) + (evt.livePosRevenue || 0);
+                                ) || 0);
                         return acc + (Number(revenue) || 0);
                       },
                       0,
@@ -6723,7 +6723,7 @@ const totalAuthorsBase = eventRegistrations.length;
                         (s: number, eb: any) => s + (eb.soldStock || 0),
                         0,
                       ) ||
-                        0) + (evt.livePosSold || 0));
+                        0));
                     const participated =
                       evt.aggAuthors ?? (evt._count?.eventAuthors || 0);
                     const eligible = evt.aggEligibleAuthors ?? 0;
@@ -6920,7 +6920,7 @@ const totalAuthorsBase = eventRegistrations.length;
                         : (evt.eventBooks?.reduce(
                             (s: number, eb: any) => s + (eb.soldStock || 0),
                             0,
-                          ) || 0) + (evt.livePosSold || 0);
+                          ) || 0);
                   const catRowColor = i % 2 === 0 ? "bg-[#FFFFFF]" : "bg-[#FCFCFC]";
                   
                   // Clean duration formatting
@@ -6949,7 +6949,7 @@ const totalAuthorsBase = eventRegistrations.length;
                                       : evt.category === "University" ? "bg-[#FFF176] text-black"
                                       : "bg-gray-100 text-black";
 
-                  const revenueVal = evt.aggRevenue != null ? evt.aggRevenue : evt.isLegacy ? "NA" : (evt.eventBooks?.reduce((s: number, eb: any) => s + (eb.soldStock || 0) * ((parseFloat(eb.overrideMrp) || parseFloat(eb.mrp) || parseFloat(eb.book?.mrp)) || 0), 0) || 0) + (evt.livePosRevenue || 0);
+                  const revenueVal = evt.aggRevenue != null ? evt.aggRevenue : evt.isLegacy ? "NA" : (evt.eventBooks?.reduce((s: number, eb: any) => s + (eb.soldStock || 0) * ((parseFloat(eb.overrideMrp) || parseFloat(eb.mrp) || parseFloat(eb.book?.mrp)) || 0), 0) || 0);
                   const revenue = revenueVal === "NA" ? "NA" : `₹${revenueVal}`;
                   
                   return (
@@ -7259,13 +7259,13 @@ const totalAuthorsBase = eventRegistrations.length;
                     </td>
                     <td className="p-1 text-center align-middle border-[1.5px] border-black">
                       {filteredTableEvents.reduce((acc: number, evt: any) => {
-                        const books = evt.aggSold != null ? evt.aggSold : evt.isLegacy ? 0 : (evt.eventBooks?.reduce((s: number, eb: any) => s + (eb.soldStock || 0), 0) || 0) + (evt.livePosSold || 0);
+                        const books = evt.aggSold != null ? evt.aggSold : evt.isLegacy ? 0 : (evt.eventBooks?.reduce((s: number, eb: any) => s + (eb.soldStock || 0), 0) || 0);
                         return acc + (Number(books) || 0);
                       }, 0)}
                     </td>
                     <td className="p-1 text-center align-middle border-[1.5px] border-black">
                       ₹{filteredTableEvents.reduce((acc: number, evt: any) => {
-                        const revenueVal = evt.aggRevenue != null ? evt.aggRevenue : evt.isLegacy ? 0 : (evt.eventBooks?.reduce((s: number, eb: any) => s + (eb.soldStock || 0) * ((parseFloat(eb.overrideMrp) || parseFloat(eb.mrp) || parseFloat(eb.book?.mrp)) || 0), 0) || 0) + (evt.livePosRevenue || 0);
+                        const revenueVal = evt.aggRevenue != null ? evt.aggRevenue : evt.isLegacy ? 0 : (evt.eventBooks?.reduce((s: number, eb: any) => s + (eb.soldStock || 0) * ((parseFloat(eb.overrideMrp) || parseFloat(eb.mrp) || parseFloat(eb.book?.mrp)) || 0), 0) || 0);
                         return acc + (Number(revenueVal) || 0);
                       }, 0)}
                     </td>
