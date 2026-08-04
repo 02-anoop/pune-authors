@@ -6235,16 +6235,47 @@ router.post('/api/admin/events/:id/broadcast', verifyToken, isAdmin, async (req,
     const { target } = req.body; // 'Authors' or 'Customers'
 
     if (target === 'Authors') {
+      const event = await prisma.event.findUnique({ where: { id: eventId } });
+
       await prisma.event.update({
         where: { id: eventId },
         data: { broadcastStatus: 'AuthorsOnly' }
       });
 
-      // Here NodeMailer logic would go to email authors
-      // For now we just create EventAuthor records for all Active authors
-      const activeAuthors = await prisma.author.findMany({ where: { status: 'Active' } });
+      const activeAuthors = await prisma.author.findMany({
+        where: { status: { in: ['Active', 'Approved'] }, isArchived: false },
+        select: { id: true, email: true, name: true }
+      });
       const eventAuthorsData = activeAuthors.map(a => ({ eventId, authorId: a.id, optInStatus: 'Pending' }));
       await prisma.eventAuthor.createMany({ data: eventAuthorsData, skipDuplicates: true });
+
+      // Send emails asynchronously to authors
+      (async () => {
+        try {
+          const emailSubject = `New Event Announcement: ${event ? event.name : "PAA Event"}`;
+          const emailContent = emailWrap(
+            "New Event Broadcast",
+            `<p>Hello,</p>
+             <p>A new event announcement has been broadcasted by Admin:</p>
+             <div style="padding: 15px; background: #f8fafc; border-left: 4px solid #3b82f6; margin: 15px 0; font-size: 15px; color: #1e293b;">
+               <strong>${event ? event.name : "New Event"}</strong>
+               ${event && event.date ? `<br/><strong>Date:</strong> ${event.date}` : ''}
+               ${event && event.venue ? `<br/><strong>Venue:</strong> ${event.venue}` : ''}
+               ${event && event.description ? `<br/><p>${event.description}</p>` : ''}
+             </div>
+             <p>Please log in to your Author Dashboard to view full event details and opt in.</p>`
+          );
+
+          for (const author of activeAuthors) {
+            if (author.email) {
+              await sendNotificationEmail(author.email, emailSubject, emailContent);
+              await new Promise(r => setTimeout(r, 100));
+            }
+          }
+        } catch (e) {
+          console.error('Failed to send event broadcast emails:', e);
+        }
+      })();
 
       res.json({ success: true, message: 'Broadcast sent to authors. Opt-in requests created.' });
     } else if (target === 'Customers') {
@@ -6306,13 +6337,13 @@ router.post('/api/admin/notifications', verifyToken, isAdmin, upload.single('doc
           let authorsToEmail = [];
           if (target === 'ALL' || !target) {
             authorsToEmail = await prisma.author.findMany({
-              where: { status: 'Approved', isArchived: false },
+              where: { status: { in: ['Active', 'Approved'] }, isArchived: false },
               select: { email: true, name: true }
             });
           } else {
             const authorName = target.startsWith('@') ? target.substring(1) : target;
             const author = await prisma.author.findFirst({
-              where: { name: authorName, status: 'Approved', isArchived: false },
+              where: { name: authorName, status: { in: ['Active', 'Approved'] }, isArchived: false },
               select: { email: true, name: true }
             });
             if (author) authorsToEmail = [author];
