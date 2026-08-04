@@ -4424,6 +4424,45 @@ router.delete('/api/admin/gallery/images/:imageId', verifyToken, isAdmin, async 
 
 
 // EVENT REGISTRATIONS FOR ADMIN
+router.post('/api/admin/events/registration', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const { eventId, authorId, books, optInStatus, manualTotalSold, manualTotalRevenue } = req.body;
+    
+    await prisma.eventAuthor.updateMany({
+      where: { eventId, authorId },
+      data: { 
+        optInStatus: optInStatus || undefined,
+        manualTotalSold: manualTotalSold !== null ? manualTotalSold : undefined,
+        manualTotalRevenue: manualTotalRevenue !== null ? manualTotalRevenue : undefined
+      }
+    });
+
+    if (books && Array.isArray(books)) {
+      for (const b of books) {
+        const targetBookId = b.bookId || (b.book ? b.book.id : null) || b.id;
+        if (!targetBookId) continue;
+        
+        await prisma.eventBook.updateMany({
+          where: { eventId, authorId, bookId: parseInt(targetBookId) },
+          data: {
+            listedStock: b.actualSent !== undefined ? parseInt(b.actualSent) : undefined,
+            soldStock: b.soldStock !== undefined ? parseInt(b.soldStock) : undefined,
+            returnedStock: b.returnedStock !== undefined ? parseInt(b.returnedStock) : undefined,
+            manualDailySales: b.manualDailySales || undefined,
+            overrideMrp: b.overrideMrp !== undefined && b.overrideMrp !== "" ? parseFloat(b.overrideMrp) : null
+          }
+        });
+      }
+    }
+    
+    invalidateCache('admin:dashboard-stats');
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update registration' });
+  }
+});
+
 router.get('/api/admin/events/:id/registrations', verifyToken, isAdmin, async (req, res) => {
   try {
     const eventId = parseInt(req.params.id);
@@ -4729,8 +4768,7 @@ router.get('/api/author/events', verifyToken, async (req, res) => {
 
     const eventInvites = await prisma.eventAuthor.findMany({
       where: {
-        authorId: author.id,
-        event: { broadcastStatus: { not: 'Draft' } }
+        authorId: author.id
       },
       include: { event: true }
     });
@@ -4743,7 +4781,7 @@ router.get('/api/author/events', verifyToken, async (req, res) => {
 
     // All past events (for the gallery / history section in author dashboard)
     const pastEvents = await prisma.event.findMany({
-      where: { status: { in: ['Past', 'Legacy Archive'] }, broadcastStatus: 'Published' },
+      where: { status: { in: ['Past', 'Legacy Archive'] } },
       orderBy: { date: 'desc' },
       include: {
         _count: { select: { eventAuthors: { where: { optInStatus: 'Registered' } }, eventBooks: true } }
@@ -4754,8 +4792,7 @@ router.get('/api/author/events', verifyToken, async (req, res) => {
     const availableEvents = await prisma.event.findMany({
       where: {
         id: { notIn: invitedEventIds },
-        status: { in: ['Upcoming', 'Upcoming/Live'] },
-        broadcastStatus: { not: 'Draft' }
+        status: { in: ['Upcoming', 'Upcoming/Live'] }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -5316,7 +5353,7 @@ router.post('/api/admin/events', verifyToken, isAdmin, upload.single('banner'), 
         description: description || null,
         bannerUrl,
         status: req.body.status || (dateType === 'exact' && new Date(date) < new Date() ? 'Past' : 'Upcoming'),
-        broadcastStatus: notifyAllAuthors === 'false' ? 'Draft' : 'CustomersAlso',
+        broadcastStatus: 'Published',
         eventType: eventType || 'Book Fair',
         category: category || null,
         registrationFee: registrationFee ? parseFloat(registrationFee) : 0,
