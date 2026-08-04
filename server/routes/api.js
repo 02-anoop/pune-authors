@@ -7649,16 +7649,21 @@ router.get('/api/admin/inventory', verifyToken, isAdmin, async (req, res) => {
     const isExport = req.query.export === 'true';
     const skip = (Number(page) - 1) * Number(limit);
 
-    let whereClause = {};
+    let whereClause = {
+      isArchived: false,
+      author: { isArchived: false }
+    };
 
     if (search) {
-      whereClause.OR = [
-        { title: { contains: search } },
-        { author: { name: { contains: search } } }
+      whereClause.AND = [
+        {
+          OR: [
+            { title: { contains: search } },
+            { author: { name: { contains: search } } }
+          ]
+        }
       ];
     }
-    
-    whereClause.isArchived = false;
 
     if (lowStock === 'true') {
       whereClause.stock = { lt: 10 };
@@ -7768,8 +7773,9 @@ router.get('/api/admin/inventory', verifyToken, isAdmin, async (req, res) => {
       return res.end();
     }
 
-    // We need to fetch all books to compute accurate global KPIs based on dynamic inventory logic
+    // We need to fetch all active books to compute accurate global KPIs based on dynamic inventory logic
     const allBooks = await prisma.book.findMany({
+      where: { isArchived: false, author: { isArchived: false } },
       include: { author: { select: { name: true } } }
     });
     const enrichedGlobalBooks = await computeBookInventory(allBooks);
@@ -7803,8 +7809,10 @@ router.get('/api/admin/inventory', verifyToken, isAdmin, async (req, res) => {
     const total = filtered.length;
     const enrichedBooks = filtered.slice(skip, skip + Number(limit));
 
-    // Global stats across ALL platform
-    const globalTotalTitles = await prisma.book.count({ where: {} });
+    // Global stats across active platform books
+    const globalTotalTitles = await prisma.book.count({
+      where: { isArchived: false, author: { isArchived: false } }
+    });
 
     // Removed duplicate declaration of allBooks and enrichedGlobalBooks
 
