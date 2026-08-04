@@ -617,7 +617,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis dataKey="percentage" type="number" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} domain={[0, 100]} name="Participation" tickFormatter={(val) => `${val}%`} />
                   <YAxis dataKey="booksSold" type="number" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} name="Books Sold" />
-                  <ZAxis dataKey="name" name="Author" />
+                  <ZAxis dataKey="name" type="category" name="Author" range={[60, 60]} />
                   <RechartsTooltip
                     cursor={{ strokeDasharray: '3 3' }}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
