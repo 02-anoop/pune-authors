@@ -2309,7 +2309,7 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
     let authorScatterData = [];
     try {
       const allAuthorsDB = await prisma.author.findMany({ select: { id: true, name: true, createdAt: true, groupJoiningDate: true }, where: { status: 'Approved' } });
-      const allEventsDB = await prisma.event.findMany({ where: { broadcastStatus: { not: 'Draft' } }, select: { id: true, date: true, startDate: true } });
+      const allEventsDB = await prisma.event.findMany({ where: { broadcastStatus: { not: 'Draft' } }, select: { id: true, date: true } });
       const allRegistrationsDB = await prisma.eventAuthor.findMany({ where: { optInStatus: { in: ['Registered', 'Approved', 'Pending Approval'] } }, select: { authorId: true, eventId: true } });
       
       let allManualDB = [];
@@ -2342,7 +2342,7 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
         } catch(e) { return new Date(0); }
       };
 
-      const parsedEvents = allEventsDB.map(e => ({ id: e.id, time: parseEvDate(e.date || e.startDate).getTime() }));
+      const parsedEvents = allEventsDB.map(e => ({ id: e.id, time: parseEvDate(e.date).getTime() }));
 
       allAuthorsDB.forEach(a => {
          const joinDate = a.groupJoiningDate ? new Date(a.groupJoiningDate) : new Date(a.createdAt);

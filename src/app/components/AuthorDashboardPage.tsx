@@ -594,7 +594,7 @@ export function AuthorDashboardPage() {
               <div className="animate-pulse" style={{ position: 'absolute', top: '100%', right: '100%', marginRight: 12, marginTop: -8, width: 280, background: '#1a1a2e', borderRadius: 12, padding: '12px 16px', color: '#fff', zIndex: 9999, display: 'flex', gap: 12, alignItems: 'flex-start', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
                 <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => { setShowNotifications(true); const latestId = String(visibleNotifications[0]?.id || unreadEventInvites[0]?.id || 'toast'); setDismissedToastId(latestId); localStorage.setItem('paa_dismissed_toast', latestId); }}>
                   <p style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#3b82f6', marginBottom: 2 }}>New Message</p>
-                  <p style={{ fontSize: 12, color: '#f3f4f6', lineHeight: 1.4 }}>{visibleNotifications[0]?.message?.replace(/\[LOW_STOCK:\d+\]\s*/g, '') || (unreadEventInvites.length > 0 ? `New Event: ${unreadEventInvites[0].event.name}` : 'You have unread notifications.')}</p>
+                  <p style={{ fontSize: 12, color: '#f3f4f6', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{visibleNotifications[0]?.message?.replace(/\[LOW_STOCK:\d+\]\s*/g, '') || (unreadEventInvites.length > 0 ? `New Event: ${unreadEventInvites[0].event.name}` : 'You have unread notifications.')}</p>
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); const latestId = String(visibleNotifications[0]?.id || unreadEventInvites[0]?.id || 'toast'); setDismissedToastId(latestId); localStorage.setItem('paa_dismissed_toast', latestId); }} style={{ color: '#9ca3af', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}><X size={14} /></button>
                 <div style={{ position: 'absolute', top: 12, right: -6, width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '6px solid #1a1a2e' }}></div>
@@ -965,29 +965,42 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
 
   const documentNotifications = (data.notifications || []).filter((n: any) => n.documentUrl);
   const unreadDocsCount = documentNotifications.length;
-  if (unreadDocsCount > 0 && !dismissedActions.includes('act-docs')) {
-    actionItems.push({ id: 'act-docs', text: `Received ${unreadDocsCount} document(s) from admin, read them`, icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50', link: '/dashboard/documents' });
+  const maxDocId = documentNotifications.length > 0 ? Math.max(...documentNotifications.map((n: any) => n.id)) : 0;
+  if (unreadDocsCount > 0 && !dismissedActions.includes(`act-docs-${maxDocId}`)) {
+    actionItems.push({ id: `act-docs-${maxDocId}`, text: `Received ${unreadDocsCount} document(s) from admin, read them`, icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50', link: '/dashboard/documents' });
   }
 
-  const unapprovedOrders = toApproveOrders;
-  if (unapprovedOrders > 0 && !dismissedActions.includes('act-orders')) {
-    actionItems.push({ id: 'act-orders', text: `Approve and fulfill ${unapprovedOrders} new web order${unapprovedOrders > 1 ? 's' : ''}`, icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-[#eef2f6]', link: '/dashboard/orders' });
+  const broadcastNotifications = (data.notifications || []).filter((n: any) => !n.documentUrl && n.target !== 'SILENT_ALL');
+  const unreadBroadcastsCount = broadcastNotifications.length;
+  const maxBroadcastId = broadcastNotifications.length > 0 ? Math.max(...broadcastNotifications.map((n: any) => n.id)) : 0;
+  if (unreadBroadcastsCount > 0 && !dismissedActions.includes(`act-broadcasts-${maxBroadcastId}`)) {
+    actionItems.push({ id: `act-broadcasts-${maxBroadcastId}`, text: `You have ${unreadBroadcastsCount} new broadcast message(s). Read more`, icon: Megaphone, color: 'text-pink-600', bg: 'bg-pink-100', link: '/dashboard/broadcasts' });
+  }
+
+  const unapprovedOrdersList = authorOrders.filter((o: any) => (o.status === 'Pending Verification' || o.status === 'Processing' || o.status === 'Pending') && !o.isBulk);
+  const unapprovedOrders = unapprovedOrdersList.length;
+  const maxOrderId = unapprovedOrdersList.length > 0 ? Math.max(...unapprovedOrdersList.map((o: any) => o.id)) : 0;
+  if (unapprovedOrders > 0 && !dismissedActions.includes(`act-orders-${maxOrderId}`)) {
+    actionItems.push({ id: `act-orders-${maxOrderId}`, text: `Approve and fulfill ${unapprovedOrders} new web order${unapprovedOrders > 1 ? 's' : ''}`, icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-[#eef2f6]', link: '/dashboard/orders' });
   }
 
   const unreadEventInvites = data.eventInvites?.filter((inv: any) => inv.optInStatus === 'Pending') || [];
-  if (unreadEventInvites.length > 0 && !dismissedActions.includes('act-events')) {
-    actionItems.push({ id: 'act-events', text: `You have been invited to ${unreadEventInvites.length} new event${unreadEventInvites.length > 1 ? 's' : ''}. Register now!`, icon: CalendarIcon, color: 'text-purple-600', bg: 'bg-purple-100', link: '/dashboard/events' });
+  const maxInviteId = unreadEventInvites.length > 0 ? Math.max(...unreadEventInvites.map((inv: any) => inv.id)) : 0;
+  if (unreadEventInvites.length > 0 && !dismissedActions.includes(`act-events-${maxInviteId}`)) {
+    actionItems.push({ id: `act-events-${maxInviteId}`, text: `You have been invited to ${unreadEventInvites.length} new event${unreadEventInvites.length > 1 ? 's' : ''}. Register now!`, icon: CalendarIcon, color: 'text-purple-600', bg: 'bg-purple-100', link: '/dashboard/events' });
   }
 
   const unsettledEvents = data.eventInvites?.filter((inv: any) => inv.optInStatus === 'Registered' && inv.event.status === 'Past' && data.listedBooks?.some((lb: any) => lb.eventId === inv.eventId && lb.listedStock !== (lb.soldStock || 0) + (lb.returnedStock || 0))) || [];
-  if (unsettledEvents.length > 0 && !dismissedActions.includes('act-settle')) {
-    actionItems.push({ id: 'act-settle', text: `Settle your inventory for ${unsettledEvents.length} past event${unsettledEvents.length > 1 ? 's' : ''}`, icon: AlertCircle, color: 'text-orange-600', bg: 'bg-orange-100', link: '/dashboard/events' });
+  const maxSettleId = unsettledEvents.length > 0 ? Math.max(...unsettledEvents.map((inv: any) => inv.eventId)) : 0;
+  if (unsettledEvents.length > 0 && !dismissedActions.includes(`act-settle-${maxSettleId}`)) {
+    actionItems.push({ id: `act-settle-${maxSettleId}`, text: `Settle your inventory for ${unsettledEvents.length} past event${unsettledEvents.length > 1 ? 's' : ''}`, icon: AlertCircle, color: 'text-orange-600', bg: 'bg-orange-100', link: '/dashboard/events' });
   }
 
   const lowStockAlerts = authorProfile.extraData?.lowStockAlerts || [];
   const activeAlerts = lowStockAlerts.filter((a: any) => !a.read && (Date.now() - a.timestamp < 24 * 60 * 60 * 1000));
-  if (activeAlerts.length > 0 && !dismissedActions.includes('act-lowstock')) {
-    actionItems.push({ id: 'act-lowstock', text: `Admin Notification: ${activeAlerts.length} of your books have critically low stock!`, icon: Package, color: 'text-red-600', bg: 'bg-red-100', link: '/dashboard/inventory' });
+  const maxLowStockTs = activeAlerts.length > 0 ? Math.max(...activeAlerts.map((a: any) => a.timestamp)) : 0;
+  if (activeAlerts.length > 0 && !dismissedActions.includes(`act-lowstock-${maxLowStockTs}`)) {
+    actionItems.push({ id: `act-lowstock-${maxLowStockTs}`, text: `Admin Notification: ${activeAlerts.length} of your books have critically low stock!`, icon: Package, color: 'text-red-600', bg: 'bg-red-100', link: '/dashboard/inventory' });
   }
 
   if (actionItems.length === 0) {
@@ -3496,10 +3509,6 @@ function AuthorOrders({ orders, onRefresh, dashboardData }: { orders: any[], onR
     }
   });
   const groupedOrdersList = Object.values(groupedOrdersObj).sort((a: any, b: any) => {
-     const aPending = a.status === 'Pending Verification' || a.status === 'Pending' || a.status === 'Processing';
-     const bPending = b.status === 'Pending Verification' || b.status === 'Pending' || b.status === 'Processing';
-     if (aPending && !bPending) return -1;
-     if (!aPending && bPending) return 1;
      return new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime();
   });
 
@@ -3663,9 +3672,13 @@ function AuthorOrders({ orders, onRefresh, dashboardData }: { orders: any[], onR
                       <span className="font-bold font-mono text-paa-navy">{viewBuyerInfoOrder.transactionId || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500">Status</span>
+                      <span className="text-gray-500">Item Status</span>
+                      <span className="font-bold text-paa-navy uppercase">{viewBuyerInfoOrder.status}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500">Payment Verification</span>
                       <span className={`font-bold ${viewBuyerInfoOrder.paymentVerified ? 'text-green-600' : viewBuyerInfoOrder.paymentFailed ? 'text-red-600' : 'text-yellow-600'}`}>
-                        {viewBuyerInfoOrder.paymentVerified ? 'Verified' : viewBuyerInfoOrder.paymentFailed ? 'Failed' : 'Pending Verification'}
+                        {viewBuyerInfoOrder.paymentVerified ? 'Verified' : viewBuyerInfoOrder.paymentFailed ? 'Failed' : 'Pending'}
                       </span>
                     </div>
                     {viewBuyerInfoOrder.paymentScreenshot && (
