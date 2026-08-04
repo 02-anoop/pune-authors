@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Users, Activity, Clock, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit, CheckCircle } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, LabelList } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, LabelList, ScatterChart, Scatter, ZAxis } from 'recharts';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { getAuthorParticipationStats } from './OperationsDashboardPage';
@@ -34,7 +34,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries, pendingFines,
     delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
     orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
-    completedOrders, topParticipatingAuthors
+    completedOrders, topParticipatingAuthors, authorScatterData
   } = useMemo(() => {
     // Low stock books (threshold < 10)
     // Exclude if inventory is same AND notified within 24 hours.
@@ -188,11 +188,25 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
       .sort((a, b) => b.percentage - a.percentage || b.participated - a.participated)
       .slice(0, 20);
 
+    // Chart Data 6: Author Scatter Data (Participation vs Books Sold)
+    const authorScatterData = authors.map((a: any) => {
+      const pStats = getAuthorParticipationStats(a, events);
+      const authorSales = stats?.salesByAuthor?.find((sa: any) => sa.name === a.name);
+      return {
+        id: a.id || a.dbId,
+        name: a.name,
+        percentage: pStats.percentage,
+        booksSold: authorSales ? authorSales.units : 0,
+        participated: pStats.participated,
+        totalEvents: pStats.total
+      };
+    }).filter((a: any) => a.totalEvents > 0);
+
     return {
       lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries: prevQueries, pendingFines,
       delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
       orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
-      completedOrders: completedOrdersCount, topParticipatingAuthors
+      completedOrders: completedOrdersCount, topParticipatingAuthors, authorScatterData
     };
   }, [books, authors, orders, events, stats, localDismissed, notifiedBooks, prevQueries, lastAdminVisit]);
 
@@ -558,8 +572,8 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
         </div>
       </div>
 
-      {/* ════ Participation Graph Row ════ */}
-      <div className="grid grid-cols-1 gap-5">
+      {/* ════ Participation & Author Performance Graph Row ════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
           <h3 className="text-base font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
             <Users className="w-5 h-5 text-purple-500" aria-hidden="true" /> Top 20 Authors by Participation
@@ -587,6 +601,42 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-gray-400 text-xs">No participation data available.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Scatter Plot (Right) */}
+        <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
+          <h3 className="text-base font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-indigo-500" aria-hidden="true" /> Participation vs Books Sold
+          </h3>
+          <div className="h-80 w-full">
+            {authorScatterData && authorScatterData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart margin={{ top: 15, right: 20, left: -10, bottom: 25 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="percentage" type="number" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} domain={[0, 100]} name="Participation" tickFormatter={(val) => `${val}%`} />
+                  <YAxis dataKey="booksSold" type="number" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} name="Books Sold" />
+                  <ZAxis dataKey="name" name="Author" />
+                  <RechartsTooltip
+                    cursor={{ strokeDasharray: '3 3' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                    formatter={(value: any, name: any, props: any) => {
+                      if (name === 'Author') return [value, 'Author'];
+                      if (name === 'Participation') return [`${value}% (${props.payload.participated}/${props.payload.totalEvents} events)`, 'Participation'];
+                      if (name === 'Books Sold') return [value, 'Books Sold'];
+                      return [value, name];
+                    }}
+                  />
+                  <Scatter data={authorScatterData} fill="#3b82f6" shape="circle">
+                    {authorScatterData.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} opacity={0.8} />
+                    ))}
+                  </Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400 text-xs">No data available.</div>
             )}
           </div>
         </div>

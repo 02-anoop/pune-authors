@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import FocusTrap from 'focus-trap-react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router';
 import { Home, Check, AlertCircle, Upload, Download, Loader2, LogOut, User, Bell, Search, ShoppingCart, BookOpen, CalendarIcon, BarChart3, Package, TrendingUp, TrendingDown, X, MapPin, Menu, ChevronDown, ChevronUp, DollarSign, CheckCircle2, FileText, Image as ImageIcon, Star, Plus, Minus, Eye, Edit2, Mail, Phone, Clock, Trash2, MessageSquare, ExternalLink, Send, ChevronLeft, ChevronRight, RefreshCw, Users, Megaphone, Archive } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell , AreaChart, Area, LabelList, Legend } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell , AreaChart, Area, LabelList, Legend, ScatterChart, Scatter, ZAxis, Label } from 'recharts';
 import axios from 'axios';
 // exceljs and file-saver are dynamically imported inside export handlers to reduce initial bundle size
 import { toast } from 'sonner';
@@ -74,7 +74,8 @@ export function AuthorDashboardPage() {
 
   const unreadEventInvites = dashboardData?.eventInvites?.filter((inv: any) => inv.optInStatus === 'Pending') || [];
   const notifications = dashboardData?.notifications || [];
-  const hasUnread = unreadEventInvites.length > 0 || notifications.length > 0;
+  const visibleNotifications = notifications.filter((n: any) => n.target !== 'SILENT_ALL');
+  const hasUnread = unreadEventInvites.length > 0 || visibleNotifications.length > 0;
 
 
   const fetchQueriesAlert = async () => {
@@ -585,17 +586,17 @@ export function AuthorDashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 relative shrink-0">
-            <button onClick={() => { setShowNotifications(!showNotifications); }} className={`relative w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-black/8 text-paa-navy hover:bg-black/4 transition-colors ${hasUnread && dismissedToastId !== String(notifications[0]?.id || unreadEventInvites[0]?.id || 'toast') ? 'animate-pulse' : ''}`}>
+            <button onClick={() => { setShowNotifications(!showNotifications); }} className={`relative w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-black/8 text-paa-navy hover:bg-black/4 transition-colors ${hasUnread && dismissedToastId !== String(visibleNotifications[0]?.id || unreadEventInvites[0]?.id || 'toast') ? 'animate-pulse' : ''}`}>
               <Bell size={16} />
               {hasUnread && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>}
             </button>
-            {hasUnread && !showNotifications && dismissedToastId !== String(notifications[0]?.id || unreadEventInvites[0]?.id || 'toast') && (
+            {hasUnread && !showNotifications && dismissedToastId !== String(visibleNotifications[0]?.id || unreadEventInvites[0]?.id || 'toast') && (
               <div className="animate-pulse" style={{ position: 'absolute', top: '100%', right: '100%', marginRight: 12, marginTop: -8, width: 280, background: '#1a1a2e', borderRadius: 12, padding: '12px 16px', color: '#fff', zIndex: 9999, display: 'flex', gap: 12, alignItems: 'flex-start', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
-                <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => { setShowNotifications(true); const latestId = String(notifications[0]?.id || unreadEventInvites[0]?.id || 'toast'); setDismissedToastId(latestId); localStorage.setItem('paa_dismissed_toast', latestId); }}>
+                <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => { setShowNotifications(true); const latestId = String(visibleNotifications[0]?.id || unreadEventInvites[0]?.id || 'toast'); setDismissedToastId(latestId); localStorage.setItem('paa_dismissed_toast', latestId); }}>
                   <p style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#3b82f6', marginBottom: 2 }}>New Message</p>
-                  <p style={{ fontSize: 12, color: '#f3f4f6', lineHeight: 1.4 }}>{notifications[0]?.message?.replace(/\[LOW_STOCK:\d+\]\s*/g, '') || (unreadEventInvites.length > 0 ? `New Event: ${unreadEventInvites[0].event.name}` : 'You have unread notifications.')}</p>
+                  <p style={{ fontSize: 12, color: '#f3f4f6', lineHeight: 1.4 }}>{visibleNotifications[0]?.message?.replace(/\[LOW_STOCK:\d+\]\s*/g, '') || (unreadEventInvites.length > 0 ? `New Event: ${unreadEventInvites[0].event.name}` : 'You have unread notifications.')}</p>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); const latestId = String(notifications[0]?.id || unreadEventInvites[0]?.id || 'toast'); setDismissedToastId(latestId); localStorage.setItem('paa_dismissed_toast', latestId); }} style={{ color: '#9ca3af', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}><X size={14} /></button>
+                <button onClick={(e) => { e.stopPropagation(); const latestId = String(visibleNotifications[0]?.id || unreadEventInvites[0]?.id || 'toast'); setDismissedToastId(latestId); localStorage.setItem('paa_dismissed_toast', latestId); }} style={{ color: '#9ca3af', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}><X size={14} /></button>
                 <div style={{ position: 'absolute', top: 12, right: -6, width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '6px solid #1a1a2e' }}></div>
               </div>
             )}
@@ -6291,7 +6292,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
 }
 
 function AuthorSalesReport({ data, onRefresh }: { data: any, onRefresh: () => void }) {
-  const [filterType, setFilterType] = useState('lifetime'); // today, weekly, monthly, this_month, ytd, select_month, lifetime, custom
+  const authorProfile = data?.authorProfile || {};  const [filterType, setFilterType] = useState('lifetime'); // today, weekly, monthly, this_month, ytd, select_month, lifetime, custom
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedMonthValue, setSelectedMonthValue] = useState(new Date().toISOString().slice(0, 7));
@@ -6826,7 +6827,51 @@ function AuthorSalesReport({ data, onRefresh }: { data: any, onRefresh: () => vo
             <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div><span className="text-[10px] text-gray-500 font-bold uppercase">Fairs</span></div>
           </div>
         </div>
+      </div>
 
+      {/* Row 2.5: Author Standing / Participation vs Books Sold */}
+      <div className="bg-white border border-paa-navy/5 p-5 md:p-6 rounded-2xl shadow-sm mb-8">
+        <h4 className="text-xs font-bold text-paa-navy uppercase tracking-widest mb-2 flex items-center gap-2">
+          <Users className="w-4 h-4 text-indigo-500" /> Community Standing
+        </h4>
+        <p className="text-[10px] text-gray-400 mb-6 font-medium">Compare your participation & sales against the community (Your stats are highlighted in <span className="text-emerald-500 font-bold">Green</span>).</p>
+        <div className="h-[300px] w-full">
+          {data.authorScatterData && data.authorScatterData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 20, right: 20, left: 0, bottom: 25 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="percentage" type="number" fontSize={11} tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} domain={[0, 100]} name="Participation" tickFormatter={(val) => `${val}%`}>
+                  <Label value="Participation %" offset={0} position="bottom" style={{ fontSize: '11px', fill: '#9CA3AF', fontWeight: 'bold' }} />
+                </XAxis>
+                <YAxis dataKey="booksSold" type="number" fontSize={11} tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} name="Books Sold">
+                  <Label value="Total Books Sold" angle={-90} position="left" style={{ textAnchor: 'middle', fontSize: '11px', fill: '#9CA3AF', fontWeight: 'bold' }} />
+                </YAxis>
+                <ZAxis dataKey="name" name="Author" />
+                <Tooltip
+                  cursor={{ strokeDasharray: '3 3' }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                  formatter={(value: any, name: any, props: any) => {
+                    const isSelf = props.payload.id === authorProfile.id;
+                    if (name === 'Author') return [isSelf ? value + ' (You)' : 'Anonymous Author', 'Author'];
+                    if (name === 'Participation') return [`${value}%`, 'Participation'];
+                    if (name === 'Books Sold') return [value, 'Books Sold'];
+                    return [value, name];
+                  }}
+                />
+                <Scatter data={data.authorScatterData} shape="circle">
+                  {data.authorScatterData.map((entry: any, index: number) => {
+                    const isSelf = entry.id === authorProfile.id;
+                    return (
+                      <Cell key={`cell-${index}`} fill={isSelf ? '#10b981' : '#cbd5e1'} opacity={isSelf ? 1 : 0.6} stroke={isSelf ? '#047857' : 'none'} strokeWidth={isSelf ? 2 : 0} />
+                    );
+                  })}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          ) : (
+             <div className="h-full flex items-center justify-center text-gray-400 text-sm italic">Community data not available.</div>
+          )}
+        </div>
       </div>
 
       {/* Row 3: Granular Data Table */}

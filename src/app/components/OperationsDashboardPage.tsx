@@ -2084,15 +2084,19 @@ export function OperationsDashboardPage() {
 
   const handleSendNotification = async (
     e?: React.FormEvent,
-    forceAll?: boolean,
+    forceTarget?: boolean | string,
   ) => {
     if (e) e.preventDefault();
     if (!newNotification.trim() && !notificationDocument) return;
     try {
       const token = localStorage.getItem("token");
-      let target = forceAll ? "ALL" : "ALL";
-
-      if (!forceAll) {
+      let target = "ALL";
+      
+      if (typeof forceTarget === 'string') {
+        target = forceTarget;
+      } else if (forceTarget === true) {
+        target = "ALL";
+      } else {
         const mentionedAuthor = authors?.find((a) =>
           newNotification.includes(`@${a.name}`),
         );
@@ -2123,8 +2127,8 @@ export function OperationsDashboardPage() {
         setNotifications([notif, ...notifications]);
         setNewNotification("");
         setNotificationDocument(null);
-        if (forceAll) {
-          toast.success("Broadcast sent to all authors!");
+        if (forceTarget) {
+          toast.success("Document uploaded successfully!");
           setShowNotifications(false);
         }
       } else {
@@ -3258,6 +3262,7 @@ export function OperationsDashboardPage() {
 
     const handleExportBookCatalogue = async () => {
       try {
+      const { saveAs } = await import("file-saver");
       const ExcelJS = (await import("exceljs")).default;
       const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet("Book Catalogue");
@@ -9555,11 +9560,18 @@ const totalAuthorsBase = eventRegistrations.length;
                         Clear
                       </button>
                       <button
-                        onClick={() => handleSendNotification(undefined, true)}
+                        onClick={() => handleSendNotification(undefined, 'SILENT_ALL')}
+                        disabled={!notificationDocument}
+                        className="dash-btn disabled:opacity-50 border border-gray-200 hover:bg-gray-50 text-gray-700 bg-white"
+                      >
+                        Upload Only
+                      </button>
+                      <button
+                        onClick={() => handleSendNotification(undefined, 'ALL')}
                         disabled={!notificationDocument}
                         className="dash-btn dash-btn-primary disabled:opacity-50"
                       >
-                        Upload & Share to All
+                        Upload & Broadcast
                       </button>
                     </div>
                   </div>
