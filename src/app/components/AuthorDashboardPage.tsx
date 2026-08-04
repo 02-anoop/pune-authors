@@ -105,8 +105,8 @@ export function AuthorDashboardPage() {
     } catch (err: any) {
       console.error(err);
       if (err.response && err.response.status === 404) {
-        // Author profile doesn't exist yet, redirect to complete registration
-        navigate('/register');
+        toast.error('Author profile not found. Please log in with your registered account.');
+        navigate('/login');
       } else {
         toast.error('Failed to load dashboard data: ' + (err.response?.data?.error || err.message));
         localStorage.removeItem('token');
