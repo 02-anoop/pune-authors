@@ -339,6 +339,55 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
     }
     return null;
   };
+
+  const getBookDiffUi = (key: string) => {
+    if (!isAdminEdit || !initialData?.extraData?.originalProfileData) return null;
+    if (editingBookIndexRef.current === null) return null;
+    const currentBook = books[editingBookIndexRef.current];
+    if (!currentBook || !currentBook.id) return null; // New book, not an edit
+    const originalBooks = initialData.extraData.originalProfileData.books || [];
+    const origBook = originalBooks.find((b: any) => b.id === currentBook.id);
+    if (!origBook) return null;
+    
+    let origVal = origBook[key] !== undefined && origBook[key] !== null ? String(origBook[key]) : "";
+    let curVal = form[key] !== undefined && form[key] !== null ? String(form[key]) : "";
+    
+    if (key === 'purposeOfWriting' && origVal === "") origVal = origBook.purpose !== undefined && origBook.purpose !== null ? String(origBook.purpose) : "";
+    
+    if (origVal !== curVal) {
+      return <div className="text-xs text-blue-600 mt-1 font-bold bg-blue-50 px-2 py-1 rounded inline-block shadow-sm border border-blue-100">Original: {origVal || '(empty)'}</div>;
+    }
+    return null;
+  };
+
+  const getBookImageDiffUi = (key: string, currentUrl: string | null) => {
+    if (!isAdminEdit || !initialData?.extraData?.originalProfileData) return null;
+    if (editingBookIndexRef.current === null) return null;
+    const currentBook = books[editingBookIndexRef.current];
+    if (!currentBook || !currentBook.id) return null;
+    const originalBooks = initialData.extraData.originalProfileData.books || [];
+    const origBook = originalBooks.find((b: any) => b.id === currentBook.id);
+    if (!origBook) return null;
+
+    const API = import.meta.env.VITE_API_URL || "http://localhost:3001";
+    let origVal = origBook[key] ? String(origBook[key]) : "";
+    if (origVal && !origVal.startsWith('http')) origVal = API + origVal;
+    
+    let curVal = currentUrl || "";
+    if (curVal && !curVal.startsWith('http') && curVal.startsWith('/uploads')) curVal = API + curVal;
+
+    if (!origVal && !curVal) return null;
+    
+    if (origVal !== curVal) {
+      return (
+        <div className="text-xs text-blue-600 mt-2 font-bold bg-blue-50 px-2 py-1 rounded inline-block shadow-sm border border-blue-100">
+          New Image Uploaded
+          {origVal && <a href={origVal} target="_blank" rel="noreferrer" className="ml-2 text-blue-500 underline text-[10px]">View Original</a>}
+        </div>
+      );
+    }
+    return null;
+  };
   
   const getDiffClass = (key: string) => {
     if (!isAdminEdit || !initialData?.extraData?.originalProfileData) return "";
@@ -1411,10 +1460,12 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       <label className="dash-label">Book Title *</label>
                       <input type="text" placeholder="e.g. The Forgotten Horizon" value={form.title} onChange={(e) => update("title", e.target.value)} className={`dash-input w-full ${errors.title ? '!border-red-500' : ''}`} />
                       {errors.title && <div className="text-red-500 text-xs mt-1 font-medium">{errors.title}</div>}
+                      {getBookDiffUi("title")}
                     </div>
                     <div>
                       <label className="dash-label">Subtitle</label>
                       <input type="text" placeholder="e.g. A Journey Through Time" value={form.subtitle} onChange={(e) => update("subtitle", e.target.value)} className="dash-input w-full" />
+                      {getBookDiffUi("subtitle")}
                     </div>
                   </div>
 
@@ -1427,6 +1478,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
 <option value="Other">Other</option>
                       </select>
                       {errors.genre && <div className="text-red-500 text-xs mt-1 font-medium">{errors.genre}</div>}
+                      {getBookDiffUi("genre")}
                     </div>
                     {form.genre && Object.keys(bookCategories[form.genre as keyof typeof bookCategories] || {}).length > 0 && (
                       <div>
@@ -1435,6 +1487,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                           <option value="">Select Subcategory</option>
                           {Object.keys(bookCategories[form.genre as keyof typeof bookCategories] || {}).sort((a, b) => a.localeCompare(b)).map(sc => <option key={sc} value={sc}>{sc}</option>)}
                         </select>
+                        {getBookDiffUi("subcategory")}
                       </div>
                     )}
                     {form.genre && form.subcategory && ((bookCategories[form.genre as keyof typeof bookCategories] as any)[form.subcategory] || []).length > 0 && (
@@ -1444,6 +1497,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                           <option value="">Select Specific Genre</option>
                           {[...((bookCategories[form.genre as keyof typeof bookCategories] as any)[form.subcategory] || [])].sort((a, b) => a.localeCompare(b)).map((ssc: string) => <option key={ssc} value={ssc}>{ssc}</option>)}
                         </select>
+                        {getBookDiffUi("subSubcategory")}
                       </div>
                     )}
                   </div>
@@ -1458,7 +1512,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       className={`dash-input w-full resize-y ${errors.synopsis ? '!border-red-500' : ''}`}
                     />
                     <div className="flex justify-between items-start mt-1">
-                      {errors.synopsis ? <div className="text-red-500 text-xs font-medium">{errors.synopsis}</div> : <div></div>}
+                      {errors.synopsis ? <div className="text-red-500 text-xs font-medium">{errors.synopsis}</div> : <div>{getBookDiffUi("synopsis")}</div>}
                       <div className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text">
                         {form.synopsis.split(/\s+/).filter(Boolean).length} / 100 words
                       </div>
@@ -1468,7 +1522,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                   <div>
                     <label className="dash-label">Write the purpose of writing the book *</label>
                     <textarea value={form.purposeOfWriting} onChange={(e) => update("purposeOfWriting", e.target.value)} rows={3} className={`dash-input w-full resize-y ${errors.purposeOfWriting ? '!border-red-500' : ''}`} placeholder="What inspired you to write?" />
-                    {errors.purposeOfWriting && <div className="text-red-500 text-xs mt-1 font-medium">{errors.purposeOfWriting}</div>}
+                    {errors.purposeOfWriting ? <div className="text-red-500 text-xs mt-1 font-medium">{errors.purposeOfWriting}</div> : getBookDiffUi("purposeOfWriting")}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1479,6 +1533,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         {languages.map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
                       {errors.language && <div className="text-red-500 text-xs mt-1 font-medium">{errors.language}</div>}
+                      {getBookDiffUi("language")}
                     </div>
                     <div>
                       <label className="dash-label flex items-center justify-between">
@@ -1487,11 +1542,13 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       </label>
                       <input type="text" placeholder="e.g. Penguin" value={form.publisher} onChange={(e) => update("publisher", e.target.value)} className={`dash-input w-full ${errors.publisher ? '!border-red-500' : ''}`} disabled={form.isSelfPublished === 'yes'} />
                       {errors.publisher && <div className="text-red-500 text-xs mt-1 font-medium">{errors.publisher}</div>}
+                      {getBookDiffUi("publisher")}
                     </div>
                     <div>
                       <label className="dash-label">Publication Date *</label>
                       <input type="date" max={new Date().toISOString().split('T')[0]} value={form.publicationDate} onChange={(e) => update("publicationDate", e.target.value)} className={`dash-input w-full ${errors.publicationDate ? '!border-red-500' : ''}`} />
                       {errors.publicationDate && <div className="text-red-500 text-xs mt-1 font-medium">{errors.publicationDate}</div>}
+                      {getBookDiffUi("publicationDate")}
                     </div>
                   </div>
 
@@ -1500,10 +1557,12 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       <label className="dash-label">ISBN Number *</label>
                       <input type="text" inputMode="numeric" placeholder="10 or 13 digit ISBN" value={form.isbn} onChange={(e) => update("isbn", e.target.value.replace(/\D/g, ''))} maxLength={13} className={`dash-input w-full ${errors.isbn ? '!border-red-500' : ''}`} />
                       {errors.isbn && <div className="text-red-500 text-xs mt-1 font-medium">{errors.isbn}</div>}
+                      {getBookDiffUi("isbn")}
                     </div>
                     <div>
                       <label className="dash-label">Edition</label>
                       <input type="text" inputMode="numeric" placeholder="e.g. 1" value={form.edition} onChange={(e) => update("edition", e.target.value.replace(/\D/g, ''))} className="dash-input w-full" />
+                      {getBookDiffUi("edition")}
                     </div>
                     <div>
                       <label className="dash-label">Book Format *</label>
@@ -1514,6 +1573,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         <option value="Ebook">Ebook</option>
                       </select>
                       {errors.format && <div className="text-red-500 text-xs mt-1 font-medium">{errors.format}</div>}
+                      {getBookDiffUi("format")}
                     </div>
                     <div>
                       <label className="dash-label">Print Format *</label>
@@ -1523,6 +1583,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         <option value="Colored">Colored</option>
                       </select>
                       {errors.printFormat && <div className="text-red-500 text-xs mt-1 font-medium">{errors.printFormat}</div>}
+                      {getBookDiffUi("printFormat")}
                     </div>
                   </div>
 
@@ -1531,15 +1592,18 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       <label className="dash-label">Number of Pages *</label>
                       <input type="text" inputMode="numeric" placeholder="256" value={form.pages} onChange={(e) => update("pages", e.target.value.replace(/\D/g, ''))} className={`dash-input w-full ${errors.pages ? '!border-red-500' : ''}`} />
                       {errors.pages && <div className="text-red-500 text-xs mt-1 font-medium">{errors.pages}</div>}
+                      {getBookDiffUi("pages")}
                     </div>
                     <div>
                       <label className="dash-label">MRP (₹) *</label>
                       <input type="number" onWheel={(e) => (e.target as HTMLElement).blur()} placeholder="299" value={form.mrp} onChange={(e) => update("mrp", e.target.value)} className={`dash-input w-full ${errors.mrp ? '!border-red-500' : ''}`} />
                       {errors.mrp && <div className="text-red-500 text-xs mt-1 font-medium">{errors.mrp}</div>}
+                      {getBookDiffUi("mrp")}
                     </div>
                     <div>
                       <label className="dash-label">Initial Stock *</label>
                       <input type="number" onWheel={(e) => (e.target as HTMLElement).blur()} placeholder="0" value={form.stock} onChange={(e) => update("stock", e.target.value)} className="dash-input w-full" />
+                      {getBookDiffUi("stock")}
                     </div>
                   </div>
 
@@ -1576,6 +1640,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         </>
                       )}
                     </div>
+                    {getBookImageDiffUi("coverUrl", coverFileUrl)}
                     <input
                       id="cover-upload"
                       type="file"
@@ -1613,6 +1678,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         </>
                       )}
                     </div>
+                    {getBookImageDiffUi("backCoverUrl", backCoverFileUrl)}
                     <input
                       id="back-cover-upload"
                       type="file"

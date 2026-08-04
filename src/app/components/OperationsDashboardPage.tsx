@@ -100,6 +100,7 @@ import { useNavigate, useLocation } from "react-router";
 import { toast } from "sonner";
 // exceljs and file-saver are dynamically imported inside export handlers to reduce initial bundle size
 import { QueryThreadDisplay } from "./QueryThreadDisplay";
+import EventExcelManager from "./EventExcelManager";
 import { checkIsPastEvent } from "../utils/eventUtils";
 import { bookCategories } from "../data/categories";
 // html2canvas is dynamically imported inside the poster generation handler
@@ -6353,7 +6354,14 @@ const totalAuthorsBase = eventRegistrations.length;
             </div>
           ) : (
             <div>
-              <div className="flex justify-between items-center mb-4">
+              <EventExcelManager 
+                 eventBreakdown={selectedEventBreakdown}
+                 registrations={eventRegistrations}
+                 onRefresh={() => fetchEventRegistrations(selectedEventBreakdown.id)}
+                 API={import.meta.env.VITE_API_URL || "http://localhost:3001"}
+              />
+              
+              <div className="flex justify-between items-center mb-4 mt-8">
                 <div>
                   <h4 className="font-bold text-gray-700">
                     Authors Participated / Registered
@@ -7909,40 +7917,40 @@ const totalAuthorsBase = eventRegistrations.length;
             <table className="dash-table w-full text-left text-[11px]">
               <thead className="bg-indigo-50 border-b-2 border-indigo-100">
                 <tr>
-                  <th className="w-12 px-1 py-3 text-center !text-[11px] font-bold uppercase tracking-widest !text-indigo-800 !bg-indigo-50 border-b border-black/10">
+                  <th className="w-12 p-1 text-center text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">
                     S.No
                   </th>
-                  <th className="px-2 py-3 !text-[11px] font-bold uppercase tracking-widest !text-indigo-800 !bg-indigo-50 border-b border-black/10">
+                  <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">
                     Event Name
                   </th>
-                  <th className="px-2 py-3 !text-[11px] font-bold uppercase tracking-widest !text-indigo-800 !bg-indigo-50 border-b border-black/10">
+                  <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
                     Format
                   </th>
-                  <th className="px-2 py-3 !text-[11px] font-bold uppercase tracking-widest !text-indigo-800 !bg-indigo-50 border-b border-black/10">
+                  <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
                     Category
                   </th>
-                  <th className="px-2 py-3 !text-[11px] font-bold uppercase tracking-widest !text-indigo-800 !bg-indigo-50 border-b border-black/10 text-right">
-                    Reg Fee
+                  <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                    Address
                   </th>
-                  <th className="px-2 py-3 !text-[11px] font-bold uppercase tracking-widest !text-indigo-800 !bg-indigo-50 border-b border-black/10">
-                    Status
+                  <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                    Month
                   </th>
-                  <th className="px-2 py-3 !text-[11px] font-bold uppercase tracking-widest !text-indigo-800 !bg-indigo-50 border-b border-black/10 text-center">
-                    POS
+                  <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                    Year
                   </th>
-                  <th className="px-2 py-3 !text-[11px] font-bold uppercase tracking-widest !text-indigo-800 !bg-indigo-50 border-b border-black/10 text-right">
-                    Authors
+                  <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                    Duration
                   </th>
-                  <th className="px-2 py-3 !text-[11px] font-bold uppercase tracking-widest !text-indigo-800 !bg-indigo-50 border-b border-black/10 text-right">
-                    Part.%
+                  <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                    No. of Authors
                   </th>
-                  <th className="px-2 py-3 !text-[11px] font-bold uppercase tracking-widest !text-indigo-800 !bg-indigo-50 border-b border-black/10 text-right">
-                    Books
+                  <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                    Books Sold
                   </th>
-                  <th className="px-2 py-3 !text-[11px] font-bold uppercase tracking-widest !text-indigo-800 !bg-indigo-50 border-b border-black/10 text-right">
+                  <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
                     Revenue
                   </th>
-                  <th className="w-28 px-2 py-3 !text-[11px] font-bold uppercase tracking-widest !text-indigo-800 !bg-indigo-50 border-b border-black/10 text-right">
+                  <th className="w-28 p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
                     Actions
                   </th>
                 </tr>
@@ -7996,182 +8004,84 @@ const totalAuthorsBase = eventRegistrations.length;
                             (s: number, eb: any) => s + (eb.soldStock || 0),
                             0,
                           ) || 0) + (evt.livePosSold || 0);
-                  const catRowColor = i % 2 === 0 ? "bg-white" : "bg-[#ebd8c0]";
-                  const revenueVal =
-                    evt.aggRevenue != null
-                      ? evt.aggRevenue
-                      : evt.isLegacy
-                        ? "NA"
-                        : (evt.eventBooks?.reduce(
-                            (s: number, eb: any) =>
-                              s +
-                              (eb.soldStock || 0) *
-                                (parseFloat(eb.book?.mrp) || 0),
-                            0,
-                          ) || 0) + (evt.livePosRevenue || 0);
+                  const catRowColor = i % 2 === 0 ? "bg-[#FFFFFF]" : "bg-[#FCFCFC]";
+                  
+                  // Clean duration formatting
+                  let cleanDuration = evt.duration || (evt.durationDays ? `${evt.durationDays} Days` : "-");
+                  if (cleanDuration) {
+                    cleanDuration = cleanDuration.replace(/0(\d)/g, '$1');
+                    cleanDuration = cleanDuration.replace(/\b0 Hours\b/gi, '').trim();
+                    cleanDuration = cleanDuration.replace(/Days/gi, 'days').replace(/Hrs?/gi, 'hrs').replace(/Mins?/gi, 'mins');
+                  }
+
+                  const startDate = new Date(evt.date || evt.startDate);
+                  const month = !isNaN(startDate.getTime()) ? startDate.toLocaleString('default', { month: 'short' }) : "-";
+                  const year = !isNaN(startDate.getTime()) ? startDate.getFullYear() : "-";
+                  const addressStr = evt.location || evt.address || "-";
+
+                  const formatColor = evt.eventType === "Meet the Authors" 
+                                    ? "bg-[#AFC6E9] text-black" 
+                                    : evt.eventType === "Stall" 
+                                      ? "bg-[#8EE88C] text-black" 
+                                      : "bg-gray-100 text-black";
+
+                  const categoryColor = evt.category === "Housing Society" ? "bg-[#F3C29E] text-black"
+                                      : evt.category === "Corporate Office" ? "bg-[#FFE066] text-black"
+                                      : evt.category === "Book Fair" ? "bg-[#6FEF59] text-black"
+                                      : evt.category === "College" ? "bg-[#F6C6C6] text-black"
+                                      : evt.category === "University" ? "bg-[#FFF176] text-black"
+                                      : "bg-gray-100 text-black";
+
+                  const revenueVal = evt.aggRevenue != null ? evt.aggRevenue : evt.isLegacy ? "NA" : (evt.eventBooks?.reduce((s: number, eb: any) => s + (eb.soldStock || 0) * (parseFloat(eb.book?.mrp) || 0), 0) || 0) + (evt.livePosRevenue || 0);
                   const revenue = revenueVal === "NA" ? "NA" : `₹${revenueVal}`;
+                  
                   return (
                     <React.Fragment key={i}>
                       <tr
-                        className={`${expandedEventIndex === i ? "bg-indigo-50" : catRowColor}`}
+                        className={`text-[13px] font-medium text-black border-[1.5px] border-black ${expandedEventIndex === i ? "bg-indigo-50" : catRowColor}`}
                       >
                         <td
-                          className="px-1 py-3 text-center align-middle"
-                          onClick={() =>
-                            setExpandedEventIndex(
-                              expandedEventIndex === i ? null : i,
-                            )
-                          }
+                          className="p-1 text-center align-middle border-[1.5px] border-black"
+                          onClick={() => setExpandedEventIndex(expandedEventIndex === i ? null : i)}
                         >
-                          <div className="flex items-center justify-center gap-1 cursor-pointer">
-                            <span className="font-bold text-xs text-paa-navy">
-                              {i + 1}
-                            </span>
+                          <div className="flex items-center justify-center gap-1 cursor-pointer w-full h-full">
+                            <span>{i + 1}</span>
                             <button className="text-gray-400">
-                              {expandedEventIndex === i ? (
-                                <ChevronUp size={14} />
-                              ) : (
-                                <ChevronDown size={14} />
-                              )}
+                              {expandedEventIndex === i ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                             </button>
                           </div>
                         </td>
-                        <td className="px-2 py-3">
-                          <div className="text-base font-bold text-paa-navy mb-1 flex items-center gap-2">
-                            {evt.name}
-                            {(evt.status === "Upcoming" ||
-                              evt.status === "Live" ||
-                              evt.status === "Ongoing") &&
-                              evt.eventAuthors?.filter(
-                                (r: any) =>
-                                  r.optInStatus === "Pending Approval",
-                              ).length > 0 && (
-                                <span
-                                  className="bg-orange-500 text-black font-black text-[9px] px-1.5 py-0.5 rounded-full shadow-sm whitespace-nowrap"
-                                  title={`${evt.eventAuthors.filter((r: any) => r.optInStatus === "Pending Approval").length} Pending Approvals`}
-                                >
-                                  {
-                                    evt.eventAuthors.filter(
-                                      (r: any) =>
-                                        r.optInStatus === "Pending Approval",
-                                    ).length
-                                  }{" "}
-                                  New
-                                </span>
-                              )}
-                          </div>
-                          <div className="text-[10px] font-bold text-paa-gray-text uppercase tracking-widest">
-                            {evt.date}
-                          </div>
+                        <td className="p-1 text-left align-middle border-[1.5px] border-black font-medium">
+                          {evt.name}
                         </td>
-                        <td className="px-1 py-3 text-sm capitalize">
-                          {evt.eventType ? (
-                            <span
-                              className={`inline-flex px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-widest shadow-sm ${
-                                evt.eventType === "Meet the Authors"
-                                  ? "bg-yellow-200 text-yellow-900 border border-yellow-300"
-                                  : evt.eventType === "Stall"
-                                    ? "bg-pink-200 text-pink-900 border border-pink-300"
-                                    : "bg-gray-200 text-gray-700 border border-gray-300"
-                              }`}
-                            >
-                              {evt.eventType}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">N/A</span>
-                          )}
+                        <td className={`p-1 text-center align-middle border-[1.5px] border-black capitalize ${formatColor}`}>
+                          {evt.eventType || "-"}
                         </td>
-                        <td className="px-1 py-3 text-sm capitalize">
-                          {evt.category ? (
-                            <span
-                              className={`inline-flex px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-widest shadow-sm ${
-                                evt.category === "Housing Society"
-                                  ? "bg-yellow-200 text-yellow-900 border border-yellow-300"
-                                  : evt.category === "Corporate Office"
-                                    ? "bg-orange-200 text-orange-900 border border-orange-300"
-                                    : evt.category === "Book Fair"
-                                      ? "bg-pink-200 text-pink-900 border border-pink-300"
-                                      : evt.category === "College"
-                                        ? "bg-blue-200 text-blue-900 border border-blue-300"
-                                        : evt.category === "University"
-                                          ? "bg-green-200 text-green-900 border border-green-300"
-                                          : "bg-gray-200 text-gray-700 border border-gray-300"
-                              }`}
-                            >
-                              {evt.category}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">N/A</span>
-                          )}
+                        <td className={`p-1 text-center align-middle border-[1.5px] border-black capitalize ${categoryColor}`}>
+                          {evt.category || "-"}
                         </td>
-                        <td className="px-1 py-3 text-sm font-bold text-paa-navy text-right">
-                          <div>₹{evt.registrationFee || 0}</div>
-                          {evt.registrationFee > 0 && (
-                            <div className="text-[9px] font-normal text-gray-500 uppercase tracking-widest mt-0.5">
-                              {evt.feeType || "Per Author"}
-                            </div>
-                          )}
+                        <td className="p-1 text-center align-middle border-[1.5px] border-black capitalize">
+                          {addressStr}
                         </td>
-                        <td className="px-1 py-3">
-                          <div className="flex flex-col gap-1.5 items-start">
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-widest shadow-sm ${evt.isLegacy ? "bg-slate-500 text-white" : evt.status === "Pending Approval" ? "bg-orange-500 text-white" : evt.status === "Live" || evt.status === "Ongoing" ? "bg-emerald-500 text-white shadow-emerald-500/20 animate-pulse" : evt.status === "Upcoming" ? "bg-cyan-500 text-white" : evt.status === "Past" ? "bg-purple-500 text-white" : "bg-gray-300 text-black"}`}
-                            >
-                              {evt.isLegacy ? "Legacy Archive" : evt.status}
-                            </span>
-                            <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
-                              {evt.broadcastStatus === "Published" || evt.broadcastStatus === "CustomersAlso" || evt.broadcastStatus === "AuthorsOnly" ? (
-                                <span
-                                  className="text-emerald-600 flex items-center gap-1"
-                                  title="Published to authors"
-                                >
-                                  <CheckCircle2 className="w-3 h-3" /> {evt.broadcastStatus === "AuthorsOnly" ? "Authors" : "All"}
-                                </span>
-                              ) : evt.registrations?.length > 0 ? (
-                                <span
-                                  className="text-orange-500 flex items-center gap-1"
-                                  title="Published to individual authors"
-                                >
-                                  <CheckCircle2 className="w-3 h-3" /> Partial
-                                </span>
-                              ) : (
-                                <span
-                                  className="text-gray-400 flex items-center gap-1"
-                                  title="Not published"
-                                >
-                                  <XCircle className="w-3 h-3" /> Hidden
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                        <td className="p-1 text-center align-middle border-[1.5px] border-black">
+                          {month}
                         </td>
-                        <td className="px-1 py-3 text-sm font-bold text-center">
-                          {evt.livePosEnabled &&
-                          !evt.isPast &&
-                          !evt.isLegacy &&
-                          evt.status !== "Legacy Archive" ? (
-                            <span className="text-green-700 bg-green-100 border border-green-200 px-1.5 py-0.5 rounded font-bold shadow-sm">
-                              Enabled
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
+                        <td className="p-1 text-center align-middle border-[1.5px] border-black">
+                          {year}
                         </td>
-                        <td className="px-1 py-3 text-sm font-bold text-paa-navy text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {evtAuthors}
-                          </div>
+                        <td className="p-1 text-center align-middle border-[1.5px] border-black">
+                          {cleanDuration}
                         </td>
-                        <td className="px-1 py-3 text-sm font-bold text-indigo-600 text-right">
-                          {participationPercentage}%
+                        <td className="p-1 text-center font-medium align-middle border-[1.5px] border-black">
+                          {evtAuthors}
                         </td>
-                        <td className="px-1 py-3 text-sm font-bold text-paa-navy text-right">
+                        <td className="p-1 text-center font-medium align-middle border-[1.5px] border-black">
                           {books}
                         </td>
-                        <td className="px-1 py-3 text-sm font-bold text-green-700 text-right">
+                        <td className="p-1 text-center font-medium align-middle border-[1.5px] border-black text-green-700">
                           {revenue}
                         </td>
-                        <td className="px-1 py-3 text-right">
+                        <td className="p-1 align-middle border-[1.5px] border-black text-center">
                           <div className="flex gap-1 justify-end flex-nowrap min-w-[120px]">
                             {evt.isProposed ? (
                               <button
@@ -8412,10 +8322,38 @@ const totalAuthorsBase = eventRegistrations.length;
                 {filteredTableEvents.length === 0 && (
                   <tr>
                     <td
-                      colSpan={11}
-                      className="text-center py-6 text-sm text-paa-gray-text italic"
+                      colSpan={12}
+                      className="text-center py-6 text-[13px] text-gray-500 italic border-[1.5px] border-black"
                     >
                       No events found.
+                    </td>
+                  </tr>
+                )}
+                {filteredTableEvents.length > 0 && (
+                  <tr className="bg-[#F7C79B] font-bold text-black border-[1.5px] border-black text-[13px]">
+                    <td colSpan={8} className="p-1 text-right pr-4 align-middle border-[1.5px] border-black">
+                      Yearly Total
+                    </td>
+                    <td className="p-1 text-center align-middle border-[1.5px] border-black">
+                      {filteredTableEvents.reduce((acc: number, evt: any) => {
+                        const evtAuthors = evt.aggAuthors != null ? evt.aggAuthors : evt.isLegacy ? 0 : evt._count?.eventAuthors || 0;
+                        return acc + (Number(evtAuthors) || 0);
+                      }, 0)}
+                    </td>
+                    <td className="p-1 text-center align-middle border-[1.5px] border-black">
+                      {filteredTableEvents.reduce((acc: number, evt: any) => {
+                        const books = evt.aggSold != null ? evt.aggSold : evt.isLegacy ? 0 : (evt.eventBooks?.reduce((s: number, eb: any) => s + (eb.soldStock || 0), 0) || 0) + (evt.livePosSold || 0);
+                        return acc + (Number(books) || 0);
+                      }, 0)}
+                    </td>
+                    <td className="p-1 text-center align-middle border-[1.5px] border-black">
+                      ₹{filteredTableEvents.reduce((acc: number, evt: any) => {
+                        const revenueVal = evt.aggRevenue != null ? evt.aggRevenue : evt.isLegacy ? 0 : (evt.eventBooks?.reduce((s: number, eb: any) => s + (eb.soldStock || 0) * (parseFloat(eb.book?.mrp) || 0), 0) || 0) + (evt.livePosRevenue || 0);
+                        return acc + (Number(revenueVal) || 0);
+                      }, 0)}
+                    </td>
+                    <td className="p-1 text-center align-middle border-[1.5px] border-black">
+                      {filteredTableEvents.length} Events
                     </td>
                   </tr>
                 )}

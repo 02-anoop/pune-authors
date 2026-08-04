@@ -384,6 +384,9 @@ const handleExportAuthorsCSV = async () => {
                       const isReapplied = ed?.isReapplied === true && author.status === 'Pending';
                       const pendingBooksCount = books.filter(b => b.authorId === author.id && b.status === 'Pending').length;
 
+                      if (author.isArchived || author.status === 'Archived') {
+                        return <span className="dash-badge" style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid transparent' }}>Deleted Account</span>;
+                      }
                       if (isReapplied) {
                         return <span className="dash-badge" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid transparent' }}>🔄 Reapplied</span>;
                       }

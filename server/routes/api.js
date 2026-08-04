@@ -711,6 +711,49 @@ router.put('/api/author/edit-profile-full', verifyToken, upload.any(), async (re
   }
 });
 
+// Delete Author Account (Soft Delete)
+router.delete('/api/author/account', verifyToken, async (req, res) => {
+  try {
+    const author = await prisma.author.findUnique({ where: { email: req.user.email } });
+    if (!author) return res.status(404).json({ error: 'Author not found' });
+    
+    await prisma.author.update({
+      where: { id: author.id },
+      data: { isArchived: true, status: 'Archived' }
+    });
+    
+    await prisma.book.updateMany({
+      where: { authorId: author.id },
+      data: { isArchived: true, status: 'Archived' }
+    });
+    
+    if (typeof deleteCatalogueCache === 'function') deleteCatalogueCache();
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to delete account:', err);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
+// Request to Rejoin after Deletion
+router.post('/api/author/rejoin', verifyToken, async (req, res) => {
+  try {
+    const author = await prisma.author.findUnique({ where: { email: req.user.email } });
+    if (!author) return res.status(404).json({ error: 'Author not found' });
+    
+    await prisma.author.update({
+      where: { id: author.id },
+      data: { isArchived: false, status: 'Pending' }
+    });
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to send rejoin request:', err);
+    res.status(500).json({ error: 'Failed to send rejoin request' });
+  }
+});
+
 router.put('/api/author/reapply-full', verifyToken, upload.any(), async (req, res) => {
   try {
     const author = await prisma.author.findUnique({ where: { email: req.user.email }, include: { books: true } });

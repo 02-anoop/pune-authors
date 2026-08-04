@@ -2,16 +2,19 @@ const { PrismaClient } = require('@prisma/client');
 const p = new PrismaClient(); 
 p.author.findMany({ where: { status: 'Active' } }).then(async a => { 
   const stuck = a.filter(x => { 
-    try { 
-      const e = typeof x.extraData === 'string' ? JSON.parse(x.extraData) : (x.extraData || {}); 
-      return e.hasPendingEdits; 
-    } catch(err){
-      return false
-    } 
+    if (!x.extraData) return false;
+    let ed = x.extraData;
+    if (typeof ed === 'string') {
+      try { ed = JSON.parse(ed); } catch(e) {}
+    }
+    // Also parse nested stringified extraData just in case
+    if (typeof ed === 'string') {
+      try { ed = JSON.parse(ed); } catch(e) {}
+    }
+    return ed && ed.hasPendingEdits === true;
   }); 
   console.log('STUCK AUTHORS:', stuck.map(s => s.name)); 
   
-  // Auto-fix the stuck authors by setting their status to 'Edited'
   for (const author of stuck) {
     await p.author.update({
       where: { id: author.id },

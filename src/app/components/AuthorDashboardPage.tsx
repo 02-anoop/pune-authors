@@ -195,6 +195,21 @@ export function AuthorDashboardPage() {
     navigate("/");
   };
 
+  const handleDeleteProfile = async () => {
+    if (window.confirm("Are you sure you want to delete your author profile? This action will archive your profile and your books, removing them from the catalogue. Your sales data will remain intact. This action cannot be undone.")) {
+      try {
+        await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/author/account`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        toast.success("Profile deleted successfully.");
+        fetchDashboardData(true);
+      } catch (err: any) {
+        toast.error("Failed to delete profile: " + (err.response?.data?.error || err.message));
+      }
+    }
+  };
+
+
   if (loading || !dashboardData) {
     return (
       <div className="min-h-screen font-sans" style={{ background: '#f5f5f3' }}>
@@ -257,6 +272,62 @@ export function AuthorDashboardPage() {
     );
   }
 
+  if (status === 'Archived' || dashboardData?.authorProfile?.isArchived) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#F8FAFC]">
+        <NavBar />
+        <main className="flex-1 flex items-center justify-center p-6 py-20 animate-fade-in-up">
+          <div className="bg-white max-w-lg w-full p-8 md:p-12 rounded-3xl-2xl shadow-premium border border-paa-navy/5 text-center relative overflow-hidden">
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-paa-gold/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-paa-navy/5 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div className="relative">
+              <div className="flex justify-end gap-2 mb-6">
+                <button onClick={handleLogout} className="flex items-center gap-1.5 text-gray-500 hover:text-gray-700 text-xs font-bold uppercase tracking-widest rounded-full transition-colors hover:bg-gray-100 px-3 py-1.5">
+                  <LogOut size={14} /> Logout
+                </button>
+              </div>
+
+              <div className="mb-6 flex justify-center">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center border border-gray-200">
+                  <Archive className="w-10 h-10 text-gray-500" />
+                </div>
+              </div>
+
+              <h1 className="text-3xl font-serif text-paa-navy mb-4">
+                Account Deleted
+              </h1>
+
+              <div className="mx-auto max-w-sm">
+                <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+                  Your author profile has been deleted and archived. Your books are no longer visible in the catalogue. If you wish to rejoin the community, you can submit a request below which will be reviewed by the administration.
+                </p>
+                <button
+                  onClick={async () => {
+                    if (window.confirm("Are you sure you want to request to rejoin?")) {
+                      try {
+                        await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/author/rejoin`, {}, {
+                          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                        });
+                        toast.success("Rejoin request sent successfully.");
+                        fetchDashboardData(true);
+                      } catch (err: any) {
+                        toast.error("Failed to send rejoin request.");
+                      }
+                    }
+                  }}
+                  className="bg-paa-navy text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-paa-gold hover:text-paa-navy shadow-premium hover:-translate-y-0.5 transition-all duration-300 w-full"
+                >
+                  Request to Rejoin
+                </button>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (status === 'Pending' || status === 'Rejected') {
     if (showReapply) {
       return (
@@ -302,8 +373,9 @@ export function AuthorDashboardPage() {
             <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-paa-navy/5 rounded-full blur-3xl pointer-events-none"></div>
 
             <div className="relative">
-              <div className="flex justify-end mb-6">
-                <button onClick={handleLogout} className="flex items-center gap-1.5 text-red-600 hover:text-red-700 text-xs font-bold uppercase tracking-widest rounded-full transition-colors hover:bg-red-50 px-3 py-1.5"><LogOut size={14} /> Logout</button>
+              <div className="flex justify-end gap-2 mb-6">
+                <button onClick={handleDeleteProfile} className="flex items-center gap-1.5 text-red-600 hover:text-red-700 text-xs font-bold uppercase tracking-widest rounded-full transition-colors hover:bg-red-50 px-3 py-1.5"><Trash2 size={14} /> Delete Profile</button>
+                <button onClick={handleLogout} className="flex items-center gap-1.5 text-gray-500 hover:text-gray-700 text-xs font-bold uppercase tracking-widest rounded-full transition-colors hover:bg-gray-100 px-3 py-1.5"><LogOut size={14} /> Logout</button>
               </div>
 
               <div className="mb-6 flex justify-center">
@@ -473,9 +545,12 @@ export function AuthorDashboardPage() {
           <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/profile" className={`author-profile-nav-btn flex items-center gap-3 ${location.pathname.includes('/profile') ? 'active' : ''}`}><User className="w-4 h-4 shrink-0" /> <span className="flex-1 truncate">Profile Settings</span></Link>
         </nav>
 
-        <div className="p-4 shrink-0">
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-paa-navy/5 bg-white text-xs font-bold uppercase hover:bg-red-50 text-red-600 transition-colors rounded-full">
+        <div className="p-4 shrink-0 space-y-2">
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-paa-navy/5 bg-white text-xs font-bold uppercase hover:bg-gray-50 text-gray-700 transition-colors rounded-full">
             <LogOut size={14} /> Logout
+          </button>
+          <button onClick={handleDeleteProfile} className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-red-100 bg-red-50 text-xs font-bold uppercase hover:bg-red-100 text-red-600 transition-colors rounded-full">
+            <Trash2 size={14} /> Delete Profile
           </button>
         </div>
       </aside>
