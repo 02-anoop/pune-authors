@@ -3891,6 +3891,7 @@ router.get('/api/admin/orders', verifyToken, isAdmin, async (req, res) => {
         take: limit,
         select: {
           id: true,
+          isArchived: true,
           isBulk: true,
           createdAt: true,
           customerName: true,
@@ -3945,6 +3946,7 @@ router.get('/api/admin/orders', verifyToken, isAdmin, async (req, res) => {
     const mapped = orders.map(ord => ({
       id: `ORD-${ord.id.toString().padStart(4, '0')}`,
       dbId: ord.id,
+      isArchived: ord.isArchived,
       date: ord.createdAt.toISOString().split('T')[0],
       customer: ord.customerName,
       customerEmail: ord.customerEmail,
