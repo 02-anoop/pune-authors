@@ -99,7 +99,9 @@ router.post('/api/contact', async (req, res) => {
     await prisma.query.create({
       data: {
         subject: `Contact Form: ${name}`,
-        message: `From: ${email}\n\n${message}`,
+        message: `From: ${email}
+
+${message}`,
         status: 'Pending'
       }
     });
@@ -111,7 +113,7 @@ router.post('/api/contact', async (req, res) => {
           <p>A new Contact Form inquiry has been received.</p>
           <p><strong>Name:</strong> ${name}</p>
           <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Message:</strong><br/>${message.replace(/\n/g, '<br/>')}</p>
+          <p><strong>Message:</strong><br/>${message.replace(/\\n/g, '<br/>')}</p>
           <p>Please log in to the admin dashboard (Helpdesk) to reply.</p>
         `;
         sendNotificationEmail(getAdminEmails(), `New Contact Inquiry: ${name}`, emailWrap("New Contact Inquiry", adminContent));
@@ -4426,32 +4428,71 @@ router.delete('/api/admin/gallery/images/:imageId', verifyToken, isAdmin, async 
 // EVENT REGISTRATIONS FOR ADMIN
 router.post('/api/admin/events/registration', verifyToken, isAdmin, async (req, res) => {
   try {
-    const { eventId, authorId, books, optInStatus, manualTotalSold, manualTotalRevenue } = req.body;
+    const eventId = parseInt(req.body.eventId);
+    const authorId = parseInt(req.body.authorId);
+    const { books, optInStatus, manualTotalSold, manualTotalRevenue, amountPaid } = req.body;
     
-    await prisma.eventAuthor.updateMany({
-      where: { eventId, authorId },
-      data: { 
-        optInStatus: optInStatus || undefined,
-        manualTotalSold: manualTotalSold !== null ? manualTotalSold : undefined,
-        manualTotalRevenue: manualTotalRevenue !== null ? manualTotalRevenue : undefined
-      }
+    const existingAuthor = await prisma.eventAuthor.findFirst({
+      where: { eventId, authorId }
     });
+
+    if (existingAuthor) {
+      await prisma.eventAuthor.update({
+        where: { id: existingAuthor.id },
+        data: { 
+          optInStatus: optInStatus || undefined,
+          manualTotalSold: manualTotalSold !== null ? manualTotalSold : undefined,
+          manualTotalRevenue: manualTotalRevenue !== null ? manualTotalRevenue : undefined,
+          amountPaid: amountPaid !== undefined && amountPaid !== "" && amountPaid !== null ? parseFloat(amountPaid) : existingAuthor.amountPaid
+        }
+      });
+    } else {
+      await prisma.eventAuthor.create({
+        data: {
+          eventId,
+          authorId,
+          optInStatus: optInStatus || "Registered",
+          manualTotalSold: manualTotalSold !== null ? manualTotalSold : null,
+          manualTotalRevenue: manualTotalRevenue !== null ? manualTotalRevenue : null,
+          amountPaid: amountPaid !== undefined && amountPaid !== "" && amountPaid !== null ? parseFloat(amountPaid) : null
+        }
+      });
+    }
 
     if (books && Array.isArray(books)) {
       for (const b of books) {
-        const targetBookId = b.bookId || (b.book ? b.book.id : null) || b.id;
-        if (!targetBookId) continue;
+        const targetBookId = parseInt(b.bookId || (b.book ? b.book.id : null) || b.id);
+        if (!targetBookId || isNaN(targetBookId)) continue;
         
-        await prisma.eventBook.updateMany({
-          where: { eventId, authorId, bookId: parseInt(targetBookId) },
-          data: {
-            listedStock: b.actualSent !== undefined ? parseInt(b.actualSent) : undefined,
-            soldStock: b.soldStock !== undefined ? parseInt(b.soldStock) : undefined,
-            returnedStock: b.returnedStock !== undefined ? parseInt(b.returnedStock) : undefined,
-            manualDailySales: b.manualDailySales || undefined,
-            overrideMrp: b.overrideMrp !== undefined && b.overrideMrp !== "" ? parseFloat(b.overrideMrp) : null
-          }
+        const existingBook = await prisma.eventBook.findFirst({
+          where: { eventId, authorId, bookId: targetBookId }
         });
+
+        if (existingBook) {
+          await prisma.eventBook.update({
+            where: { id: existingBook.id },
+            data: {
+              listedStock: b.actualSent !== undefined ? parseInt(b.actualSent) : undefined,
+              soldStock: b.soldStock !== undefined ? parseInt(b.soldStock) : undefined,
+              returnedStock: b.returnedStock !== undefined ? parseInt(b.returnedStock) : undefined,
+              manualDailySales: b.manualDailySales || undefined,
+              overrideMrp: b.overrideMrp !== undefined && b.overrideMrp !== "" && b.overrideMrp !== null ? parseFloat(b.overrideMrp) : null
+            }
+          });
+        } else {
+          await prisma.eventBook.create({
+            data: {
+              eventId,
+              authorId,
+              bookId: targetBookId,
+              listedStock: b.actualSent !== undefined ? parseInt(b.actualSent) : 0,
+              soldStock: b.soldStock !== undefined ? parseInt(b.soldStock) : 0,
+              returnedStock: b.returnedStock !== undefined ? parseInt(b.returnedStock) : 0,
+              manualDailySales: b.manualDailySales || {},
+              overrideMrp: b.overrideMrp !== undefined && b.overrideMrp !== "" && b.overrideMrp !== null ? parseFloat(b.overrideMrp) : null
+            }
+          });
+        }
       }
     }
     
@@ -4462,7 +4503,6 @@ router.post('/api/admin/events/registration', verifyToken, isAdmin, async (req, 
     res.status(500).json({ error: 'Failed to update registration' });
   }
 });
-
 router.get('/api/admin/events/:id/registrations', verifyToken, isAdmin, async (req, res) => {
   try {
     const eventId = parseInt(req.params.id);
@@ -4521,6 +4561,27 @@ router.get('/api/admin/events/:id/registrations', verifyToken, isAdmin, async (r
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch registrations' });
+  }
+});
+
+router.delete('/api/admin/events/:eventId/author/:authorId', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const eventId = parseInt(req.params.eventId);
+    const authorId = parseInt(req.params.authorId);
+    
+    await prisma.eventBook.deleteMany({
+      where: { eventId, authorId }
+    });
+    
+    await prisma.eventAuthor.deleteMany({
+      where: { eventId, authorId }
+    });
+    
+    invalidateCache('admin:dashboard-stats');
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to remove participant' });
   }
 });
 
@@ -5386,7 +5447,7 @@ router.post('/api/admin/events', verifyToken, isAdmin, upload.single('banner'), 
         <h2 style="color: #1e3a8a; margin-bottom: 15px;">${event.name}</h2>
         
         <div style="background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 15px 20px; border-radius: 4px; margin-bottom: 25px; color: #4b5563; font-size: 15px; font-style: italic; line-height: 1.5;">
-          ${event.description ? event.description.replace(/\n/g, '<br>') : 'Join us for our upcoming event! Click the link below to view more details and register.'}
+          ${event.description ? event.description.replace(/\\n/g, '<br>') : 'Join us for our upcoming event! Click the link below to view more details and register.'}
         </div>
         
         <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
@@ -5466,7 +5527,7 @@ router.post('/api/admin/events/:eventId/author/:authorId/publish', async (req, r
     const allowedStatuses = ['Registered', 'Approved', 'Pending Approval', 'Pending', 'Declined', 'Rejected'];
     let statusValue = allowedStatuses.includes(registrationStatus) ? registrationStatus :
       (registrationStatus === 'Participated' ? 'Registered' : 'Declined');
-    if (isDraft) statusValue += '-Draft';
+    // Draft logic removed
     const manualSold = useGlobalOverride ? parseInt(globalSold) || 0 : null;
     const manualRevenue = useGlobalOverride ? parseFloat(globalRevenue) || 0 : null;
 
@@ -5481,7 +5542,7 @@ router.post('/api/admin/events/:eventId/author/:authorId/publish', async (req, r
       });
     }
 
-    if (!isDraft) {
+    if (true) {
       const currentEvt = await tx.event.findUnique({ where: { id: eventId } });
       if (currentEvt && currentEvt.broadcastStatus === 'Draft') {
         await tx.event.update({ where: { id: eventId }, data: { broadcastStatus: 'Published' } });
@@ -5501,7 +5562,7 @@ router.post('/api/admin/events/:eventId/author/:authorId/publish', async (req, r
         let returned = existingEb ? existingEb.returnedStock : 0;
 
         // Auto-settlement logic: Once the event is published (not draft), automatically return unsold stock!
-        if (!isDraft && listed > 0) {
+        if (listed > 0) {
             const targetReturned = Math.max(0, listed - actualSold);
             const difference = targetReturned - returned;
             
@@ -5553,7 +5614,7 @@ router.post('/api/admin/events/:eventId/author/:authorId/publish', async (req, r
         <p>Please log in to your dashboard to view the performance breakdown and settlement details.</p>`;
 
       // Use sendNotificationEmail without await so it doesn't block the response
-      if (!isDraft) {
+      if (true) {
         sendNotificationEmail(author.email, subject, emailWrap(subject, content)).catch(e => console.error('Email failed:', e));
       }
 
@@ -5580,7 +5641,7 @@ router.get('/api/admin/proposed-events', verifyToken, isAdmin, async (req, res) 
     });
     const proposed = inquiries.map(inq => {
       const extract = (key) => {
-        const line = inq.message.split('\n').find(l => l.startsWith(key + ':'));
+        const line = inq.message.split('\\n').find(l => l.startsWith(key + ':'));
         return line ? line.replace(key + ':', '').trim() : '';
       };
       return {
@@ -5659,12 +5720,12 @@ router.put('/api/admin/events/:id', verifyToken, isAdmin, upload.single('banner'
     if (registrationFee !== undefined) updateData.registrationFee = parseFloat(registrationFee);
     if (feeType !== undefined) updateData.feeType = feeType;
     if (livePosEnabled !== undefined) updateData.livePosEnabled = livePosEnabled === 'true' || livePosEnabled === true;
-    if (aggAuthors !== undefined) updateData.aggAuthors = parseInt(aggAuthors) || 0;
-    if (aggTitles !== undefined) updateData.aggTitles = parseInt(aggTitles) || 0;
-    if (aggSent !== undefined) updateData.aggSent = parseInt(aggSent) || 0;
-    if (aggSold !== undefined) updateData.aggSold = parseInt(aggSold) || 0;
-    if (aggRevenue !== undefined) updateData.aggRevenue = parseFloat(aggRevenue) || 0;
-    if (aggEligibleAuthors !== undefined) updateData.aggEligibleAuthors = parseInt(aggEligibleAuthors) || 0;
+    if (aggAuthors !== undefined) updateData.aggAuthors = aggAuthors === "" ? null : (parseInt(aggAuthors) || 0);
+    if (aggTitles !== undefined) updateData.aggTitles = aggTitles === "" ? null : (parseInt(aggTitles) || 0);
+    if (aggSent !== undefined) updateData.aggSent = aggSent === "" ? null : (parseInt(aggSent) || 0);
+    if (aggSold !== undefined) updateData.aggSold = aggSold === "" ? null : (parseInt(aggSold) || 0);
+    if (aggRevenue !== undefined) updateData.aggRevenue = aggRevenue === "" ? null : (parseFloat(aggRevenue) || 0);
+    if (aggEligibleAuthors !== undefined) updateData.aggEligibleAuthors = aggEligibleAuthors === "" ? null : (parseInt(aggEligibleAuthors) || 0);
 
     if (req.file) {
       updateData.bannerUrl = `/uploads/${req.file.filename}`;
