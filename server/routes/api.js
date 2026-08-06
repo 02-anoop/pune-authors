@@ -1123,7 +1123,7 @@ router.put('/api/admin/authors/:id/full-update-and-approve', verifyToken, isAdmi
     if (!author) return res.status(404).json({ error: 'Author not found' });
 
     const {
-      name, phone, whatsapp, bio, penName, city, state, instagram, facebook, linkedin, youtube,
+      name, email, phone, whatsapp, bio, penName, city, state, instagram, facebook, linkedin, youtube,
       qualification, qualifications, institution, subject, dob, experience, skills, hobbies, whyJoining, aadharNumber, address, district, pincode, extraData, transactionId, conflictOfInterestSignature, agreedToGuidelines, agreedToInfoDoc
     } = req.body;
 
@@ -1186,6 +1186,7 @@ router.put('/api/admin/authors/:id/full-update-and-approve', verifyToken, isAdmi
       where: { id },
       data: {
         name, phone, bio, penName, city, state, instagram, facebook,
+        ...(email && email.trim() && { email: email.trim().toLowerCase() }),
         photoUrl, qrCodeUrl, transactionId, paymentScreenshot: paymentScreenshotUrl,
         qualification: finalQualificationString,
         age: dob, experience, skills, hobbies, whyJoining, aadharNumber, address, district, pincode, dob, skillsJson: (() => { try { return JSON.parse(skills) } catch (e) { return [] } })(), hobbiesJson: (() => { try { return JSON.parse(hobbies) } catch (e) { return [] } })(), qualificationsJson: qualificationsArray,
