@@ -6236,16 +6236,47 @@ router.post('/api/admin/events/:id/broadcast', verifyToken, isAdmin, async (req,
     const { target } = req.body; // 'Authors' or 'Customers'
 
     if (target === 'Authors') {
+      const event = await prisma.event.findUnique({ where: { id: eventId } });
+
       await prisma.event.update({
         where: { id: eventId },
         data: { broadcastStatus: 'AuthorsOnly' }
       });
 
-      // Here NodeMailer logic would go to email authors
-      // For now we just create EventAuthor records for all Active authors
-      const activeAuthors = await prisma.author.findMany({ where: { status: 'Active' } });
+      const activeAuthors = await prisma.author.findMany({
+        where: { status: { in: ['Active', 'Approved'] }, isArchived: false },
+        select: { id: true, email: true, name: true }
+      });
       const eventAuthorsData = activeAuthors.map(a => ({ eventId, authorId: a.id, optInStatus: 'Pending' }));
       await prisma.eventAuthor.createMany({ data: eventAuthorsData, skipDuplicates: true });
+
+      // Send emails asynchronously to authors
+      (async () => {
+        try {
+          const emailSubject = `New Event Announcement: ${event ? event.name : "PAA Event"}`;
+          const emailContent = emailWrap(
+            "New Event Broadcast",
+            `<p>Hello,</p>
+             <p>A new event announcement has been broadcasted by Admin:</p>
+             <div style="padding: 15px; background: #f8fafc; border-left: 4px solid #3b82f6; margin: 15px 0; font-size: 15px; color: #1e293b;">
+               <strong>${event ? event.name : "New Event"}</strong>
+               ${event && event.date ? `<br/><strong>Date:</strong> ${event.date}` : ''}
+               ${event && event.venue ? `<br/><strong>Venue:</strong> ${event.venue}` : ''}
+               ${event && event.description ? `<br/><p>${event.description}</p>` : ''}
+             </div>
+             <p>Please log in to your Author Dashboard to view full event details and opt in.</p>`
+          );
+
+          for (const author of activeAuthors) {
+            if (author.email) {
+              await sendNotificationEmail(author.email, emailSubject, emailContent);
+              await new Promise(r => setTimeout(r, 100));
+            }
+          }
+        } catch (e) {
+          console.error('Failed to send event broadcast emails:', e);
+        }
+      })();
 
       res.json({ success: true, message: 'Broadcast sent to authors. Opt-in requests created.' });
     } else if (target === 'Customers') {
@@ -6307,16 +6338,29 @@ router.post('/api/admin/notifications', verifyToken, isAdmin, upload.single('doc
           let authorsToEmail = [];
           if (target === 'ALL' || !target) {
             authorsToEmail = await prisma.author.findMany({
-              where: { status: 'Approved', isArchived: false },
+              where: { status: { in: ['Active', 'Approved'] }, isArchived: false },
               select: { email: true, name: true }
             });
           } else {
-            const authorName = target.startsWith('@') ? target.substring(1) : target;
-            const author = await prisma.author.findFirst({
-              where: { name: authorName, status: 'Approved', isArchived: false },
+            const rawTargets = Array.isArray(target)
+              ? target
+              : String(target).split(',').map(t => t.trim()).filter(Boolean);
+
+            const targetCleaned = rawTargets.map(t => String(t).replace(/^@/, '').trim());
+            const numericIds = targetCleaned.map(t => parseInt(t)).filter(n => !isNaN(n));
+
+            authorsToEmail = await prisma.author.findMany({
+              where: {
+                status: { in: ['Active', 'Approved'] },
+                isArchived: false,
+                OR: [
+                  ...(numericIds.length > 0 ? [{ id: { in: numericIds } }] : []),
+                  { name: { in: targetCleaned } },
+                  { email: { in: targetCleaned } }
+                ]
+              },
               select: { email: true, name: true }
             });
-            if (author) authorsToEmail = [author];
           }
 
           const emailSubject = "New Announcement from Admin - Pune Authors' Association";
@@ -7606,16 +7650,21 @@ router.get('/api/admin/inventory', verifyToken, isAdmin, async (req, res) => {
     const isExport = req.query.export === 'true';
     const skip = (Number(page) - 1) * Number(limit);
 
-    let whereClause = {};
+    let whereClause = {
+      isArchived: false,
+      author: { isArchived: false }
+    };
 
     if (search) {
-      whereClause.OR = [
-        { title: { contains: search } },
-        { author: { name: { contains: search } } }
+      whereClause.AND = [
+        {
+          OR: [
+            { title: { contains: search } },
+            { author: { name: { contains: search } } }
+          ]
+        }
       ];
     }
-    
-    whereClause.isArchived = false;
 
     if (lowStock === 'true') {
       whereClause.stock = { lt: 10 };
@@ -7725,8 +7774,9 @@ router.get('/api/admin/inventory', verifyToken, isAdmin, async (req, res) => {
       return res.end();
     }
 
-    // We need to fetch all books to compute accurate global KPIs based on dynamic inventory logic
+    // We need to fetch all active books to compute accurate global KPIs based on dynamic inventory logic
     const allBooks = await prisma.book.findMany({
+      where: { isArchived: false, author: { isArchived: false } },
       include: { author: { select: { name: true } } }
     });
     const enrichedGlobalBooks = await computeBookInventory(allBooks);
@@ -7760,8 +7810,10 @@ router.get('/api/admin/inventory', verifyToken, isAdmin, async (req, res) => {
     const total = filtered.length;
     const enrichedBooks = filtered.slice(skip, skip + Number(limit));
 
-    // Global stats across ALL platform
-    const globalTotalTitles = await prisma.book.count({ where: {} });
+    // Global stats across active platform books
+    const globalTotalTitles = await prisma.book.count({
+      where: { isArchived: false, author: { isArchived: false } }
+    });
 
     // Removed duplicate declaration of allBooks and enrichedGlobalBooks
 
