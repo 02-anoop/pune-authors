@@ -779,7 +779,7 @@ const [showArchived, setShowArchived] = useState(false);
                     {author.aggEligibleEvents > 0 ? (
                       <div>
                         <div className="font-bold text-paa-navy text-sm">{Math.round((author.aggParticipatedEvents / author.aggEligibleEvents) * 100)}%</div>
-                        <div className="text-[10px] font-medium text-gray-500 uppercase">{author.aggParticipatedEvents}/{author.aggEligibleEvents} Events</div>
+                        <div className="text-[10px] font-medium text-gray-500 uppercase">{author.aggParticipatedEvents}/{author.aggEligibleEvents} Events & Fairs</div>
                       </div>
                     ) : (
                       <span className="text-gray-400 text-xs font-bold uppercase">N/A</span>
