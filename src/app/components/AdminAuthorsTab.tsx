@@ -8,7 +8,7 @@ import { AuthorFullProfileView } from './AuthorFullProfileView';
 export const AdminAuthorsTab = React.memo(({
   authors, API, selectedAuthorIds, setSelectedAuthorIds, isDownloadingPdf, setIsDownloadingPdf,
   authorSearchTerm: searchTerm, setAuthorSearchTerm: setSearchTerm, authorStatusFilter, setAuthorStatusFilter,
-  setAuthorsPage, fetchAuthors, loadingAction, handleApproveAuthor, openRejectAuthorModal,
+  setAuthorsPage, fetchAuthors, fetchBooks, loadingAction, handleApproveAuthor, openRejectAuthorModal,
   handleViewEditAuthor, handleDeleteAuthor, handleRestoreAuthor, books, authorsMeta, authorsPage,
   selectedPendingAuthor, setSelectedPendingAuthor, selectedAuthor, setSelectedAuthor
 }: any) => {
@@ -192,6 +192,7 @@ const handleExportAuthorsCSV = async () => {
             onAdminSave={() => {
               setSelectedPendingAuthor(null);
               fetchAuthors();
+              if (typeof fetchBooks === 'function') fetchBooks();
             }}
             onAdminReject={() => {
               openRejectAuthorModal(selectedPendingAuthor);
@@ -261,10 +262,10 @@ const handleExportAuthorsCSV = async () => {
           </div>
           <div className="flex flex-row items-center gap-2 shrink-0">
             <button onClick={() => handleDownloadCatalogue(false)} disabled={selectedAuthorIds.length === 0 || isDownloadingPdf} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:text-[#0b1a2e] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-sm">
-              {isDownloadingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" aria-hidden="true" />} {isDownloadingPdf ? 'Generating...' : 'Download PDF'}
+              {isDownloadingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" aria-hidden="true" />} {isDownloadingPdf ? 'Generating...' : 'Soft Copy Catalogue'}
             </button>
             <button onClick={() => handleDownloadCatalogue(true)} disabled={selectedAuthorIds.length === 0 || isDownloadingPdf} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:text-[#0b1a2e] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-sm">
-              {isDownloadingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer className="w-3.5 h-3.5" aria-hidden="true" />} {isDownloadingPdf ? 'Generating...' : 'Print PDF'}
+              {isDownloadingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer className="w-3.5 h-3.5" aria-hidden="true" />} {isDownloadingPdf ? 'Generating...' : 'Printing Catalogue'}
             </button>
             <button onClick={handleExportAuthorsCSV} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:text-[#0b1a2e] whitespace-nowrap shadow-sm">
               <Download className="w-3.5 h-3.5" aria-hidden="true" /> Export Excel

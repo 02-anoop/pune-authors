@@ -1155,6 +1155,7 @@ export function OperationsDashboardPage() {
         },
       );
       toast.success("Transaction ID updated");
+      fetchEventRegistrations(eventId);
     } catch (err) {
       toast.error("Failed to update Transaction ID");
     }
@@ -1790,6 +1791,7 @@ export function OperationsDashboardPage() {
       await axios.put(`${API}/api/admin/authors/${id}/restore`);
       toast.success("Author Restored from Archive");
       fetchAuthors();
+      fetchBooks();
       fetchOverview();
       autoRegenerateCompleteCatalogue();
     } catch (err) {
@@ -1909,6 +1911,7 @@ export function OperationsDashboardPage() {
       await axios.post(`${API}/api/admin/authors/${id}/approve`);
       toast.success("Author Approved!");
       fetchAuthors();
+      fetchBooks();
 
       // Auto regenerate catalogue when new author is approved
       autoRegenerateCompleteCatalogue();
@@ -2066,9 +2069,9 @@ export function OperationsDashboardPage() {
       setIsEditAuthorModalOpen(false);
       setEditingAuthor(null);
       fetchAuthors();
-      alert("Author profile updated!");
+      toast.success("Author profile updated!");
     } catch (err) {
-      alert("Failed to update author");
+      toast.error("Failed to update author");
     } finally {
       setLoadingAction(null);
     }
@@ -2237,10 +2240,11 @@ export function OperationsDashboardPage() {
     setLoadingAction("approveBook_" + id);
     try {
       await axios.post(`${API}/api/admin/books/${id}/approve`);
+      toast.success("Book Approved!");
       fetchBooks();
       autoRegenerateCompleteCatalogue();
     } catch (err) {
-      alert("Failed to approve book");
+      toast.error("Failed to approve book");
     } finally {
       setLoadingAction(null);
     }
@@ -2307,9 +2311,9 @@ export function OperationsDashboardPage() {
       setIsEditBookModalOpen(false);
       setEditingBook(null);
       fetchBooks();
-      alert("Book updated successfully!");
+      toast.success("Book updated successfully!");
     } catch (err) {
-      alert("Failed to update book details");
+      toast.error("Failed to update book details");
     } finally {
       setLoadingAction(null);
     }
@@ -3259,192 +3263,253 @@ export function OperationsDashboardPage() {
   const BooksTab = () => {
     const [bookSearchTerm, setBookSearchTerm] = useState("");
     const [expandedBookId, setExpandedBookId] = useState<number | null>(null);
+    const [showExportModal, setShowExportModal] = useState(false);
+
+    const ALL_EXPORT_COLUMNS = [
+      { key: 'authorName',     label: 'Author Name' },
+      { key: 'title',          label: 'Book Title' },
+      { key: 'subtitle',       label: 'Subtitle' },
+      { key: 'synopsis',       label: 'Synopsis' },
+      { key: 'purpose',        label: 'Purpose of Writing' },
+      { key: 'genre',          label: 'Genre' },
+      { key: 'subGenre',       label: 'Sub-Genre' },
+      { key: 'mrp',            label: 'Price (MRP)' },
+      { key: 'language',       label: 'Language' },
+      { key: 'format',         label: 'Format' },
+      { key: 'printFormat',    label: 'Print Format' },
+      { key: 'pages',          label: 'Pages' },
+      { key: 'isbn',           label: 'ISBN' },
+      { key: 'publisher',      label: 'Publisher' },
+      { key: 'edition',        label: 'Edition' },
+      { key: 'publicationDate',label: 'Publication Date' },
+      { key: 'stock',          label: 'Current Stock' },
+      { key: 'status',         label: 'Status' },
+    ];
+
+    const uniqueAuthors: string[] = Array.from(
+      new Set(books.map((b: any) => b.author?.name || b.authorName || 'Unknown Author'))
+    ).sort() as string[];
+
+    const [selectedExportAuthors, setSelectedExportAuthors] = useState<string[]>(uniqueAuthors);
+    const [selectedExportCols, setSelectedExportCols] = useState<string[]>(ALL_EXPORT_COLUMNS.map(c => c.key));
+    const [isExporting, setIsExporting] = useState(false);
+
+    const toggleAuthor = (name: string) =>
+      setSelectedExportAuthors(prev => prev.includes(name) ? prev.filter(a => a !== name) : [...prev, name]);
+    const toggleCol = (key: string) =>
+      setSelectedExportCols(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]);
+
+    const openExportModal = () => {
+      setSelectedExportAuthors(uniqueAuthors);
+      setSelectedExportCols(ALL_EXPORT_COLUMNS.map(c => c.key));
+      setShowExportModal(true);
+    };
 
     const handleExportBookCatalogue = async () => {
+      setIsExporting(true);
       try {
-      const { saveAs } = await import("file-saver");
-      const ExcelJS = (await import("exceljs")).default;
-      const workbook = new ExcelJS.Workbook();
+        const { saveAs } = await import("file-saver");
+        const ExcelJS = (await import("exceljs")).default;
+        const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet("Book Catalogue");
 
-        const authorsMap: Record<string, any[]> = {};
-        const activeBooks = books.filter((b) => b.status === "Approved");
-
-        activeBooks.forEach((b) => {
-          const authorName = b.author?.name || b.authorName || "Unknown Author";
-          if (!authorsMap[authorName]) authorsMap[authorName] = [];
-          authorsMap[authorName].push(b);
+        // Filter books by selected authors
+        const filteredBooks = books.filter((b: any) => {
+          const aName = b.author?.name || b.authorName || 'Unknown Author';
+          return selectedExportAuthors.includes(aName);
         });
 
-        const authorNames = Object.keys(authorsMap).sort((a, b) =>
-          a.localeCompare(b),
-        );
-        const maxBooks = Math.max(
-          0,
-          ...authorNames.map((name) => authorsMap[name].length),
-        );
+        // Determine active columns in order
+        const activeCols = ALL_EXPORT_COLUMNS.filter(c => selectedExportCols.includes(c.key));
 
-        const bannerRow = sheet.addRow([
-          "",
-          "",
-          "LIST OF BOOKS OF AUTHORS REGISTERED IN THIS GROUP",
-        ]);
-        bannerRow.getCell(3).font = { bold: true };
-        bannerRow.getCell(3).alignment = {
-          horizontal: "center",
-          vertical: "middle",
-        };
-        bannerRow.getCell(3).fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FFFFFF00" },
-        };
-        bannerRow.getCell(3).border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
-
-        if (maxBooks > 0) {
-          sheet.mergeCells(1, 3, 1, Math.max(3, maxBooks + 2));
-        }
-
-        const headers = ["S. No", "AUTHOR NAME"];
-        for (let i = 1; i <= maxBooks; i++) {
-          headers.push(`BOOK-${i}`);
-        }
-        const headerRow = sheet.addRow(headers);
+        // Header row
+        const headerRow = sheet.addRow(['S. NO', ...activeCols.map(c => c.label.toUpperCase())]);
         headerRow.font = { bold: true };
-        headerRow.alignment = { horizontal: "center", vertical: "middle" };
-
-        headerRow.eachCell((cell, colNumber) => {
-          cell.border = {
-            top: { style: "thin" },
-            left: { style: "thin" },
-            bottom: { style: "thin" },
-            right: { style: "thin" },
-          };
-          if (colNumber <= 2) {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFFFFF99" },
-            };
-          } else {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFFFCC99" },
-            };
-          }
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+        headerRow.eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; // Bright Yellow
+          cell.font = { bold: true, color: { argb: 'FF000000' }, size: 10 }; // Black text
+          cell.border = { top: { style: 'medium' }, bottom: { style: 'medium' }, left: { style: 'medium' }, right: { style: 'medium' } };
+          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         });
+        sheet.getRow(1).height = 22;
 
-        authorNames.forEach((authorName, idx) => {
-          const rowData = [idx + 1, authorName];
-          const authorBooks = authorsMap[authorName];
-          const row = sheet.addRow(rowData);
+        const sortedBooks = [...filteredBooks].sort((a: any, b: any) =>
+          (a.author?.name || a.authorName || '').localeCompare(b.author?.name || b.authorName || '')
+        );
 
-          row.getCell(1).border = {
-            top: { style: "thin" },
-            left: { style: "thin" },
-            bottom: { style: "thin" },
-            right: { style: "thin" },
-          };
-          row.getCell(1).alignment = { horizontal: "center" };
-          row.getCell(2).border = {
-            top: { style: "thin" },
-            left: { style: "thin" },
-            bottom: { style: "thin" },
-            right: { style: "thin" },
-          };
+        sortedBooks.forEach((book: any, idx: number) => {
+          const authorName = book.author?.name || book.authorName || 'Unknown Author';
+          const rowValues = [
+            idx + 1,
+            ...activeCols.map(col => {
+              switch (col.key) {
+                case 'authorName':      return authorName;
+                case 'title':           return book.title || '-';
+                case 'subtitle':        return book.subtitle || '-';
+                case 'synopsis':        return book.synopsis || '-';
+                case 'purpose':         return book.purpose || '-';
+                case 'genre':           return book.genre || '-';
+                case 'subGenre':        return book.subGenre || '-';
+                case 'mrp':             return book.mrp ? `₹${book.mrp}` : '-';
+                case 'language':        return book.language || '-';
+                case 'format':          return book.format || '-';
+                case 'printFormat':     return book.printFormat || '-';
+                case 'pages':           return book.pages || '-';
+                case 'isbn':            return book.isbn || '-';
+                case 'publisher':       return book.publisher || '-';
+                case 'edition':         return book.edition || '-';
+                case 'publicationDate': return book.publicationDate || '-';
+                case 'stock':           return book.stock ?? '-';
+                case 'status':          return book.status || '-';
+                default:                return '';
+              }
+            })
+          ];
 
-          authorBooks.forEach((book, bookIdx) => {
-            const cell = row.getCell(3 + bookIdx);
-            cell.value = book.title;
-            cell.border = {
-              top: { style: "thin" },
-              left: { style: "thin" },
-              bottom: { style: "thin" },
-              right: { style: "thin" },
-            };
-
-            let color = "FFFFFFFF";
-            const genre = (book.genre || "").toLowerCase();
-
-            if (
-              genre.includes("non-fiction") ||
-              genre.includes("non fiction")
-            ) {
-              color = "FF00FFFF"; // Blue / Cyan
-            } else if (genre.includes("fiction")) {
-              color = "FFFF66CC"; // Pink
-            } else if (genre.includes("poetry") || genre.includes("poem")) {
-              color = "FFFFFF00"; // Yellow
-            } else if (
-              genre.includes("children") ||
-              genre.includes("academic") ||
-              genre.includes("education") ||
-              genre.includes("textbook") ||
-              genre.includes("school")
-            ) {
-              color = "FF00FF00"; // Green
+          const row = sheet.addRow(rowValues);
+          const isEven = idx % 2 === 0;
+          row.eachCell((cell, colIdx) => {
+            cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+            cell.font = { size: 10, color: { argb: 'FF000000' } };
+            cell.alignment = { vertical: 'middle', wrapText: true };
+            
+            const colKey = colIdx === 1 ? 'sno' : activeCols[colIdx - 2]?.key;
+            let bgColor = 'FFFFFFFF';
+            
+            if (colKey === 'sno') bgColor = 'FFFFFF00'; // Yellow
+            else if (colKey === 'authorName') bgColor = 'FF00FFFF'; // Cyan
+            else if (['title', 'subtitle', 'synopsis', 'purpose', 'genre', 'subGenre'].includes(colKey)) {
+              const genre = (book.genre || '').toLowerCase();
+              if (genre.includes('non-fiction') || genre.includes('non fiction')) bgColor = 'FFFFCC99'; // Peach/Orange
+              else if (genre.includes('fiction')) bgColor = 'FFFF99CC'; // Pink
+              else if (genre.includes('poetry') || genre.includes('poem')) bgColor = 'FFFFFF99'; // Light Yellow
+              else if (genre.includes('children') || genre.includes('education')) bgColor = 'FFCCFFCC'; // Light Green
+              else bgColor = 'FFEBD8C0';
             }
+            else if (colKey === 'mrp') bgColor = 'FF99FF99'; // Green
+            else if (colKey === 'stock') bgColor = 'FFFFFF00'; // Yellow
+            else bgColor = 'FFEEEEEE'; // Light Gray for others
 
-            if (color !== "FFFFFFFF") {
-              cell.fill = {
-                type: "pattern",
-                pattern: "solid",
-                fgColor: { argb: color },
-              };
-            }
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
           });
-
-          for (let i = authorBooks.length + 3; i <= maxBooks + 2; i++) {
-            row.getCell(i).border = {
-              top: { style: "thin" },
-              left: { style: "thin" },
-              bottom: { style: "thin" },
-              right: { style: "thin" },
-            };
-          }
         });
 
-        sheet.addRow([]);
-        const legendRow = sheet.addRow([
-          "",
-          "Colour code is for the Genre. Blue = NF, Pink = F, Yellow = P, Green = C",
-        ]);
-        legendRow.getCell(2).font = { bold: true };
-        legendRow.getCell(2).border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
-        sheet.mergeCells(legendRow.number, 2, legendRow.number, 5);
-
-        sheet.columns.forEach((col, idx) => {
-          col.width = idx === 1 ? 25 : 35;
+        // Auto-width columns
+        sheet.getColumn(1).width = 6;
+        activeCols.forEach((col, idx) => {
+          const colObj = sheet.getColumn(idx + 2);
+          if (col.key === 'authorName') colObj.width = 28;
+          else if (col.key === 'title') colObj.width = 35;
+          else if (col.key === 'synopsis' || col.key === 'purpose') colObj.width = 50;
+          else if (col.key === 'mrp') colObj.width = 12;
+          else colObj.width = 20;
         });
-        sheet.getColumn(1).width = 8;
 
         const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
-        saveAs(
-          blob,
-          `Book_Catalogue_${new Date().toISOString().split("T")[0]}.xlsx`,
-        );
-        toast.success("Excel downloaded successfully!");
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `Book_Catalogue_${new Date().toISOString().split('T')[0]}.xlsx`);
+        toast.success('Excel downloaded successfully!');
+        setShowExportModal(false);
       } catch (err) {
-        toast.error("Failed to generate Excel file");
+        toast.error('Failed to generate Excel file');
         console.error(err);
+      } finally {
+        setIsExporting(false);
       }
     };
 
     return (
+      <>
+      {/* ── Export Excel Modal ── */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => e.target === e.currentTarget && setShowExportModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-[#0b1a2e]">
+              <div>
+                <h2 className="text-base font-bold text-white tracking-wider uppercase">Export Excel — Customise</h2>
+                <p className="text-xs text-white/60 mt-0.5">Choose authors & columns to include in the export</p>
+              </div>
+              <button onClick={() => setShowExportModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-white transition-colors text-lg font-bold">✕</button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              {/* ── Author Selector ── */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#0b1a2e]">Select Authors ({selectedExportAuthors.length}/{uniqueAuthors.length})</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setSelectedExportAuthors(uniqueAuthors)} className="text-[10px] font-bold text-indigo-600 hover:underline">All</button>
+                    <span className="text-gray-300">|</span>
+                    <button onClick={() => setSelectedExportAuthors([])} className="text-[10px] font-bold text-red-500 hover:underline">None</button>
+                  </div>
+                </div>
+                <div className="border border-gray-200 rounded-xl overflow-y-auto max-h-72 divide-y divide-gray-50">
+                  {uniqueAuthors.map((name) => (
+                    <label key={name} className="flex items-center gap-3 px-4 py-2.5 hover:bg-indigo-50/50 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={selectedExportAuthors.includes(name)}
+                        onChange={() => toggleAuthor(name)}
+                        className="w-4 h-4 rounded border-gray-300 text-[#0b1a2e] accent-[#0b1a2e] cursor-pointer"
+                      />
+                      <span className="text-sm font-medium text-[#0b1a2e] truncate">{name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Column Selector ── */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#0b1a2e]">Select Columns ({selectedExportCols.length}/{ALL_EXPORT_COLUMNS.length})</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setSelectedExportCols(ALL_EXPORT_COLUMNS.map(c => c.key))} className="text-[10px] font-bold text-indigo-600 hover:underline">All</button>
+                    <span className="text-gray-300">|</span>
+                    <button onClick={() => setSelectedExportCols([])} className="text-[10px] font-bold text-red-500 hover:underline">None</button>
+                  </div>
+                </div>
+                <div className="border border-gray-200 rounded-xl overflow-y-auto max-h-72 divide-y divide-gray-50">
+                  {ALL_EXPORT_COLUMNS.map((col) => (
+                    <label key={col.key} className="flex items-center gap-3 px-4 py-2.5 hover:bg-indigo-50/50 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={selectedExportCols.includes(col.key)}
+                        onChange={() => toggleCol(col.key)}
+                        className="w-4 h-4 rounded border-gray-300 text-[#0b1a2e] accent-[#0b1a2e] cursor-pointer"
+                      />
+                      <span className="text-sm font-medium text-[#0b1a2e]">{col.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/60 flex items-center justify-between gap-4">
+              <p className="text-xs text-gray-500">
+                Exporting <span className="font-bold text-[#0b1a2e]">{selectedExportAuthors.length}</span> author(s) × <span className="font-bold text-[#0b1a2e]">{selectedExportCols.length}</span> column(s)
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setShowExportModal(false)} className="px-4 py-2 rounded-lg text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExportBookCatalogue}
+                  disabled={isExporting || selectedExportAuthors.length === 0 || selectedExportCols.length === 0}
+                  className="flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold bg-[#0b1a2e] text-white hover:bg-[#1a2e4a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  {isExporting ? 'Generating...' : 'Download Excel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="bg-white border border-paa-navy/5 shadow-premium hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-500 ease-out flex flex-col">
         <div className="p-4 border-b border-paa-navy/5 flex flex-col gap-3 bg-[#e6f2eb]">
           <div className="flex items-center gap-2">
@@ -3486,7 +3551,7 @@ export function OperationsDashboardPage() {
                 />
               </div>
             <button
-              onClick={handleExportBookCatalogue}
+              onClick={openExportModal}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-paa-navy/20 text-paa-navy bg-white hover:bg-paa-navy hover:text-white shadow-sm whitespace-nowrap shrink-0"
             >
               <Download className="w-4 h-4" /> Export Excel
@@ -3827,6 +3892,7 @@ export function OperationsDashboardPage() {
           </table>
         </div>
       </div>
+      </>
     );
   };
 
@@ -8885,7 +8951,7 @@ const totalAuthorsBase = eventRegistrations.length;
             { id: "documents", label: "Policy Documents", icon: FileText },
             {
               id: "authors",
-              label: "Authors Menu",
+              label: "Authors Data",
               icon: Users,
               hasAlert: pendingAlerts.authors,
             },
@@ -9765,6 +9831,7 @@ const totalAuthorsBase = eventRegistrations.length;
                   setAuthorStatusFilter={setAuthorStatusFilter}
                   setAuthorsPage={setAuthorsPage}
                   fetchAuthors={fetchAuthors}
+                  fetchBooks={fetchBooks}
                   loadingAction={loadingAction}
                   handleApproveAuthor={handleApproveAuthor}
                   openRejectAuthorModal={openRejectAuthorModal}
