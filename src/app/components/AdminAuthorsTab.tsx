@@ -191,9 +191,19 @@ const [showArchived, setShowArchived] = useState(false);
   const executeExcelExport = async () => {
     try {
       setIsExporting(true);
-      const targetAuthors = (exportScope === 'selected' && selectedAuthorIds && selectedAuthorIds.length > 0)
-        ? (authors || []).filter((a: any) => selectedAuthorIds.includes(a.id))
-        : (authors || []);
+      let targetAuthors: any[] = [];
+      if (exportScope === 'selected' && selectedAuthorIds && selectedAuthorIds.length > 0) {
+        targetAuthors = (authors || []).filter((a: any) => selectedAuthorIds.includes(a.id));
+      } else {
+        try {
+          const res = await axios.get(`${API}/api/admin/authors?limit=5000`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          targetAuthors = res.data.authors || authors || [];
+        } catch (e) {
+          targetAuthors = authors || [];
+        }
+      }
 
       if (!targetAuthors || targetAuthors.length === 0) {
         toast.error("No authors available for export.");
