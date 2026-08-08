@@ -13,16 +13,47 @@ export const AdminAuthorsTab = React.memo(({
   selectedPendingAuthor, setSelectedPendingAuthor, selectedAuthor, setSelectedAuthor
 }: any) => {
 const [showArchived, setShowArchived] = useState(false);
-const handleExportAuthorsCSV = async () => {
-      const ExcelJS = (await import('exceljs')).default;
-      const { saveAs } = await import('file-saver');
+  const handleExportAuthorsCSV = async () => {
+    try {
+      const exportList = (selectedAuthorIds && selectedAuthorIds.length > 0)
+        ? (authors || []).filter((a: any) => selectedAuthorIds.includes(a.id))
+        : (authors || []);
+
+      if (!exportList || exportList.length === 0) {
+        toast.error("No authors available to export");
+        return;
+      }
+
+      toast.loading("Generating Excel file...", { id: "export-authors-toast" });
+
+      const ExcelModule = await import('exceljs');
+      const ExcelJS = ExcelModule.default || ExcelModule;
+      const fileSaverModule = await import('file-saver');
+      const saveAs = fileSaverModule.saveAs || (fileSaverModule as any).default?.saveAs || fileSaverModule.default || fileSaverModule;
+
+      const parseExtraData = (ed: any) => {
+        if (!ed) return {};
+        if (typeof ed === 'object') return ed;
+        if (typeof ed === 'string') {
+          try { return JSON.parse(ed); } catch (e) { return {}; }
+        }
+        return {};
+      };
+
       const dynamicKeys = Array.from(new Set<string>(
-        authors.reduce((acc: string[], author: any) => {
-          if (author.extraData) acc = acc.concat(Object.keys(author.extraData));
-          return acc;
+        exportList.reduce((acc: string[], author: any) => {
+          const ed = parseExtraData(author.extraData);
+          const keys = Object.keys(ed).filter(k => typeof k === 'string' && isNaN(Number(k)));
+          return acc.concat(keys);
         }, [])
       ));
-      const baseFields = ['Status', 'Name', 'Pen Name', 'Email', 'Phone', 'WhatsApp', 'Address', 'City', 'State', 'Aadhar/Voter ID/DL', 'Qualification', 'DOB', 'Experience', 'Skills', 'Hobbies', 'Why Joining', 'Transaction ID', 'Joined Date'];
+
+      const baseFields = [
+        'Status', 'Name', 'Pen Name', 'Email', 'Phone', 'WhatsApp',
+        'Address', 'City', 'State', 'Aadhar/Voter ID/DL', 'Qualification',
+        'Age / DOB', 'Experience', 'Skills', 'Hobbies', 'Why Joining',
+        'Transaction ID', 'Joined Date'
+      ];
 
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Authors Directory');
@@ -35,48 +66,89 @@ const handleExportAuthorsCSV = async () => {
       titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
       titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0B1A2E' } };
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(1).height = 32;
       
       const headerRow = sheet.addRow(allHeaders);
+      headerRow.height = 26;
       headerRow.eachCell((cell) => {
-        cell.font = { bold: true, color: { argb: 'FF000000' } };
+        cell.font = { name: 'Arial', bold: true, color: { argb: 'FF000000' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4AF37' } };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
       });
       
-      authors.forEach(author => {
+      exportList.forEach((author: any) => {
+        const ed = parseExtraData(author.extraData);
         const joinedDate = author.createdAt ? new Date(author.createdAt).toLocaleDateString() : '';
-        const rowData = [
-          author.status, author.name, author.penName, author.email, author.phone, author.whatsapp,
-          author.address, author.city, author.state, author.aadharNumber, author.qualification,
-          author.age, author.experience, author.skills, author.hobbies, author.whyJoining,
-          author.transactionId, joinedDate
+        const rowData: any[] = [
+          author.status || '',
+          author.name || '',
+          author.penName || '',
+          author.email || '',
+          author.phone || '',
+          author.whatsapp || ed.whatsapp || '',
+          author.address || ed.address || '',
+          author.city || ed.city || '',
+          author.state || ed.state || '',
+          author.aadharNumber || ed.aadharNumber || '',
+          author.qualification || ed.qualification || '',
+          author.age || author.dob || ed.age || ed.dob || '',
+          author.experience || ed.experience || '',
+          author.skills || ed.skills || '',
+          author.hobbies || ed.hobbies || '',
+          author.whyJoining || ed.whyJoining || '',
+          author.transactionId || ed.transactionId || '',
+          joinedDate
         ];
+
         dynamicKeys.forEach(col => {
-          rowData.push(author.extraData && author.extraData[col] ? author.extraData[col] : '');
+          const val = ed[col];
+          if (val === undefined || val === null) {
+            rowData.push('');
+          } else if (typeof val === 'object') {
+            rowData.push(JSON.stringify(val));
+          } else {
+            rowData.push(String(val));
+          }
         });
         
         const addedRow = sheet.addRow(rowData);
         addedRow.eachCell((cell, colNumber) => {
           cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
-          cell.font = { name: 'Arial', size: 10, color: { argb: '000000' } };
+          cell.font = { name: 'Arial', size: 10, color: { argb: 'FF000000' } };
           
-          let colBgColor = 'FFFFFF';
-          if (colNumber === 1) colBgColor = 'FF8B8B'; // Light red
-          else if (colNumber === 2) colBgColor = 'FFD2A3'; // Light orange
-          else if (colNumber === 3) colBgColor = 'D4D8DD'; // Light gray
-          else if (colNumber === 4) colBgColor = 'B3E5FC'; // Light cyan
-          else if (colNumber === allHeaders.length) colBgColor = 'C8E6C9'; // Light green
-          else colBgColor = 'DDA0DD'; // Lavender/Plum
+          let colBgColor = 'FFFFFFFF';
+          if (colNumber === 1) colBgColor = 'FFFF8B8B'; // Light red
+          else if (colNumber === 2) colBgColor = 'FFFFD2A3'; // Light orange
+          else if (colNumber === 3) colBgColor = 'FFD4D8DD'; // Light gray
+          else if (colNumber === 4) colBgColor = 'FFB3E5FC'; // Light cyan
+          else if (colNumber === allHeaders.length) colBgColor = 'FFC8E6C9'; // Light green
+          else colBgColor = 'FFDDA0DD'; // Lavender/Plum
           
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colBgColor } };
         });
       });
-      
+
+      sheet.columns.forEach((column) => {
+        let maxLength = 12;
+        column.eachCell?.({ includeEmpty: true }, (cell) => {
+          const columnValue = cell.value ? cell.value.toString() : '';
+          if (columnValue.length > maxLength && columnValue.length < 60) {
+            maxLength = columnValue.length;
+          }
+        });
+        column.width = maxLength + 3;
+      });
+
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(blob, 'master_authors_directory.xlsx');
-    };
+      saveAs(blob, `authors_directory_${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.success("Excel exported successfully!", { id: "export-authors-toast" });
+    } catch (err) {
+      console.error("Export Authors Excel Error:", err);
+      toast.error("Failed to export Excel file. Please try again.", { id: "export-authors-toast" });
+    }
+  };
     const handleDownloadCatalogue = async (isPrintable = false) => {
       if (selectedAuthorIds.length === 0) return;
       setIsDownloadingPdf(true);
