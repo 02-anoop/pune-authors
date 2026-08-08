@@ -1,3 +1,4 @@
+
 const { validate } = require('../middleware/validate');
 const { eventSchema } = require('../validators');
 const express = require('express');
@@ -61,7 +62,7 @@ ${description}`;
         message: formattedMessage
       }
     });
-    
+
     if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
       const { getAdminEmails } = require('../utils/email');
       if (typeof getAdminEmails === 'function') {
@@ -76,7 +77,7 @@ ${description}`;
         sendNotificationEmail(getAdminEmails(), `New Event Request: ${organisationName || name}`, emailWrap("New Event Request", adminContent));
       }
     }
-    
+
     res.json({ success: true, message: "Event request submitted" });
   } catch (error) {
     console.error("Error submitting event request:", error);
@@ -361,8 +362,8 @@ router.post('/api/authors/register', upload.any(), async (req, res) => {
     let photoUrl = req.body.photoUrl || null, paymentScreenshotUrl = req.body.paymentScreenshotUrl || null, qrCodeUrl = req.body.qrCodeUrl || null, certificateUrl = req.body.certificateUrl || null;
     let covers = {};
     let backCovers = {};
-    if (req.body.covers) try { covers = JSON.parse(req.body.covers); } catch(e){}
-    if (req.body.backCovers) try { backCovers = JSON.parse(req.body.backCovers); } catch(e){}
+    if (req.body.covers) try { covers = JSON.parse(req.body.covers); } catch (e) { }
+    if (req.body.backCovers) try { backCovers = JSON.parse(req.body.backCovers); } catch (e) { }
     if (Array.isArray(req.files)) {
       for (const file of req.files) {
         if (file.fieldname === 'photo') photoUrl = `/uploads/${file.filename}`;
@@ -518,7 +519,7 @@ router.post('/api/authors/register', upload.any(), async (req, res) => {
         <p>Dashboard access will be available only after your application has been approved.</p>
       `;
       sendNotificationEmail(author.email, "Registration Received - PAA", emailWrap("Registration Received", emailContent));
-      
+
       const { getAdminEmails } = require('../utils/email');
       if (typeof getAdminEmails === 'function') {
         const adminContent = `
@@ -719,17 +720,17 @@ router.delete('/api/author/account', verifyToken, async (req, res) => {
   try {
     const author = await prisma.author.findUnique({ where: { email: req.user.email } });
     if (!author) return res.status(404).json({ error: 'Author not found' });
-    
+
     await prisma.author.update({
       where: { id: author.id },
       data: { isArchived: true, status: 'Archived' }
     });
-    
+
     await prisma.book.updateMany({
       where: { authorId: author.id },
       data: { isArchived: true, status: 'Archived' }
     });
-    
+
     if (typeof deleteCatalogueCache === 'function') deleteCatalogueCache();
 
     // Notify admin team
@@ -743,7 +744,7 @@ router.delete('/api/author/account', verifyToken, async (req, res) => {
         ).catch(e => console.error('Failed to send admin deletion email:', e));
       }
     }
-    
+
     res.json({ success: true });
   } catch (err) {
     console.error('Failed to delete account:', err);
@@ -756,7 +757,7 @@ router.post('/api/author/rejoin', verifyToken, async (req, res) => {
   try {
     const author = await prisma.author.findUnique({ where: { email: req.user.email } });
     if (!author) return res.status(404).json({ error: 'Author not found' });
-    
+
     await prisma.author.update({
       where: { id: author.id },
       data: { isArchived: false, status: 'Pending' }
@@ -767,7 +768,7 @@ router.post('/api/author/rejoin', verifyToken, async (req, res) => {
       where: { authorId: author.id, status: 'Archived' },
       data: { isArchived: false, status: 'Pending' }
     });
-    
+
     // Notify admin team that this author wants to rejoin
     if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
       const { getAdminEmails } = require('./utils/email');
@@ -779,7 +780,7 @@ router.post('/api/author/rejoin', verifyToken, async (req, res) => {
         ).catch(e => console.error('Failed to send rejoin admin email:', e));
       }
     }
-    
+
     res.json({ success: true });
   } catch (err) {
     console.error('Failed to send rejoin request:', err);
@@ -929,7 +930,7 @@ router.put('/api/author/reapply-full', verifyToken, upload.any(), async (req, re
         <p style="margin-top:16px;">Warm regards,<br/>Pune Authors' Association</p>
       `;
       sendNotificationEmail(author.email, "Reapplication Received – PAA", emailWrap("Reapplication Received", emailContent));
-      
+
       const { getAdminEmails } = require('../utils/email');
       if (typeof getAdminEmails === 'function') {
         const adminContent = `
@@ -1059,19 +1060,19 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
         const s = typeof dStr === 'string' ? dStr : String(dStr);
         const dt = new Date(s.replace(/-/g, ' '));
         return isNaN(dt.getTime()) ? new Date(0) : dt;
-      } catch(e) { return new Date(0); }
+      } catch (e) { return new Date(0); }
     };
 
     const mapped = authors.map(a => {
       const joinDate = a.groupJoiningDate ? new Date(a.groupJoiningDate) : new Date(a.createdAt);
       joinDate.setHours(0, 0, 0, 0);
-      
+
       let eligibleCount = 0;
       allSystemEvents.forEach(e => {
         const eTime = parseEvDate(e.date || e.startDate).getTime();
         if (eTime >= joinDate.getTime()) eligibleCount++;
       });
-      
+
       let participatedCount = 0;
       if (a.eventAuthors) {
         participatedCount += a.eventAuthors.filter(ei => ei.optInStatus === 'Registered' || ei.optInStatus === 'Approved' || ei.optInStatus === 'Pending Approval').length;
@@ -1079,8 +1080,8 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
       if (a.eventRegistrations) {
         const inviteEventIds = new Set(a.eventAuthors ? a.eventAuthors.map(ei => ei.eventId) : []);
         participatedCount += a.eventRegistrations.filter(er => {
-           if (er.activityId && inviteEventIds.has(er.activityId)) return false; 
-           return er.status === 'Registered' || er.status === 'Approved' || er.status === 'Pending Approval';
+          if (er.activityId && inviteEventIds.has(er.activityId)) return false;
+          return er.status === 'Registered' || er.status === 'Approved' || er.status === 'Pending Approval';
         }).length;
       }
 
@@ -1095,7 +1096,7 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
         })),
         aggEligibleEvents: eligibleCount,
         aggParticipatedEvents: participatedCount,
-        extraData: typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData || '{}') } catch(e) { return {} } })() : (a.extraData || {})
+        extraData: typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData || '{}') } catch (e) { return {} } })() : (a.extraData || {})
       };
     });
 
@@ -1121,7 +1122,7 @@ router.delete('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) =
   try {
     const authorId = parseInt(req.params.id);
     await prisma.author.update({ where: { id: authorId }, data: { isArchived: true } });
-    
+
     // Also archive their books
     await prisma.book.updateMany({
       where: { authorId },
@@ -1154,7 +1155,7 @@ router.put('/api/admin/authors/:id/restore', verifyToken, isAdmin, async (req, r
     if (!author) return res.status(404).json({ error: 'Author not found' });
 
     await prisma.author.update({ where: { id: authorId }, data: { isArchived: false, status: 'Active' } });
-    
+
     // Restore only books that were archived (not those that were previously Rejected for other reasons)
     // Set them back to Approved so they appear in the catalogue immediately
     await prisma.book.updateMany({
@@ -1632,7 +1633,7 @@ router.get('/api/impact-stats', async (req, res) => {
 
     events.forEach(evt => {
       let booksSold = evt.aggSold || 0;
-      
+
       if (evt.eventAuthors) {
         evt.eventAuthors.forEach(ea => {
           if (ea.manualTotalSold) booksSold += ea.manualTotalSold;
@@ -1832,7 +1833,7 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
         posOrder: { select: { event: { select: { name: true } } } }
       }
     });
-    
+
     posItems.forEach(item => {
       if (item.book) {
         const authorName = item.book.author?.name || 'Unknown';
@@ -1872,7 +1873,7 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
         salesByAuthorMap[authorName].units += item.manualTotalSold;
         salesByAuthorMap[authorName].revenue += (item.manualTotalRevenue || 0);
       }
-      
+
       if (!item.event) return;
       const eventName = item.event.name;
       if (!eventSalesMap[eventName]) eventSalesMap[eventName] = { name: eventName, booksSold: 0 };
@@ -2044,9 +2045,9 @@ router.get('/api/admin/books', verifyToken, isAdmin, async (req, res) => {
 
 router.delete('/api/admin/books/:id', verifyToken, isAdmin, async (req, res) => {
   try {
-    await prisma.book.update({ 
-      where: { id: parseInt(req.params.id) }, 
-      data: { isArchived: true, status: 'Archived' } 
+    await prisma.book.update({
+      where: { id: parseInt(req.params.id) },
+      data: { isArchived: true, status: 'Archived' }
     });
     res.json({ success: true });
   } catch (err) {
@@ -2339,9 +2340,9 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
     });
     const posOrders = await prisma.posOrder.findMany({
       where: { authorId: authorProfile.id },
-      include: { 
+      include: {
         items: { include: { book: true } },
-        event: true 
+        event: true
       }
     });
     const notifications = await prisma.notification.findMany({
@@ -2370,7 +2371,7 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
           const s = typeof dStr === 'string' ? dStr : String(dStr);
           const dt = new Date(s.replace(/-/g, ' '));
           return isNaN(dt.getTime()) ? new Date(0) : dt;
-        } catch(e) { return new Date(0); }
+        } catch (e) { return new Date(0); }
       };
 
       let eligibleCount = 0;
@@ -2383,12 +2384,12 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
       if (eventInvites) {
         participatedCount += eventInvites.filter(ei => ei.optInStatus === 'Registered' || ei.optInStatus === 'Approved' || ei.optInStatus === 'Pending Approval').length;
       }
-      
+
       if (authorProfile.eventRegistrations) {
         const inviteEventIds = new Set(eventInvites.map(ei => ei.eventId));
         participatedCount += authorProfile.eventRegistrations.filter(er => {
-           if (er.activityId && inviteEventIds.has(er.activityId)) return false; 
-           return er.status === 'Registered' || er.status === 'Approved' || er.status === 'Pending Approval';
+          if (er.activityId && inviteEventIds.has(er.activityId)) return false;
+          return er.status === 'Registered' || er.status === 'Approved' || er.status === 'Pending Approval';
         }).length;
       }
 
@@ -2422,11 +2423,11 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
       const allAuthorsDB = await prisma.author.findMany({ select: { id: true, name: true, createdAt: true, groupJoiningDate: true }, where: { status: 'Approved' } });
       const allEventsDB = await prisma.event.findMany({ where: { broadcastStatus: { not: 'Draft' } }, select: { id: true, date: true } });
       const allRegistrationsDB = await prisma.eventAuthor.findMany({ where: { optInStatus: { in: ['Registered', 'Approved', 'Pending Approval'] } }, select: { authorId: true, eventId: true } });
-      
+
       let allManualDB = [];
       try {
-         allManualDB = await prisma.eventRegistration.findMany({ where: { status: { in: ['Registered', 'Approved', 'Pending Approval'] } }, select: { authorId: true, activityId: true } });
-      } catch(e) {}
+        allManualDB = await prisma.eventRegistration.findMany({ where: { status: { in: ['Registered', 'Approved', 'Pending Approval'] } }, select: { authorId: true, activityId: true } });
+      } catch (e) { }
 
       const regMap = {};
       allRegistrationsDB.forEach(r => {
@@ -2441,7 +2442,7 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
       const adminStats = getCache('admin:dashboard-stats');
       const salesMap = {};
       if (adminStats && adminStats.salesByAuthor) {
-         adminStats.salesByAuthor.forEach(a => salesMap[a.name] = a.units);
+        adminStats.salesByAuthor.forEach(a => salesMap[a.name] = a.units);
       }
 
       const parseEvDate = (dStr) => {
@@ -2450,29 +2451,29 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
           const s = typeof dStr === 'string' ? dStr : String(dStr);
           const dt = new Date(s.replace(/-/g, ' '));
           return isNaN(dt.getTime()) ? new Date(0) : dt;
-        } catch(e) { return new Date(0); }
+        } catch (e) { return new Date(0); }
       };
 
       const parsedEvents = allEventsDB.map(e => ({ id: e.id, time: parseEvDate(e.date).getTime() }));
 
       allAuthorsDB.forEach(a => {
-         const joinDate = a.groupJoiningDate ? new Date(a.groupJoiningDate) : new Date(a.createdAt);
-         joinDate.setHours(0,0,0,0);
-         const joinTime = joinDate.getTime();
-         
-         let eligible = 0;
-         parsedEvents.forEach(e => { if (e.time >= joinTime) eligible++; });
-         
-         const participated = regMap[a.id] ? regMap[a.id].size : 0;
-         
-         if (eligible > 0) {
-            authorScatterData.push({
-               id: a.id,
-               name: a.name,
-               percentage: Math.round((participated / eligible) * 100),
-               booksSold: salesMap[a.name] || 0
-            });
-         }
+        const joinDate = a.groupJoiningDate ? new Date(a.groupJoiningDate) : new Date(a.createdAt);
+        joinDate.setHours(0, 0, 0, 0);
+        const joinTime = joinDate.getTime();
+
+        let eligible = 0;
+        parsedEvents.forEach(e => { if (e.time >= joinTime) eligible++; });
+
+        const participated = regMap[a.id] ? regMap[a.id].size : 0;
+
+        if (eligible > 0) {
+          authorScatterData.push({
+            id: a.id,
+            name: a.name,
+            percentage: Math.round((participated / eligible) * 100),
+            booksSold: salesMap[a.name] || 0
+          });
+        }
       });
     } catch (err) {
       console.error('Failed to compute scatter data', err);
@@ -2610,9 +2611,9 @@ router.get('/api/debug-stuck-authors', async (req, res) => {
     try {
       const ed = typeof a.extraData === 'string' ? JSON.parse(a.extraData) : (a.extraData || {});
       return ed.hasPendingEdits === true || a.status === 'Edited';
-    } catch(e) { return false; }
+    } catch (e) { return false; }
   });
-  res.json({ count: stuck.length, authors: stuck.map(a => ({name: a.name, status: a.status})) });
+  res.json({ count: stuck.length, authors: stuck.map(a => ({ name: a.name, status: a.status })) });
 });
 
 // Author: Update book details (reapply)
@@ -3485,7 +3486,7 @@ router.get('/api/admin/sales-report', verifyToken, isAdmin, async (req, res) => 
       bookFairs: { revenue: 0, books: 0, orders: 0 }
     };
 
-    const processItem = (date, channel, eventName, authorName, title, qty, price, orderId) => {
+    const processItem = (date, channel, eventName, authorName, title, genre, subGenre, qty, price, orderId) => {
       const fullDateStr = date.toISOString().split('T')[0];
       const monthStr = date.toISOString().slice(0, 7);
       const chartDateStr = (filterType === 'ytd' || filterType === 'lifetime') ? monthStr : fullDateStr;
@@ -3506,6 +3507,8 @@ router.get('/api/admin/sales-report', verifyToken, isAdmin, async (req, res) => 
         event: eventName,
         author: authorName,
         title,
+        genre: genre || 'Other',
+        subGenre: subGenre || '',
         qty,
         revenue: rev
       });
@@ -3513,7 +3516,7 @@ router.get('/api/admin/sales-report', verifyToken, isAdmin, async (req, res) => 
 
     webOrders.forEach(o => {
       o.items.forEach(i => {
-        processItem(o.createdAt, 'Web Orders', '-', i.book.author.name, i.book.title, i.quantity, i.book.mrp, `PAA-${String(o.id).padStart(4, '0')}`);
+        processItem(o.createdAt, 'Web Orders', '-', i.book.author?.name || 'Unknown', i.book.title, i.book.genre, i.book.subGenre, i.quantity, i.book.mrp, `PAA-${String(o.id).padStart(4, '0')}`);
         const rev = i.quantity * i.book.mrp;
         channelDataMap.Web += rev;
         kpiSplits.web.revenue += rev;
@@ -3528,7 +3531,7 @@ router.get('/api/admin/sales-report', verifyToken, isAdmin, async (req, res) => 
       kpiSplits[kpiKey].orders += 1;
 
       po.items.forEach(i => {
-        processItem(po.createdAt, channelName, po.event?.name || '-', i.book.author.name, i.book.title, i.quantity, i.price, po.event?.name || `POS-${String(po.id).padStart(4, '0')}`);
+        processItem(po.createdAt, channelName, po.event?.name || '-', i.book.author?.name || 'Unknown', i.book.title, i.book.genre, i.book.subGenre, i.quantity, i.price, po.event?.name || `POS-${String(po.id).padStart(4, '0')}`);
         const rev = i.quantity * i.price;
         channelDataMap[channelName] += rev;
         kpiSplits[kpiKey].revenue += rev;
@@ -3564,7 +3567,7 @@ router.get('/api/admin/sales-report', verifyToken, isAdmin, async (req, res) => 
         if (qty > 0 || rev > 0) {
           totalRevenue += rev;
           totalBooksSold += qty;
-          
+
           const fullDateStr = evtDate.toISOString().split('T')[0];
           const monthStr = evtDate.toISOString().slice(0, 7);
           const chartDateStr = (filterType === 'ytd' || filterType === 'lifetime') ? monthStr : fullDateStr;
@@ -3586,6 +3589,8 @@ router.get('/api/admin/sales-report', verifyToken, isAdmin, async (req, res) => 
             event: evt.name,
             author: `${evt.aggAuthors || 0} Authors`,
             title: '-',
+            genre: '-',
+            subGenre: '-',
             qty,
             revenue: rev
           });
@@ -3896,7 +3901,7 @@ router.get('/api/admin/orders/export', verifyToken, isAdmin, async (req, res) =>
       const addedRow = worksheet.addRow(row);
       addedRow.eachCell((cell, colNumber) => {
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        
+
         const header = worksheet.getRow(2).getCell(colNumber).value;
         if (header === 'Payment Status') {
           if (cell.value === 'Paid') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } };
@@ -3907,11 +3912,11 @@ router.get('/api/admin/orders/export', verifyToken, isAdmin, async (req, res) =>
           else if (['Rejected', 'Cancelled', 'Payment Failed'].includes(cell.value)) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
           else cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB9C' } };
         } else if (header === 'Amount' || header === 'Quantity') {
-           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };
         } else if (header === 'Order ID' || header === 'Date') {
-           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4D6' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4D6' } };
         } else {
-           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
         }
       });
     });
@@ -4096,7 +4101,7 @@ router.put('/api/admin/orders/:id/status', verifyToken, isAdmin, async (req, res
   try {
     const orderId = parseInt(req.params.id);
     const { status } = req.body;
-    
+
     // Fetch current order to check previous status
     const currentOrder = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } });
     if (!currentOrder) return res.status(404).json({ error: 'Order not found' });
@@ -4108,8 +4113,8 @@ router.put('/api/admin/orders/:id/status', verifyToken, isAdmin, async (req, res
     });
 
     // If changing to Cancelled or Rejected from a valid state, we must refund stock!
-    if ((status === 'Cancelled' || status === 'Rejected') && 
-        (currentOrder.status !== 'Cancelled' && currentOrder.status !== 'Rejected')) {
+    if ((status === 'Cancelled' || status === 'Rejected') &&
+      (currentOrder.status !== 'Cancelled' && currentOrder.status !== 'Rejected')) {
       for (const item of currentOrder.items) {
         if (item.status !== 'Dispatched' && item.status !== 'Completed' && item.status !== 'Rejected' && item.status !== 'Cancelled') {
           await prisma.book.update({
@@ -4152,12 +4157,12 @@ router.put('/api/order-items/:id/status', verifyToken, async (req, res) => {
     }
 
     // Refund stock if cancelled/rejected by admin manually
-    if ((status === 'Cancelled' || status === 'Rejected') && 
-        (existing.status !== 'Cancelled' && existing.status !== 'Rejected')) {
-       await prisma.book.update({
-          where: { id: existing.bookId },
-          data: { stock: { increment: existing.quantity } }
-       });
+    if ((status === 'Cancelled' || status === 'Rejected') &&
+      (existing.status !== 'Cancelled' && existing.status !== 'Rejected')) {
+      await prisma.book.update({
+        where: { id: existing.bookId },
+        data: { stock: { increment: existing.quantity } }
+      });
     }
 
     const orderItem = await prisma.orderItem.update({
@@ -4594,7 +4599,7 @@ router.post('/api/admin/events/registration', verifyToken, isAdmin, async (req, 
     const eventId = parseInt(req.body.eventId);
     const authorId = parseInt(req.body.authorId);
     const { books, optInStatus, manualTotalSold, manualTotalRevenue, amountPaid } = req.body;
-    
+
     const existingAuthor = await prisma.eventAuthor.findFirst({
       where: { eventId, authorId }
     });
@@ -4602,7 +4607,7 @@ router.post('/api/admin/events/registration', verifyToken, isAdmin, async (req, 
     if (existingAuthor) {
       await prisma.eventAuthor.update({
         where: { id: existingAuthor.id },
-        data: { 
+        data: {
           optInStatus: optInStatus || undefined,
           manualTotalSold: manualTotalSold !== null ? manualTotalSold : undefined,
           manualTotalRevenue: manualTotalRevenue !== null ? manualTotalRevenue : undefined,
@@ -4626,7 +4631,7 @@ router.post('/api/admin/events/registration', verifyToken, isAdmin, async (req, 
       for (const b of books) {
         const targetBookId = parseInt(b.bookId || (b.book ? b.book.id : null) || b.id);
         if (!targetBookId || isNaN(targetBookId)) continue;
-        
+
         const existingBook = await prisma.eventBook.findFirst({
           where: { eventId, authorId, bookId: targetBookId }
         });
@@ -4658,7 +4663,7 @@ router.post('/api/admin/events/registration', verifyToken, isAdmin, async (req, 
         }
       }
     }
-    
+
     invalidateCache('admin:dashboard-stats');
     res.json({ success: true });
   } catch (error) {
@@ -4731,15 +4736,15 @@ router.delete('/api/admin/events/:eventId/author/:authorId', verifyToken, isAdmi
   try {
     const eventId = parseInt(req.params.eventId);
     const authorId = parseInt(req.params.authorId);
-    
+
     await prisma.eventBook.deleteMany({
       where: { eventId, authorId }
     });
-    
+
     await prisma.eventAuthor.deleteMany({
       where: { eventId, authorId }
     });
-    
+
     invalidateCache('admin:dashboard-stats');
     res.json({ success: true });
   } catch (error) {
@@ -4784,7 +4789,7 @@ router.post('/api/admin/events/:eventId/author/:authorId/approve', verifyToken, 
            <p>You can now see the event details and manage your participation from your Author Dashboard.</p>`
         )
       ).catch(e => console.error('Failed to send approve email:', e));
-      
+
       invalidateCache(`author:dashboard:${author.email}`);
       invalidateCache(`author:events:${author.email}`);
     }
@@ -4826,7 +4831,7 @@ router.post('/api/admin/events/:eventId/author/:authorId/reject', verifyToken, i
     if (existingRegistration && existingRegistration.optInStatus !== 'Rejected') {
       await prisma.eventAuthor.update({
         where: { id: existingRegistration.id },
-        data: { 
+        data: {
           optInStatus: 'Rejected',
           rejectionReason: reason || 'Not specified'
         }
@@ -4878,7 +4883,7 @@ router.post('/api/admin/events/:eventId/author/:authorId/reject', verifyToken, i
            <p>If you have any questions, please reach out to our support team.</p>`
         )
       ).catch(e => console.error('Failed to send reject email:', e));
-      
+
       invalidateCache(`author:dashboard:${author.email}`);
       invalidateCache(`author:events:${author.email}`);
     }
@@ -5041,7 +5046,7 @@ router.get('/api/author/book-performance', verifyToken, async (req, res) => {
     if (!author) return res.status(404).json({ error: 'Author not found' });
 
     const eventAuthors = await prisma.eventAuthor.findMany({
-      where: { 
+      where: {
         authorId: author.id,
         optInStatus: { in: ['Registered', 'Approved'] }
       },
@@ -5075,10 +5080,10 @@ router.get('/api/author/book-performance', verifyToken, async (req, res) => {
 
       const eventId = ea.eventId;
       const eventOrders = posOrders.filter(po => po.eventId === eventId);
-      
+
       const bookDataMap = {}; // title -> data
       let hasPosData = false;
-      
+
       eventOrders.forEach(po => {
         po.items.forEach(item => {
           hasPosData = true;
@@ -5098,7 +5103,7 @@ router.get('/api/author/book-performance', verifyToken, async (req, res) => {
           bookDataMap[title].revenue += item.price * item.quantity;
         });
       });
-      
+
       if (!hasPosData) {
         if (ea.manualTotalRevenue > 0 || ea.manualTotalSold > 0) {
           performanceData.push({
@@ -5188,7 +5193,7 @@ router.put('/api/author/book-performance/:eventId/investment', verifyToken, asyn
 
     const eventId = parseInt(req.params.eventId);
     const { investment } = req.body;
-    
+
     if (isNaN(investment)) return res.status(400).json({ error: 'Invalid investment value' });
 
     await prisma.eventAuthor.updateMany({
@@ -5303,9 +5308,9 @@ router.post('/api/author/events/:eventId/opt-in', verifyToken, upload.single('pa
 
       // ── STEP 4: Archive removed EventBook records ──
       const incomingBookIds = booksToLink ? booksToLink.map(b => parseInt(b.bookId)) : [];
-      await tx.eventBook.updateMany({ 
-        where: { eventId, authorId: author.id, bookId: { notIn: incomingBookIds } }, 
-        data: { isArchived: true } 
+      await tx.eventBook.updateMany({
+        where: { eventId, authorId: author.id, bookId: { notIn: incomingBookIds } },
+        data: { isArchived: true }
       });
 
       // ── STEP 5: Deduct new listedStock from Book.stock and update/create EventBook records ──
@@ -5322,7 +5327,7 @@ router.post('/api/author/events/:eventId/opt-in', verifyToken, upload.single('pa
           if (existingEb) {
             await tx.eventBook.update({
               where: { id: existingEb.id },
-              data: { 
+              data: {
                 listedStock: { increment: requested },
                 isArchived: false
               }
@@ -5345,7 +5350,7 @@ router.post('/api/author/events/:eventId/opt-in', verifyToken, upload.single('pa
             data: { stock: { decrement: requested } },
             include: { author: true }
           });
-          
+
           if (bookAfterDeduct.stock < 10) {
             lowStockBooksAfterEvent.push(bookAfterDeduct);
           }
@@ -5370,12 +5375,12 @@ router.post('/api/author/events/:eventId/opt-in', verifyToken, upload.single('pa
     try {
       const bookIds = booksToLink.map(b => parseInt(b.bookId));
       let booksListHtml = '<p>No books listed (Registration only).</p>';
-      
+
       if (bookIds.length > 0) {
         const listedBooksData = await prisma.book.findMany({
           where: { id: { in: bookIds } }
         });
-        
+
         booksListHtml = '<ul style="padding-left: 20px; line-height: 1.6;">';
         booksToLink.forEach(b => {
           const bookDb = listedBooksData.find(db => db.id === parseInt(b.bookId));
@@ -5395,7 +5400,7 @@ router.post('/api/author/events/:eventId/opt-in', verifyToken, upload.single('pa
          <p>Your registration is currently pending approval. We will notify you as soon as the administration reviews and approves it.</p>
          <p>Thank you,<br/>Pune Authors' Association</p>`
       );
-      
+
       sendNotificationEmail(author.email, `Registration Received: ${event.name}`, emailHtml).catch(e => console.error('Failed to send opt-in email:', e));
     } catch (emailErr) {
       console.error('Error sending opt-in email:', emailErr);
@@ -5620,7 +5625,7 @@ router.post('/api/admin/events/:eventId/publish-all', verifyToken, isAdmin, asyn
       where: { id: eventId },
       data: { broadcastStatus: 'Published' }
     });
-    
+
     // Also publish any drafts
     const drafts = await prisma.eventAuthor.findMany({ where: { eventId, optInStatus: { endsWith: '-Draft' } } });
     for (const d of drafts) {
@@ -5629,7 +5634,7 @@ router.post('/api/admin/events/:eventId/publish-all', verifyToken, isAdmin, asyn
         data: { optInStatus: d.optInStatus.replace('-Draft', '') }
       });
     }
-    
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -5691,23 +5696,23 @@ router.post('/api/admin/events/:eventId/author/:authorId/publish', async (req, r
         const bId = parseInt(b.bookId);
 
         const existingEb = await tx.eventBook.findFirst({ where: { eventId, authorId, bookId: bId } });
-        
+
         // Protect POS sales: Admin manual save should never blindly wipe out real POS transactions
         const actualSold = Math.max(existingEb ? existingEb.soldStock : 0, sold);
         let returned = existingEb ? existingEb.returnedStock : 0;
 
         // Auto-settlement logic: Once the event is published (not draft), automatically return unsold stock!
         if (listed > 0) {
-            const targetReturned = Math.max(0, listed - actualSold);
-            const difference = targetReturned - returned;
-            
-            if (difference !== 0) {
-                await tx.book.update({
-                    where: { id: bId },
-                    data: { stock: { increment: difference } }
-                });
-                returned = targetReturned;
-            }
+          const targetReturned = Math.max(0, listed - actualSold);
+          const difference = targetReturned - returned;
+
+          if (difference !== 0) {
+            await tx.book.update({
+              where: { id: bId },
+              data: { stock: { increment: difference } }
+            });
+            returned = targetReturned;
+          }
         }
 
         if (existingEb) {
@@ -5816,22 +5821,22 @@ router.get('/api/admin/events', verifyToken, isAdmin, async (req, res) => {
       }
     });
     const processed = events.map(e => {
-       let posSold = 0;
-       let posRevenue = 0;
-       if (e.posOrders) {
-          e.posOrders.forEach(po => {
-             if (po.items) {
-               po.items.forEach(poi => {
-                  posSold += poi.quantity;
-                  posRevenue += (poi.quantity * (poi.price || 0));
-               });
-             }
-          });
-       }
-       const isLive = (e.status === 'Upcoming' && isEventLiveToday(e));
-       // Strip posOrders from payload to save bandwidth, just send the totals
-       const { posOrders, ...rest } = e;
-       return { ...rest, status: isLive ? 'Live' : e.status, livePosSold: posSold, livePosRevenue: posRevenue };
+      let posSold = 0;
+      let posRevenue = 0;
+      if (e.posOrders) {
+        e.posOrders.forEach(po => {
+          if (po.items) {
+            po.items.forEach(poi => {
+              posSold += poi.quantity;
+              posRevenue += (poi.quantity * (poi.price || 0));
+            });
+          }
+        });
+      }
+      const isLive = (e.status === 'Upcoming' && isEventLiveToday(e));
+      // Strip posOrders from payload to save bandwidth, just send the totals
+      const { posOrders, ...rest } = e;
+      return { ...rest, status: isLive ? 'Live' : e.status, livePosSold: posSold, livePosRevenue: posRevenue };
     });
     res.json(processed);
   } catch (error) {
@@ -6514,7 +6519,7 @@ router.get('/api/admin/server-files', verifyToken, isAdmin, async (req, res) => 
 router.delete('/api/admin/server-files/:filename', verifyToken, isAdmin, async (req, res) => {
   try {
     const filename = req.params.filename;
-    if (filename.includes('..') || filename.includes('/')) return res.status(400).json({error: 'Invalid filename'});
+    if (filename.includes('..') || filename.includes('/')) return res.status(400).json({ error: 'Invalid filename' });
     const filepath = path.join(__dirname, '..', 'uploads', filename);
     if (fs.existsSync(filepath)) {
       fs.unlinkSync(filepath);
@@ -7083,7 +7088,7 @@ router.post('/api/pos/events/:eventId/pos-checkout', optionalVerifyToken, async 
         const todayDateStr = new Date().toDateString();
         let currentDailySales = eventBook.manualDailySales || {};
         if (typeof currentDailySales !== 'object') currentDailySales = {};
-        
+
         let todaySales = currentDailySales[todayDateStr] || { sold: 0, revenue: 0 };
         todaySales.sold = (todaySales.sold || 0) + item.quantity;
         todaySales.revenue = (todaySales.revenue || 0) + (book.mrp * item.quantity);
@@ -7091,24 +7096,24 @@ router.post('/api/pos/events/:eventId/pos-checkout', optionalVerifyToken, async 
 
         await tx.eventBook.update({
           where: { id: eventBook.id },
-          data: { 
-             soldStock: { increment: item.quantity },
-             manualDailySales: currentDailySales
+          data: {
+            soldStock: { increment: item.quantity },
+            manualDailySales: currentDailySales
           }
         });
 
         const eventAuthor = await tx.eventAuthor.findFirst({
-           where: { eventId, authorId: book.authorId }
+          where: { eventId, authorId: book.authorId }
         });
-        
+
         if (eventAuthor) {
-            await tx.eventAuthor.update({
-               where: { id: eventAuthor.id },
-               data: {
-                  manualTotalSold: { increment: item.quantity },
-                  manualTotalRevenue: { increment: (book.mrp * item.quantity) }
-               }
-            });
+          await tx.eventAuthor.update({
+            where: { id: eventAuthor.id },
+            data: {
+              manualTotalSold: { increment: item.quantity },
+              manualTotalRevenue: { increment: (book.mrp * item.quantity) }
+            }
+          });
         }
 
         orderItems.push({
@@ -7134,15 +7139,15 @@ router.post('/api/pos/events/:eventId/pos-checkout', optionalVerifyToken, async 
     }, { maxWait: 15000, timeout: 30000 });
 
     invalidateCache('admin:dashboard-stats');
-    
+
     // Invalidate caches for all authors involved in this POS sale
     const authorIds = new Set();
     for (const item of items) {
-       const book = await prisma.book.findUnique({ where: { id: item.bookId }, include: { author: true }});
-       if (book && book.author && !authorIds.has(book.author.id)) {
-           authorIds.add(book.author.id);
-           invalidateCache(`author:dashboard:${book.author.email}`);
-       }
+      const book = await prisma.book.findUnique({ where: { id: item.bookId }, include: { author: true } });
+      if (book && book.author && !authorIds.has(book.author.id)) {
+        authorIds.add(book.author.id);
+        invalidateCache(`author:dashboard:${book.author.email}`);
+      }
     }
 
     res.json({ success: true });
@@ -7175,7 +7180,7 @@ router.delete('/api/pos/orders/:orderId', optionalVerifyToken, async (req, res) 
         if (eventBook) {
           let currentDailySales = eventBook.manualDailySales || {};
           if (typeof currentDailySales !== 'object') currentDailySales = {};
-          
+
           if (currentDailySales[dateStr]) {
             currentDailySales[dateStr].sold = Math.max(0, (currentDailySales[dateStr].sold || 0) - item.quantity);
             currentDailySales[dateStr].revenue = Math.max(0, (currentDailySales[dateStr].revenue || 0) - (item.price * item.quantity));
@@ -7183,7 +7188,7 @@ router.delete('/api/pos/orders/:orderId', optionalVerifyToken, async (req, res) 
 
           await tx.eventBook.update({
             where: { id: eventBook.id },
-            data: { 
+            data: {
               soldStock: { decrement: item.quantity },
               manualDailySales: currentDailySales
             }
@@ -7196,32 +7201,32 @@ router.delete('/api/pos/orders/:orderId', optionalVerifyToken, async (req, res) 
 
         if (eventAuthor) {
           await tx.eventAuthor.update({
-             where: { id: eventAuthor.id },
-             data: {
-                manualTotalSold: { decrement: item.quantity },
-                manualTotalRevenue: { decrement: (item.price * item.quantity) }
-             }
+            where: { id: eventAuthor.id },
+            data: {
+              manualTotalSold: { decrement: item.quantity },
+              manualTotalRevenue: { decrement: (item.price * item.quantity) }
+            }
           });
         }
       }
 
       await tx.posOrderItem.deleteMany({ where: { posOrderId: posOrder.id } });
       await tx.posOrder.delete({ where: { id: posOrder.id } });
-      
+
       // Pass author IDs out of transaction to invalidate cache
       const affectedAuthors = new Set();
       for (const item of posOrder.items) {
-          affectedAuthors.add(item.book.authorId);
+        affectedAuthors.add(item.book.authorId);
       }
       req.affectedAuthorIds = Array.from(affectedAuthors);
     });
 
     invalidateCache('admin:dashboard-stats');
     if (req.affectedAuthorIds) {
-       for (const authorId of req.affectedAuthorIds) {
-           const author = await prisma.author.findUnique({ where: { id: authorId } });
-           if (author) invalidateCache(`author:dashboard:${author.email}`);
-       }
+      for (const authorId of req.affectedAuthorIds) {
+        const author = await prisma.author.findUnique({ where: { id: authorId } });
+        if (author) invalidateCache(`author:dashboard:${author.email}`);
+      }
     }
 
     res.json({ success: true });
@@ -7615,7 +7620,7 @@ router.post('/api/admin/inventory/ping-author', verifyToken, isAdmin, async (req
     // Add to lowStockAlerts in extraData so it shows in Author Pending Actions
     const currentExtraData = (author.extraData && typeof author.extraData === 'object' && !Array.isArray(author.extraData)) ? author.extraData : {};
     const existingAlerts = currentExtraData.lowStockAlerts || [];
-    
+
     await prisma.author.update({
       where: { id: author.id },
       data: {
@@ -7800,7 +7805,7 @@ router.get('/api/admin/inventory', verifyToken, isAdmin, async (req, res) => {
         addedRow.eachCell((cell, colNumber) => {
           cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
           cell.font = { name: 'Arial', size: 10, color: { argb: '000000' } };
-          
+
           let colBgColor = 'FFFFFF';
           if (colNumber === 2) colBgColor = 'FF8B8B'; // Light red (Title)
           else if (colNumber === 3) colBgColor = 'FFD2A3'; // Light orange (Author)
@@ -7808,7 +7813,7 @@ router.get('/api/admin/inventory', verifyToken, isAdmin, async (req, res) => {
           else if (colNumber === 5) colBgColor = 'B3E5FC'; // Light cyan (Web Sold)
           else if (colNumber === 6 || colNumber === 7) colBgColor = 'DDA0DD'; // Lavender (Event/Airport Qty)
           else if (colNumber === 9) colBgColor = 'C8E6C9'; // Light green (Last Activity)
-          
+
           if (colNumber !== 8) { // 8 is Current Stock, colored dynamically below
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colBgColor } };
           }

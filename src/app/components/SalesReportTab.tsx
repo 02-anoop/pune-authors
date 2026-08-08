@@ -19,7 +19,13 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
   const prevEndDate = useRef('');
   const hasLoadedInitialData = useRef(false);
   const [tableChannelFilter, setTableChannelFilter] = useState('All');
+  const [tableGenreFilter, setTableGenreFilter] = useState('All');
+  const [tableSubGenreFilter, setTableSubGenreFilter] = useState('All');
   const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+  useEffect(() => {
+    setTableSubGenreFilter('All');
+  }, [tableGenreFilter]);
 
   useEffect(() => {
     if (filterType === 'custom') return;
@@ -99,7 +105,7 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
     sheet.getRow(1).height = 30;
     
     // Add headers (Bright Yellow with Black Text)
-    const headers = ['Date', 'Order ID', 'Channel', 'Event', 'Author', 'Title', 'Quantity', 'Revenue'];
+    const headers = ['Date', 'Order ID', 'Channel', 'Event', 'Author', 'Title', 'Genre', 'Sub-genre', 'Quantity', 'Revenue'];
     const headerRow = sheet.addRow(headers);
     headerRow.height = 24;
     headerRow.eachCell((cell) => {
@@ -123,6 +129,8 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
         r.event,
         r.author,
         r.title,
+        r.genre,
+        r.subGenre,
         r.qty,
         r.revenue
       ];
@@ -159,8 +167,10 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
         else if (colNumber === 4) colBgColor = 'FFDCA8'; // Solid light orange/peach
         else if (colNumber === 5) colBgColor = 'B3E5FC'; // Solid light cyan
         else if (colNumber === 6) colBgColor = 'C7D2FE'; // Solid light lavender
-        else if (colNumber === 7) colBgColor = 'C8E6C9'; // Solid light green
-        else if (colNumber === 8) colBgColor = 'E1BEE7'; // Solid light purple
+        else if (colNumber === 7) colBgColor = 'E1BEE7'; // Genre
+        else if (colNumber === 8) colBgColor = 'F3E8FF'; // Sub-genre
+        else if (colNumber === 9) colBgColor = 'C8E6C9'; // Solid light green
+        else if (colNumber === 10) colBgColor = 'E1BEE7'; // Solid light purple
 
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colBgColor } };
       });
@@ -190,8 +200,29 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
   // Memoized filtered data to avoid recalculating on re-renders
   const filteredTableData = useMemo(() => {
     if (!salesData?.tableData) return [];
-    return salesData.tableData.filter((r: any) => tableChannelFilter === 'All' || r.channel === tableChannelFilter);
-  }, [salesData?.tableData, tableChannelFilter]);
+    return salesData.tableData.filter((r: any) => {
+      const channelMatch = tableChannelFilter === 'All' || r.channel === tableChannelFilter;
+      const genreMatch = tableGenreFilter === 'All' || r.genre === tableGenreFilter;
+      const subGenreMatch = tableSubGenreFilter === 'All' || r.subGenre === tableSubGenreFilter;
+      return channelMatch && genreMatch && subGenreMatch;
+    });
+  }, [salesData?.tableData, tableChannelFilter, tableGenreFilter, tableSubGenreFilter]);
+
+  const uniqueGenres = useMemo(() => {
+    if (!salesData?.tableData) return ['All'];
+    const genres = Array.from(new Set(salesData.tableData.map((r: any) => r.genre).filter((g: any) => g && g !== '-')));
+    return ['All', ...genres.sort() as string[]];
+  }, [salesData?.tableData]);
+
+  const uniqueSubGenres = useMemo(() => {
+    if (!salesData?.tableData) return ['All'];
+    let filtered = salesData.tableData;
+    if (tableGenreFilter !== 'All') {
+      filtered = filtered.filter((r: any) => r.genre === tableGenreFilter);
+    }
+    const subGenres = Array.from(new Set(filtered.map((r: any) => r.subGenre).filter((s: any) => s && s !== '-')));
+    return ['All', ...subGenres.sort() as string[]];
+  }, [salesData?.tableData, tableGenreFilter]);
 
   const channelCounts = useMemo(() => {
     if (!salesData?.tableData) return { All: 0, 'Web Orders': 0, 'Events': 0, 'Book Fairs': 0 };
@@ -484,20 +515,42 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
           <div className="bg-white border border-paa-navy/5 rounded-2xl shadow-sm overflow-hidden relative min-h-[200px]" style={{ contentVisibility: 'auto' }}>
             <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/50">
               <h4 className="text-xs font-bold text-paa-navy uppercase tracking-widest">Raw Sales Data</h4>
-              <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Channel Filters">
-                {(['All', 'Web Orders', 'Events', 'Book Fairs'] as const).map(ch => {
-                  const tabCount = channelCounts[ch];
-                  return (
-                    <button
-                      key={ch}
-                      onClick={() => setTableChannelFilter(ch)}
-                      aria-pressed={tableChannelFilter === ch}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors flex items-center gap-1.5 ${tableChannelFilter === ch ? 'bg-paa-navy text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}
-                    >
-                      {ch === 'Book Fairs' ? 'Fairs' : ch} <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tableChannelFilter === ch ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{tabCount}</span>
-                    </button>
-                  )
-                })}
+              <div className="flex flex-col sm:flex-row items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Channel Filters">
+                  {(['All', 'Web Orders', 'Events', 'Book Fairs'] as const).map(ch => {
+                    const tabCount = channelCounts[ch];
+                    return (
+                      <button
+                        key={ch}
+                        onClick={() => setTableChannelFilter(ch)}
+                        aria-pressed={tableChannelFilter === ch}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors flex items-center gap-1.5 ${tableChannelFilter === ch ? 'bg-paa-navy text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}
+                      >
+                        {ch === 'Book Fairs' ? 'Fairs' : ch} <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tableChannelFilter === ch ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{tabCount}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={tableGenreFilter}
+                    onChange={(e) => setTableGenreFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-paa-navy border border-gray-200 outline-none focus:border-indigo-500 bg-white min-w-[120px]"
+                  >
+                    {uniqueGenres.map(g => (
+                      <option key={g} value={g}>{g === 'All' ? 'All Genres' : g}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={tableSubGenreFilter}
+                    onChange={(e) => setTableSubGenreFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-paa-navy border border-gray-200 outline-none focus:border-indigo-500 bg-white min-w-[120px]"
+                  >
+                    {uniqueSubGenres.map(sg => (
+                      <option key={sg} value={sg}>{sg === 'All' ? 'All Sub-genres' : sg}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -505,13 +558,15 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
                 <thead className="bg-indigo-50 border-b-2 border-indigo-100">
                   <tr>
                     <th className="w-[5%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">S.No</th>
-                    <th className="w-[12%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Date</th>
-                    <th className="w-[15%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Order ID</th>
-                    <th className="w-[12%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Channel</th>
-                    <th className="w-[20%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Author</th>
-                    <th className="w-[25%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Book Title</th>
-                    <th className="w-[8%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100 text-right">Qty</th>
-                    <th className="w-[10%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100 text-right">Rev (₹)</th>
+                    <th className="w-[10%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Date</th>
+                    <th className="w-[12%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Order ID</th>
+                    <th className="w-[10%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Channel</th>
+                    <th className="w-[15%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Author</th>
+                    <th className="w-[15%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Book Title</th>
+                    <th className="w-[10%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Genre</th>
+                    <th className="w-[10%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Sub-genre</th>
+                    <th className="w-[5%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100 text-right">Qty</th>
+                    <th className="w-[8%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100 text-right">Rev (₹)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 bg-white">
@@ -529,7 +584,9 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
                         </span>
                       </td>
                       <td className="px-5 py-3 text-xs font-semibold text-paa-navy truncate pr-2" title={row.author}>{row.author}</td>
-                      <td className="px-5 py-3 pr-2 text-xs text-paa-navy truncate" title={row.title}>{row.title}</td>
+                      <td className="px-5 py-3 pr-2 text-xs text-paa-navy truncate max-w-[150px]" title={row.title}>{row.title}</td>
+                      <td className="px-5 py-3 pr-2 text-xs text-gray-500 truncate" title={row.genre}>{row.genre}</td>
+                      <td className="px-5 py-3 pr-2 text-xs text-gray-500 truncate" title={row.subGenre}>{row.subGenre}</td>
                       <td className="px-5 py-3 text-xs font-bold text-paa-navy text-right">{row.qty}</td>
                       <td className="px-5 py-3 text-xs font-black text-indigo-600 text-right">₹{row.revenue}</td>
                     </tr>
