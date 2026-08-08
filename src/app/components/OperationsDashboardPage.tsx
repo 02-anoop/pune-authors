@@ -7163,7 +7163,7 @@ const totalAuthorsBase = eventRegistrations.length;
                                 onClick={() => handleOpenBreakdown(evt)}
                                 className="py-1.5 px-2.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white border border-indigo-200 rounded-lg shadow-sm transition-colors relative flex items-center justify-center"
                               >
-                                <span className="text-[10px] font-bold uppercase tracking-widest">EDIT</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">MANAGE PARTICIPANTS</span>
                                 {evt.registrations?.filter(
                                   (r: any) =>
                                     r.optInStatus === "Pending" ||
@@ -7195,9 +7195,9 @@ const totalAuthorsBase = eventRegistrations.length;
                                         10,
                                       );
                                     }}
-                                    className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white border border-blue-200 rounded-lg shadow-sm transition-colors"
+                                    className="py-1.5 px-2.5 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white border border-blue-200 rounded-lg shadow-sm transition-colors relative flex items-center justify-center"
                                   >
-                                    <Edit2 className="w-4 h-4" />
+                                    <span className="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">EDIT EVENT</span>
                                   </button>
                                 )}
                                 {evt.isArchived ? (
