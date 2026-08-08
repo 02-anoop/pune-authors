@@ -6610,7 +6610,7 @@ const totalAuthorsBase = eventRegistrations.length;
                     value={eventGraphFilter}
                     onChange={(e) => setEventGraphFilter(e.target.value)}
                   >
-                    <option value="All">All Events</option>
+                    <option value="All">All types of event</option>
                     <optgroup label="── By Format ──">
                       <option value="Meet the Authors">Meet the Authors</option>
                       <option value="Stall">Stall</option>
