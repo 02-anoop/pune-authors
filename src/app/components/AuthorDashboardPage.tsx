@@ -534,7 +534,7 @@ export function AuthorDashboardPage() {
           <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/orders" className={`author-profile-nav-btn flex items-center gap-3 ${location.pathname.includes('/orders') ? 'active' : ''}`}><ShoppingCart className="w-4 h-4 shrink-0" /> <span className="flex-1 truncate">Web Orders</span></Link>
           <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/sales" className={`author-profile-nav-btn flex items-center gap-3 ${location.pathname.includes('/sales') ? 'active' : ''}`}><TrendingUp className="w-4 h-4 shrink-0" /> <span className="flex-1 truncate">Sales Report</span></Link>
           <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/inventory" className={`author-profile-nav-btn flex items-center gap-3 ${location.pathname.includes('/inventory') ? 'active' : ''}`}><BookOpen className="w-4 h-4 shrink-0" /> <span className="flex-1 truncate">Inventory & Distribution</span></Link>
-          <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/events" className={`author-profile-nav-btn flex items-center gap-3 ${location.pathname === '/dashboard/events' ? 'active' : ''}`}><CalendarIcon className="w-4 h-4 shrink-0" /> <span className="flex-1 truncate">Events Ecosystem</span></Link>
+          <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/events" className={`author-profile-nav-btn flex items-center gap-3 ${location.pathname === '/dashboard/events' ? 'active' : ''}`}><CalendarIcon className="w-4 h-4 shrink-0" /> <span className="flex-1 truncate">Events Data</span></Link>
           <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/book-performance" className={`author-profile-nav-btn flex items-center gap-3 ${location.pathname.includes('/book-performance') ? 'active' : ''}`}><TrendingUp className="w-4 h-4 shrink-0" /> <span className="flex-1 truncate">Book Performance</span></Link>
           <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/payments" className={`author-profile-nav-btn flex items-center gap-3 ${location.pathname.includes('/payments') ? 'active' : ''}`}><CheckCircle2 className="w-4 h-4 shrink-0" /> <span className="flex-1 truncate">Payments History</span></Link>
           <Link onClick={() => setIsMobileMenuOpen(false)} to="/dashboard/invitations" className={`author-profile-nav-btn flex items-center gap-3 ${location.pathname.includes('/invitations') ? 'active' : ''}`}><CalendarIcon className="w-4 h-4 shrink-0" /> <span className="flex-1 truncate">Invitations</span></Link>
@@ -575,7 +575,7 @@ export function AuthorDashboardPage() {
                 location.pathname.includes('/orders') ? 'Web Orders' :
                 location.pathname.includes('/sales') ? 'Sales Report' :
                 location.pathname.includes('/inventory') ? 'Inventory & Distribution' :
-                location.pathname.includes('/events') ? 'Events Ecosystem' :
+                location.pathname.includes('/events') ? 'Events Data' :
                 location.pathname.includes('/invitations') ? 'Invitations' :
                 location.pathname.includes('/donations') ? 'Library Donations' :
                 location.pathname.includes('/reviews') ? 'Reviews & Ratings' :
