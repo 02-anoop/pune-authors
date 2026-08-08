@@ -13,62 +13,190 @@ export const AdminAuthorsTab = React.memo(({
   selectedPendingAuthor, setSelectedPendingAuthor, selectedAuthor, setSelectedAuthor
 }: any) => {
 const [showArchived, setShowArchived] = useState(false);
-  const handleExportAuthorsCSV = async () => {
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportScope, setExportScope] = useState<'all' | 'selected'>('all');
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Field definitions grouped by category
+  const FIELD_CATEGORIES = [
+    {
+      category: 'Basic Info',
+      fields: [
+        { id: 'status', label: 'Status' },
+        { id: 'name', label: 'Author Name' },
+        { id: 'penName', label: 'Pen Name' },
+        { id: 'email', label: 'Email' },
+        { id: 'phone', label: 'Phone Number' },
+        { id: 'whatsapp', label: 'WhatsApp Number' },
+      ]
+    },
+    {
+      category: 'Location',
+      fields: [
+        { id: 'address', label: 'Address' },
+        { id: 'city', label: 'City' },
+        { id: 'district', label: 'District' },
+        { id: 'state', label: 'State' },
+        { id: 'pincode', label: 'Pincode' },
+      ]
+    },
+    {
+      category: 'Profile Details',
+      fields: [
+        { id: 'aadharNumber', label: 'Aadhar / Voter ID / DL' },
+        { id: 'qualification', label: 'Qualification' },
+        { id: 'age', label: 'Age / DOB' },
+        { id: 'bio', label: 'Bio' },
+        { id: 'experience', label: 'Experience' },
+        { id: 'skills', label: 'Skills' },
+        { id: 'hobbies', label: 'Hobbies' },
+        { id: 'whyJoining', label: 'Why Joining' },
+      ]
+    },
+    {
+      category: 'Registration & Payment',
+      fields: [
+        { id: 'transactionId', label: 'Transaction ID' },
+        { id: 'paymentScreenshot', label: 'Payment Screenshot' },
+        { id: 'createdAt', label: 'Joined Date' },
+        { id: 'groupJoiningDate', label: 'Group Joining Date' },
+      ]
+    },
+    {
+      category: 'Social Media',
+      fields: [
+        { id: 'instagram', label: 'Instagram' },
+        { id: 'facebook', label: 'Facebook' },
+      ]
+    },
+    {
+      category: 'Books & Events',
+      fields: [
+        { id: 'booksCount', label: 'Books Count' },
+        { id: 'booksData', label: 'Books Catalogue Data' },
+        { id: 'eventParticipation', label: 'Event Participation' },
+      ]
+    }
+  ];
+
+  const ALL_STANDARD_FIELD_IDS = FIELD_CATEGORIES.flatMap(c => c.fields.map(f => f.id));
+  const [selectedFieldIds, setSelectedFieldIds] = useState<string[]>(ALL_STANDARD_FIELD_IDS);
+
+  const parseExtraData = (ed: any) => {
+    if (!ed) return {};
+    if (typeof ed === 'object') return ed;
+    if (typeof ed === 'string') {
+      try { return JSON.parse(ed); } catch (e) { return {}; }
+    }
+    return {};
+  };
+
+  // Find all dynamic custom keys present in extraData across authors
+  const getDynamicCustomKeys = () => {
+    return Array.from(new Set<string>(
+      (authors || []).reduce((acc: string[], author: any) => {
+        const ed = parseExtraData(author.extraData);
+        const keys = Object.keys(ed).filter(k => typeof k === 'string' && isNaN(Number(k)) && !ALL_STANDARD_FIELD_IDS.includes(k));
+        return acc.concat(keys);
+      }, [])
+    ));
+  };
+
+  const dynamicCustomKeys = getDynamicCustomKeys();
+
+  const handleToggleField = (fieldId: string) => {
+    setSelectedFieldIds(prev => 
+      prev.includes(fieldId) ? prev.filter(id => id !== fieldId) : [...prev, fieldId]
+    );
+  };
+
+  const handleSelectAllFields = () => {
+    setSelectedFieldIds([...ALL_STANDARD_FIELD_IDS, ...dynamicCustomKeys]);
+  };
+
+  const handleDeselectAllFields = () => {
+    setSelectedFieldIds(['name', 'email', 'status']);
+  };
+
+  const executeExcelExport = async () => {
     try {
-      const exportList = (selectedAuthorIds && selectedAuthorIds.length > 0)
+      setIsExporting(true);
+      const targetAuthors = (exportScope === 'selected' && selectedAuthorIds && selectedAuthorIds.length > 0)
         ? (authors || []).filter((a: any) => selectedAuthorIds.includes(a.id))
         : (authors || []);
 
-      if (!exportList || exportList.length === 0) {
-        toast.error("No authors available to export");
+      if (!targetAuthors || targetAuthors.length === 0) {
+        toast.error("No authors available for export.");
+        setIsExporting(false);
         return;
       }
 
-      toast.loading("Generating Excel file...", { id: "export-authors-toast" });
+      if (selectedFieldIds.length === 0) {
+        toast.error("Please select at least one field to export.");
+        setIsExporting(false);
+        return;
+      }
+
+      toast.loading("Generating customized Excel file...", { id: "export-authors-toast" });
 
       const ExcelModule = await import('exceljs');
       const ExcelJS = ExcelModule.default || ExcelModule;
       const fileSaverModule = await import('file-saver');
       const saveAs = fileSaverModule.saveAs || (fileSaverModule as any).default?.saveAs || fileSaverModule.default || fileSaverModule;
 
-      const parseExtraData = (ed: any) => {
-        if (!ed) return {};
-        if (typeof ed === 'object') return ed;
-        if (typeof ed === 'string') {
-          try { return JSON.parse(ed); } catch (e) { return {}; }
-        }
-        return {};
+      // Construct headers list according to selectedFieldIds
+      const headersMap: Record<string, string> = {
+        status: 'Status',
+        name: 'Author Name',
+        penName: 'Pen Name',
+        email: 'Email',
+        phone: 'Phone Number',
+        whatsapp: 'WhatsApp Number',
+        address: 'Address',
+        city: 'City',
+        district: 'District',
+        state: 'State',
+        pincode: 'Pincode',
+        aadharNumber: 'Aadhar / Voter ID / DL',
+        qualification: 'Qualification',
+        age: 'Age / DOB',
+        bio: 'Bio',
+        experience: 'Experience',
+        skills: 'Skills',
+        hobbies: 'Hobbies',
+        whyJoining: 'Why Joining',
+        transactionId: 'Transaction ID',
+        paymentScreenshot: 'Payment Screenshot',
+        createdAt: 'Joined Date',
+        groupJoiningDate: 'Group Joining Date',
+        instagram: 'Instagram',
+        facebook: 'Facebook',
+        booksCount: 'Books Count',
+        booksData: 'Books Catalogue Data',
+        eventParticipation: 'Event Participation',
       };
 
-      const dynamicKeys = Array.from(new Set<string>(
-        exportList.reduce((acc: string[], author: any) => {
-          const ed = parseExtraData(author.extraData);
-          const keys = Object.keys(ed).filter(k => typeof k === 'string' && isNaN(Number(k)));
-          return acc.concat(keys);
-        }, [])
-      ));
+      // Add labels for custom dynamic keys
+      dynamicCustomKeys.forEach(k => {
+        headersMap[k] = k.charAt(0).toUpperCase() + k.slice(1);
+      });
 
-      const baseFields = [
-        'Status', 'Name', 'Pen Name', 'Email', 'Phone', 'WhatsApp',
-        'Address', 'City', 'State', 'Aadhar/Voter ID/DL', 'Qualification',
-        'Age / DOB', 'Experience', 'Skills', 'Hobbies', 'Why Joining',
-        'Transaction ID', 'Joined Date'
-      ];
+      const selectedHeaders = selectedFieldIds.map(id => headersMap[id] || id);
 
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Authors Directory');
       
-      const allHeaders = [...baseFields, ...dynamicKeys];
-      
-      sheet.mergeCells(1, 1, 1, allHeaders.length);
+      // Title row
+      sheet.mergeCells(1, 1, 1, selectedHeaders.length);
       const titleCell = sheet.getCell(1, 1);
-      titleCell.value = 'AUTHORS DIRECTORY EXPORT';
+      titleCell.value = `AUTHORS DIRECTORY EXPORT (${targetAuthors.length} Records)`;
       titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
       titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0B1A2E' } };
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sheet.getRow(1).height = 32;
       
-      const headerRow = sheet.addRow(allHeaders);
+      // Header row
+      const headerRow = sheet.addRow(selectedHeaders);
       headerRow.height = 26;
       headerRow.eachCell((cell) => {
         cell.font = { name: 'Arial', bold: true, color: { argb: 'FF000000' } };
@@ -76,59 +204,69 @@ const [showArchived, setShowArchived] = useState(false);
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
       });
-      
-      exportList.forEach((author: any) => {
-        const ed = parseExtraData(author.extraData);
-        const joinedDate = author.createdAt ? new Date(author.createdAt).toLocaleDateString() : '';
-        const rowData: any[] = [
-          author.status || '',
-          author.name || '',
-          author.penName || '',
-          author.email || '',
-          author.phone || '',
-          author.whatsapp || ed.whatsapp || '',
-          author.address || ed.address || '',
-          author.city || ed.city || '',
-          author.state || ed.state || '',
-          author.aadharNumber || ed.aadharNumber || '',
-          author.qualification || ed.qualification || '',
-          author.age || author.dob || ed.age || ed.dob || '',
-          author.experience || ed.experience || '',
-          author.skills || ed.skills || '',
-          author.hobbies || ed.hobbies || '',
-          author.whyJoining || ed.whyJoining || '',
-          author.transactionId || ed.transactionId || '',
-          joinedDate
-        ];
 
-        dynamicKeys.forEach(col => {
-          const val = ed[col];
-          if (val === undefined || val === null) {
-            rowData.push('');
-          } else if (typeof val === 'object') {
-            rowData.push(JSON.stringify(val));
-          } else {
-            rowData.push(String(val));
+      // Data rows
+      targetAuthors.forEach((author: any) => {
+        const ed = parseExtraData(author.extraData);
+        const rowData: any[] = [];
+
+        selectedFieldIds.forEach(fieldId => {
+          let val = '';
+          switch (fieldId) {
+            case 'status': val = author.status || ''; break;
+            case 'name': val = author.name || ''; break;
+            case 'penName': val = author.penName || ed.penName || ''; break;
+            case 'email': val = author.email || ''; break;
+            case 'phone': val = author.phone || ed.phone || ''; break;
+            case 'whatsapp': val = author.whatsapp || ed.whatsapp || ''; break;
+            case 'address': val = author.address || ed.address || ''; break;
+            case 'city': val = author.city || ed.city || ''; break;
+            case 'district': val = author.district || ed.district || ''; break;
+            case 'state': val = author.state || ed.state || ''; break;
+            case 'pincode': val = author.pincode || ed.pincode || ''; break;
+            case 'aadharNumber': val = author.aadharNumber || ed.aadharNumber || ed.aadhar || ''; break;
+            case 'qualification': val = author.qualification || ed.qualification || ''; break;
+            case 'age': val = author.age || author.dob || ed.age || ed.dob || ''; break;
+            case 'bio': val = author.bio || ed.bio || ''; break;
+            case 'experience': val = author.experience || ed.experience || ''; break;
+            case 'skills': val = author.skills || ed.skills || ''; break;
+            case 'hobbies': val = author.hobbies || ed.hobbies || ''; break;
+            case 'whyJoining': val = author.whyJoining || ed.whyJoining || ''; break;
+            case 'transactionId': val = author.transactionId || ed.transactionId || ''; break;
+            case 'paymentScreenshot': val = author.paymentScreenshot || ed.paymentScreenshot || ''; break;
+            case 'createdAt': val = author.createdAt ? new Date(author.createdAt).toLocaleDateString() : ''; break;
+            case 'groupJoiningDate': val = author.groupJoiningDate ? new Date(author.groupJoiningDate).toLocaleDateString() : ''; break;
+            case 'instagram': val = author.instagram || ed.instagram || ''; break;
+            case 'facebook': val = author.facebook || ed.facebook || ''; break;
+            case 'booksCount': val = author.books ? author.books.length : (author._count ? author._count.books : 0); break;
+            case 'booksData': 
+              val = author.books && author.books.length > 0 
+                ? author.books.map((b: any) => `${b.title} (${b.genre || 'General'}, MRP: ₹${b.mrp || 0})`).join('; ')
+                : 'No books'; 
+              break;
+            case 'eventParticipation':
+              val = author.aggEligibleEvents 
+                ? `${Math.round((author.aggParticipatedEvents / author.aggEligibleEvents) * 100)}% (${author.aggParticipatedEvents}/${author.aggEligibleEvents})`
+                : '0%';
+              break;
+            default:
+              val = ed[fieldId] !== undefined && ed[fieldId] !== null 
+                ? (typeof ed[fieldId] === 'object' ? JSON.stringify(ed[fieldId]) : String(ed[fieldId])) 
+                : (author[fieldId] || '');
+              break;
           }
+          rowData.push(val);
         });
-        
+
         const addedRow = sheet.addRow(rowData);
-        addedRow.eachCell((cell, colNumber) => {
+        addedRow.eachCell((cell) => {
           cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
           cell.font = { name: 'Arial', size: 10, color: { argb: 'FF000000' } };
-          
-          let colBgColor = 'FFFFFFFF';
-          if (colNumber === 1) colBgColor = 'FFFF8B8B'; // Light red
-          else if (colNumber === 2) colBgColor = 'FFFFD2A3'; // Light orange
-          else if (colNumber === 3) colBgColor = 'FFD4D8DD'; // Light gray
-          else if (colNumber === 4) colBgColor = 'FFB3E5FC'; // Light cyan
-          else if (colNumber === allHeaders.length) colBgColor = 'FFC8E6C9'; // Light green
-          else colBgColor = 'FFDDA0DD'; // Lavender/Plum
-          
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colBgColor } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
         });
       });
 
+      // Auto width
       sheet.columns.forEach((column) => {
         let maxLength = 12;
         column.eachCell?.({ includeEmpty: true }, (cell) => {
@@ -142,11 +280,14 @@ const [showArchived, setShowArchived] = useState(false);
 
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(blob, `authors_directory_${new Date().toISOString().split('T')[0]}.xlsx`);
+      saveAs(blob, `authors_custom_export_${new Date().toISOString().split('T')[0]}.xlsx`);
       toast.success("Excel exported successfully!", { id: "export-authors-toast" });
+      setShowExportModal(false);
     } catch (err) {
       console.error("Export Authors Excel Error:", err);
       toast.error("Failed to export Excel file. Please try again.", { id: "export-authors-toast" });
+    } finally {
+      setIsExporting(false);
     }
   };
     const handleDownloadCatalogue = async (isPrintable = false) => {
@@ -547,19 +688,185 @@ const [showArchived, setShowArchived] = useState(false);
             <span className="text-sm text-gray-500">Showing page {authorsPage} of {authorsMeta.totalPages} (Total: {authorsMeta.total} authors)</span>
             <div className="flex gap-2">
               <button
-                onClick={() => { setAuthorsPage(p => Math.max(1, p - 1)); setTimeout(fetchAuthors, 0); }}
+                onClick={() => { setAuthorsPage((p: number) => Math.max(1, p - 1)); setTimeout(fetchAuthors, 0); }}
                 disabled={authorsPage === 1}
                 className="px-4 py-2 border border-gray-200 rounded text-sm text-paa-navy disabled:opacity-50 font-medium bg-white hover:bg-gray-50"
               >
                 Previous
               </button>
               <button
-                onClick={() => { setAuthorsPage(p => Math.min(authorsMeta.totalPages, p + 1)); setTimeout(fetchAuthors, 0); }}
+                onClick={() => { setAuthorsPage((p: number) => Math.min(authorsMeta.totalPages, p + 1)); setTimeout(fetchAuthors, 0); }}
                 disabled={authorsPage === authorsMeta.totalPages}
                 className="px-4 py-2 border border-gray-200 rounded text-sm text-paa-navy disabled:opacity-50 font-medium bg-white hover:bg-gray-50"
               >
                 Next
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Dynamic Excel Export Modal */}
+        {showExportModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                    <Download className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-serif font-bold text-[#0b1a2e]">Export Authors Excel Data</h3>
+                    <p className="text-xs text-gray-500">Select target authors and choose which fields to include in the spreadsheet.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Author Selection Scope */}
+              <div className="mt-5 p-4 bg-gray-50 rounded-xl border border-gray-200/80">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-2.5">1. Target Authors Selection</p>
+                <div className="flex flex-wrap gap-4 text-xs font-medium text-gray-700">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="exportScope"
+                      checked={exportScope === 'all'}
+                      onChange={() => setExportScope('all')}
+                      className="accent-[#0b1a2e] w-4 h-4"
+                    />
+                    <span>Export All Currently Listed Authors ({authors.length})</span>
+                  </label>
+                  {selectedAuthorIds && selectedAuthorIds.length > 0 && (
+                    <label className="flex items-center gap-2 cursor-pointer text-emerald-700 font-semibold">
+                      <input
+                        type="radio"
+                        name="exportScope"
+                        checked={exportScope === 'selected'}
+                        onChange={() => setExportScope('selected')}
+                        className="accent-[#0b1a2e] w-4 h-4"
+                      />
+                      <span>Export Selected Authors Only ({selectedAuthorIds.length} checked)</span>
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              {/* Field Selection Area */}
+              <div className="mt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                    2. Choose Fields to Include ({selectedFieldIds.length} Selected)
+                  </p>
+                  <div className="flex items-center gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllFields}
+                      className="px-2.5 py-1 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-semibold rounded-md transition-colors"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeselectAllFields}
+                      className="px-2.5 py-1 text-gray-600 bg-gray-100 hover:bg-gray-200 font-semibold rounded-md transition-colors"
+                    >
+                      Reset Default
+                    </button>
+                  </div>
+                </div>
+
+                <div className="max-h-[340px] overflow-y-auto pr-1 space-y-4 border border-gray-200 rounded-xl p-4 bg-white">
+                  {FIELD_CATEGORIES.map((cat) => (
+                    <div key={cat.category} className="space-y-2">
+                      <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#0b1a2e] border-b border-gray-100 pb-1">
+                        {cat.category}
+                      </h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {cat.fields.map((field) => (
+                          <label
+                            key={field.id}
+                            className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-all ${
+                              selectedFieldIds.includes(field.id)
+                                ? 'bg-indigo-50/80 border-indigo-200 text-indigo-900 font-medium'
+                                : 'bg-gray-50/50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedFieldIds.includes(field.id)}
+                              onChange={() => handleToggleField(field.id)}
+                              className="accent-[#0b1a2e] w-3.5 h-3.5 rounded"
+                            />
+                            <span className="truncate">{field.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {dynamicCustomKeys.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t border-gray-100">
+                      <h4 className="text-[11px] font-bold uppercase tracking-wider text-purple-800 border-b border-purple-100 pb-1">
+                        Custom Extra Fields ({dynamicCustomKeys.length})
+                      </h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {dynamicCustomKeys.map((key) => (
+                          <label
+                            key={key}
+                            className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-all ${
+                              selectedFieldIds.includes(key)
+                                ? 'bg-purple-50 border-purple-200 text-purple-900 font-medium'
+                                : 'bg-gray-50/50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedFieldIds.includes(key)}
+                              onChange={() => handleToggleField(key)}
+                              className="accent-purple-700 w-3.5 h-3.5 rounded"
+                            />
+                            <span className="truncate">{key}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowExportModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executeExcelExport}
+                  disabled={isExporting}
+                  className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-[#0b1a2e] hover:bg-[#122844] rounded-lg shadow transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {isExporting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Exporting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>Download Excel Sheet</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
