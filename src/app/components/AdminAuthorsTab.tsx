@@ -17,64 +17,26 @@ const [showArchived, setShowArchived] = useState(false);
   const [exportScope, setExportScope] = useState<'all' | 'selected'>('all');
   const [isExporting, setIsExporting] = useState(false);
 
-  // Field definitions grouped by category
+  // Field definitions grouped by category (Strictly requested custom fields)
   const FIELD_CATEGORIES = [
     {
-      category: 'Basic Info',
+      category: 'Author Fields Selection',
       fields: [
-        { id: 'status', label: 'Status' },
         { id: 'name', label: 'Author Name' },
         { id: 'penName', label: 'Pen Name' },
         { id: 'email', label: 'Email' },
         { id: 'phone', label: 'Phone Number' },
-        { id: 'whatsapp', label: 'WhatsApp Number' },
-      ]
-    },
-    {
-      category: 'Location',
-      fields: [
-        { id: 'address', label: 'Address' },
-        { id: 'city', label: 'City' },
-        { id: 'district', label: 'District' },
-        { id: 'state', label: 'State' },
-        { id: 'pincode', label: 'Pincode' },
-      ]
-    },
-    {
-      category: 'Profile Details',
-      fields: [
-        { id: 'aadharNumber', label: 'Aadhar / Voter ID / DL' },
         { id: 'qualification', label: 'Qualification' },
-        { id: 'age', label: 'Age / DOB' },
-        { id: 'bio', label: 'Bio' },
-        { id: 'experience', label: 'Experience' },
+        { id: 'institution', label: 'Institute' },
+        { id: 'city', label: 'City' },
+        { id: 'state', label: 'State' },
+        { id: 'age', label: 'Age' },
         { id: 'skills', label: 'Skills' },
         { id: 'hobbies', label: 'Hobbies' },
-        { id: 'whyJoining', label: 'Why Joining' },
-      ]
-    },
-    {
-      category: 'Registration & Payment',
-      fields: [
-        { id: 'transactionId', label: 'Transaction ID' },
-        { id: 'paymentScreenshot', label: 'Payment Screenshot' },
-        { id: 'createdAt', label: 'Joined Date' },
-        { id: 'groupJoiningDate', label: 'Group Joining Date' },
-      ]
-    },
-    {
-      category: 'Social Media',
-      fields: [
-        { id: 'instagram', label: 'Instagram' },
-        { id: 'facebook', label: 'Facebook' },
-      ]
-    },
-    {
-      category: 'Books & Events',
-      fields: [
-        { id: 'booksCount', label: 'Books Count' },
-        { id: 'booksData', label: 'Books Catalogue Data' },
-        { id: 'eventParticipation', label: 'Event Participation' },
+        { id: 'createdAt', label: 'Joining Date' },
+        { id: 'booksCount', label: 'Number of Books' },
+        { id: 'socialMedia', label: 'Social Media Links' },
+        { id: 'booksData', label: 'Books Catalogue' },
       ]
     }
   ];
@@ -91,19 +53,6 @@ const [showArchived, setShowArchived] = useState(false);
     return {};
   };
 
-  // Find all dynamic custom keys present in extraData across authors
-  const getDynamicCustomKeys = () => {
-    return Array.from(new Set<string>(
-      (authors || []).reduce((acc: string[], author: any) => {
-        const ed = parseExtraData(author.extraData);
-        const keys = Object.keys(ed).filter(k => typeof k === 'string' && isNaN(Number(k)) && !ALL_STANDARD_FIELD_IDS.includes(k));
-        return acc.concat(keys);
-      }, [])
-    ));
-  };
-
-  const dynamicCustomKeys = getDynamicCustomKeys();
-
   const handleToggleField = (fieldId: string) => {
     setSelectedFieldIds(prev => 
       prev.includes(fieldId) ? prev.filter(id => id !== fieldId) : [...prev, fieldId]
@@ -111,11 +60,115 @@ const [showArchived, setShowArchived] = useState(false);
   };
 
   const handleSelectAllFields = () => {
-    setSelectedFieldIds([...ALL_STANDARD_FIELD_IDS, ...dynamicCustomKeys]);
+    setSelectedFieldIds([...ALL_STANDARD_FIELD_IDS]);
   };
 
   const handleDeselectAllFields = () => {
-    setSelectedFieldIds(['name', 'email', 'status']);
+    setSelectedFieldIds(['name', 'email', 'phone']);
+  };
+
+  const getQualificationText = (author: any, ed: any) => {
+    if (author.qualificationsJson && Array.isArray(author.qualificationsJson) && author.qualificationsJson.length > 0) {
+      return author.qualificationsJson.map((q: any) => q.qualification || q.degree || '').filter(Boolean).join(', ');
+    }
+    const qualRaw = author.qualification || ed.qualification;
+    if (!qualRaw) return '';
+    if (typeof qualRaw === 'string') {
+      try {
+        const parsed = JSON.parse(qualRaw);
+        if (Array.isArray(parsed)) {
+          return parsed.map((q: any) => q.qualification || q.degree || '').filter(Boolean).join(', ');
+        }
+      } catch (e) { }
+      return qualRaw;
+    }
+    if (Array.isArray(qualRaw)) {
+      return qualRaw.map((q: any) => q.qualification || q.degree || '').filter(Boolean).join(', ');
+    }
+    return String(qualRaw);
+  };
+
+  const getInstituteText = (author: any, ed: any) => {
+    if (author.institution) return author.institution;
+    if (author.qualificationsJson && Array.isArray(author.qualificationsJson) && author.qualificationsJson.length > 0) {
+      return author.qualificationsJson.map((q: any) => q.institution || q.college || q.university || '').filter(Boolean).join(', ');
+    }
+    const qualRaw = author.qualification || ed.qualification;
+    if (qualRaw) {
+      if (typeof qualRaw === 'string') {
+        try {
+          const parsed = JSON.parse(qualRaw);
+          if (Array.isArray(parsed)) {
+            return parsed.map((q: any) => q.institution || q.college || q.university || '').filter(Boolean).join(', ');
+          }
+        } catch (e) { }
+      } else if (Array.isArray(qualRaw)) {
+        return qualRaw.map((q: any) => q.institution || q.college || q.university || '').filter(Boolean).join(', ');
+      }
+    }
+    return ed.institution || ed.college || ed.university || '';
+  };
+
+  const getSkillsText = (author: any, ed: any) => {
+    if (author.skillsJson && Array.isArray(author.skillsJson)) {
+      return author.skillsJson.join(', ');
+    }
+    const skillsRaw = author.skills || ed.skills;
+    if (!skillsRaw) return '';
+    if (typeof skillsRaw === 'string') {
+      try {
+        const parsed = JSON.parse(skillsRaw);
+        if (Array.isArray(parsed)) return parsed.join(', ');
+      } catch (e) { }
+      return skillsRaw;
+    }
+    if (Array.isArray(skillsRaw)) return skillsRaw.join(', ');
+    return String(skillsRaw);
+  };
+
+  const getHobbiesText = (author: any, ed: any) => {
+    if (author.hobbiesJson && Array.isArray(author.hobbiesJson)) {
+      return author.hobbiesJson.join(', ');
+    }
+    const hobbiesRaw = author.hobbies || ed.hobbies;
+    if (!hobbiesRaw) return '';
+    if (typeof hobbiesRaw === 'string') {
+      try {
+        const parsed = JSON.parse(hobbiesRaw);
+        if (Array.isArray(parsed)) return parsed.join(', ');
+      } catch (e) { }
+      return hobbiesRaw;
+    }
+    if (Array.isArray(hobbiesRaw)) return hobbiesRaw.join(', ');
+    return String(hobbiesRaw);
+  };
+
+  const getAgeText = (author: any, ed: any) => {
+    const rawAge = author.age || author.dob || ed.age || ed.dob || '';
+    if (!rawAge) return '';
+    if (typeof rawAge === 'string' && rawAge.match(/^\d{4}-\d{2}-\d{2}/)) {
+      const birthYear = new Date(rawAge).getFullYear();
+      if (!isNaN(birthYear) && birthYear > 1900 && birthYear < 2026) {
+        const ageYrs = new Date().getFullYear() - birthYear;
+        return `${rawAge} (${ageYrs} yrs)`;
+      }
+    }
+    return String(rawAge);
+  };
+
+  const getSocialMediaText = (author: any, ed: any) => {
+    const links: string[] = [];
+    const ig = author.instagram || ed.instagram;
+    const fb = author.facebook || ed.facebook;
+    const li = ed.linkedin || author.linkedin;
+    const yt = ed.youtube || author.youtube;
+
+    if (ig) links.push(`Instagram: ${ig}`);
+    if (fb) links.push(`Facebook: ${fb}`);
+    if (li) links.push(`LinkedIn: ${li}`);
+    if (yt) links.push(`YouTube: ${yt}`);
+
+    return links.length > 0 ? links.join('  |  ') : 'N/A';
   };
 
   const executeExcelExport = async () => {
@@ -146,66 +199,80 @@ const [showArchived, setShowArchived] = useState(false);
 
       // Construct headers list according to selectedFieldIds
       const headersMap: Record<string, string> = {
-        status: 'Status',
         name: 'Author Name',
         penName: 'Pen Name',
         email: 'Email',
         phone: 'Phone Number',
-        whatsapp: 'WhatsApp Number',
-        address: 'Address',
-        city: 'City',
-        district: 'District',
-        state: 'State',
-        pincode: 'Pincode',
-        aadharNumber: 'Aadhar / Voter ID / DL',
         qualification: 'Qualification',
-        age: 'Age / DOB',
-        bio: 'Bio',
-        experience: 'Experience',
+        institution: 'Institute',
+        city: 'City',
+        state: 'State',
+        age: 'Age',
         skills: 'Skills',
         hobbies: 'Hobbies',
-        whyJoining: 'Why Joining',
-        transactionId: 'Transaction ID',
-        paymentScreenshot: 'Payment Screenshot',
-        createdAt: 'Joined Date',
-        groupJoiningDate: 'Group Joining Date',
-        instagram: 'Instagram',
-        facebook: 'Facebook',
-        booksCount: 'Books Count',
-        booksData: 'Books Catalogue Data',
-        eventParticipation: 'Event Participation',
+        createdAt: 'Joining Date',
+        booksCount: 'Number of Books',
+        socialMedia: 'Social Media Links',
+        booksData: 'Books Catalogue',
       };
-
-      // Add labels for custom dynamic keys
-      dynamicCustomKeys.forEach(k => {
-        headersMap[k] = k.charAt(0).toUpperCase() + k.slice(1);
-      });
 
       const selectedHeaders = selectedFieldIds.map(id => headersMap[id] || id);
 
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Authors Directory');
       
-      // Title row
+      // Title Banner (Heading 1)
       sheet.mergeCells(1, 1, 1, selectedHeaders.length);
       const titleCell = sheet.getCell(1, 1);
-      titleCell.value = `AUTHORS DIRECTORY EXPORT (${targetAuthors.length} Records)`;
-      titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+      titleCell.value = "PUNE AUTHORS' ASSOCIATION — AUTHORS DIRECTORY";
+      titleCell.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
       titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0B1A2E' } };
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      sheet.getRow(1).height = 32;
+      sheet.getRow(1).height = 38;
       
-      // Header row
+      // Subtitle Banner (Heading 2)
+      sheet.mergeCells(2, 1, 2, selectedHeaders.length);
+      const subTitleCell = sheet.getCell(2, 1);
+      subTitleCell.value = `Export Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}   |   Total Records: ${targetAuthors.length} Authors`;
+      subTitleCell.font = { name: 'Arial', size: 10, italic: true, bold: true, color: { argb: 'FFFFFFFF' } };
+      subTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+      subTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(2).height = 22;
+
+      // Blank Spacer Row
+      sheet.addRow([]);
+      sheet.getRow(3).height = 10;
+      
+      // Header Row (Column Titles)
       const headerRow = sheet.addRow(selectedHeaders);
-      headerRow.height = 26;
+      headerRow.height = 28;
       headerRow.eachCell((cell) => {
-        cell.font = { name: 'Arial', bold: true, color: { argb: 'FF000000' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4AF37' } };
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF000000' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4AF37' } }; // Warm Gold Header
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+        cell.border = {
+          top: { style: 'medium', color: { argb: 'FF0B1A2E' } },
+          bottom: { style: 'medium', color: { argb: 'FF0B1A2E' } },
+          left: { style: 'thin', color: { argb: 'FFB8860B' } },
+          right: { style: 'thin', color: { argb: 'FFB8860B' } }
+        };
       });
 
-      // Data rows
+      // Vibrant Soft Palette for Excel Columns
+      const colPalette = [
+        'FFFFE4E6', // Soft Rose
+        'FFFFF3CD', // Soft Gold
+        'FFE0F2FE', // Soft Cyan
+        'FFDCFCE7', // Soft Mint
+        'FFF3E8FF', // Soft Lavender
+        'FFFFEDD5', // Soft Peach
+        'FFE0E7FF', // Soft Indigo
+        'FFFCE7F3', // Soft Pink
+        'FFFEF3C7', // Soft Amber
+        'FFECFDF5', // Soft Emerald
+      ];
+
+      // Data Rows
       targetAuthors.forEach((author: any) => {
         const ed = parseExtraData(author.extraData);
         const rowData: any[] = [];
@@ -213,41 +280,24 @@ const [showArchived, setShowArchived] = useState(false);
         selectedFieldIds.forEach(fieldId => {
           let val = '';
           switch (fieldId) {
-            case 'status': val = author.status || ''; break;
             case 'name': val = author.name || ''; break;
             case 'penName': val = author.penName || ed.penName || ''; break;
             case 'email': val = author.email || ''; break;
             case 'phone': val = author.phone || ed.phone || ''; break;
-            case 'whatsapp': val = author.whatsapp || ed.whatsapp || ''; break;
-            case 'address': val = author.address || ed.address || ''; break;
+            case 'qualification': val = getQualificationText(author, ed); break;
+            case 'institution': val = getInstituteText(author, ed); break;
             case 'city': val = author.city || ed.city || ''; break;
-            case 'district': val = author.district || ed.district || ''; break;
             case 'state': val = author.state || ed.state || ''; break;
-            case 'pincode': val = author.pincode || ed.pincode || ''; break;
-            case 'aadharNumber': val = author.aadharNumber || ed.aadharNumber || ed.aadhar || ''; break;
-            case 'qualification': val = author.qualification || ed.qualification || ''; break;
-            case 'age': val = author.age || author.dob || ed.age || ed.dob || ''; break;
-            case 'bio': val = author.bio || ed.bio || ''; break;
-            case 'experience': val = author.experience || ed.experience || ''; break;
-            case 'skills': val = author.skills || ed.skills || ''; break;
-            case 'hobbies': val = author.hobbies || ed.hobbies || ''; break;
-            case 'whyJoining': val = author.whyJoining || ed.whyJoining || ''; break;
-            case 'transactionId': val = author.transactionId || ed.transactionId || ''; break;
-            case 'paymentScreenshot': val = author.paymentScreenshot || ed.paymentScreenshot || ''; break;
+            case 'age': val = getAgeText(author, ed); break;
+            case 'skills': val = getSkillsText(author, ed); break;
+            case 'hobbies': val = getHobbiesText(author, ed); break;
             case 'createdAt': val = author.createdAt ? new Date(author.createdAt).toLocaleDateString() : ''; break;
-            case 'groupJoiningDate': val = author.groupJoiningDate ? new Date(author.groupJoiningDate).toLocaleDateString() : ''; break;
-            case 'instagram': val = author.instagram || ed.instagram || ''; break;
-            case 'facebook': val = author.facebook || ed.facebook || ''; break;
             case 'booksCount': val = author.books ? author.books.length : (author._count ? author._count.books : 0); break;
+            case 'socialMedia': val = getSocialMediaText(author, ed); break;
             case 'booksData': 
               val = author.books && author.books.length > 0 
                 ? author.books.map((b: any) => `${b.title} (${b.genre || 'General'}, MRP: ₹${b.mrp || 0})`).join('; ')
                 : 'No books'; 
-              break;
-            case 'eventParticipation':
-              val = author.aggEligibleEvents 
-                ? `${Math.round((author.aggParticipatedEvents / author.aggEligibleEvents) * 100)}% (${author.aggParticipatedEvents}/${author.aggEligibleEvents})`
-                : '0%';
               break;
             default:
               val = ed[fieldId] !== undefined && ed[fieldId] !== null 
@@ -259,10 +309,26 @@ const [showArchived, setShowArchived] = useState(false);
         });
 
         const addedRow = sheet.addRow(rowData);
-        addedRow.eachCell((cell) => {
-          cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
-          cell.font = { name: 'Arial', size: 10, color: { argb: 'FF000000' } };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+        addedRow.height = 22;
+
+        addedRow.eachCell((cell, colIndex) => {
+          cell.font = { name: 'Arial', size: 10, color: { argb: 'FF1F2937' } };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+          };
+
+          // Apply rich palette colors based on column index
+          const bgCol = colPalette[(colIndex - 1) % colPalette.length];
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgCol } };
+
+          if (['age', 'booksCount', 'createdAt'].includes(selectedFieldIds[colIndex - 1])) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          }
         });
       });
 
@@ -480,7 +546,7 @@ const [showArchived, setShowArchived] = useState(false);
             <button onClick={() => handleDownloadCatalogue(true)} disabled={selectedAuthorIds.length === 0 || isDownloadingPdf} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:text-[#0b1a2e] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-sm">
               {isDownloadingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer className="w-3.5 h-3.5" aria-hidden="true" />} {isDownloadingPdf ? 'Generating...' : 'Printing Catalogue'}
             </button>
-            <button onClick={handleExportAuthorsCSV} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:text-[#0b1a2e] whitespace-nowrap shadow-sm">
+            <button onClick={() => setShowExportModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:text-[#0b1a2e] whitespace-nowrap shadow-sm cursor-pointer">
               <Download className="w-3.5 h-3.5" aria-hidden="true" /> Export Excel
             </button>
           </div>
@@ -707,7 +773,7 @@ const [showArchived, setShowArchived] = useState(false);
 
         {/* Dynamic Excel Export Modal */}
         {showExportModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-8 pb-10 px-4 overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
               <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2.5">
@@ -808,34 +874,6 @@ const [showArchived, setShowArchived] = useState(false);
                       </div>
                     </div>
                   ))}
-
-                  {dynamicCustomKeys.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-gray-100">
-                      <h4 className="text-[11px] font-bold uppercase tracking-wider text-purple-800 border-b border-purple-100 pb-1">
-                        Custom Extra Fields ({dynamicCustomKeys.length})
-                      </h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {dynamicCustomKeys.map((key) => (
-                          <label
-                            key={key}
-                            className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-all ${
-                              selectedFieldIds.includes(key)
-                                ? 'bg-purple-50 border-purple-200 text-purple-900 font-medium'
-                                : 'bg-gray-50/50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedFieldIds.includes(key)}
-                              onChange={() => handleToggleField(key)}
-                              className="accent-purple-700 w-3.5 h-3.5 rounded"
-                            />
-                            <span className="truncate">{key}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
