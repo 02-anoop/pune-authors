@@ -2020,6 +2020,7 @@ export function OperationsDashboardPage() {
       instagram: author.instagram || "",
       facebook: author.facebook || "",
       whyJoining: author.whyJoining || "",
+      groupJoiningDate: author.groupJoiningDate || "",
       books: author.books || [],
     });
     setIsEditAuthorModalOpen(true);
@@ -12063,6 +12064,35 @@ const totalAuthorsBase = eventRegistrations.length;
                               className={getFieldClass("hobbies")}
                             />{" "}
                             {renderOriginalValue("hobbies")}
+                          </div>
+                          <div>
+                            <label className="dash-label">Group Joining Date</label>
+                            <input
+                              type="date"
+                              value={(() => {
+                                if (!editingAuthor.groupJoiningDate) return "";
+                                try {
+                                  const d = new Date(editingAuthor.groupJoiningDate);
+                                  return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
+                                } catch (e) {
+                                  return "";
+                                }
+                              })()}
+                              onChange={(e) => {
+                                let val = null;
+                                if (e.target.value) {
+                                  try {
+                                    val = new Date(e.target.value).toISOString();
+                                  } catch (err) {}
+                                }
+                                setEditingAuthor({
+                                  ...editingAuthor,
+                                  groupJoiningDate: val,
+                                });
+                              }}
+                              className={getFieldClass("groupJoiningDate")}
+                            />{" "}
+                            {renderOriginalValue("groupJoiningDate")}
                           </div>
                         </div>
                         <div>

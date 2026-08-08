@@ -479,7 +479,13 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
           transactionId: initialData.transactionId || '',
           conflictOfInterestSignature: (extra as any).conflictOfInterestSignature || '',
           agreedToGuidelines: (extra as any).agreedToGuidelines || false,
-          agreedToInfoDoc: (extra as any).agreedToInfoDoc || false
+          agreedToInfoDoc: (extra as any).agreedToInfoDoc || false,
+          groupJoiningDate: initialData.groupJoiningDate ? (() => {
+            try {
+              const d = new Date(initialData.groupJoiningDate);
+              return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
+            } catch (e) { return ""; }
+          })() : ''
        }));
 
        if (initialData.extraData) {

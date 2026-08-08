@@ -561,7 +561,7 @@ router.put('/api/author/edit-profile-full', verifyToken, upload.any(), async (re
 
     const {
       name, phone, whatsapp, bio, penName, city, state, instagram, facebook, linkedin, youtube,
-      qualification, qualifications, institution, subject, dob, experience, skills, hobbies, whyJoining, aadharNumber, address, district, pincode, extraData, transactionId, conflictOfInterestSignature, agreedToGuidelines, agreedToInfoDoc
+      qualification, qualifications, institution, subject, dob, experience, skills, hobbies, whyJoining, aadharNumber, address, district, pincode, extraData, transactionId, conflictOfInterestSignature, agreedToGuidelines, agreedToInfoDoc, groupJoiningDate
     } = req.body;
 
     let booksArray = [];
@@ -641,6 +641,7 @@ router.put('/api/author/edit-profile-full', verifyToken, upload.any(), async (re
         photoUrl, qrCodeUrl, transactionId, paymentScreenshot: paymentScreenshotUrl,
         qualification: finalQualificationString,
         age: dob, experience, skills, hobbies, whyJoining, aadharNumber, address, district, pincode, dob, skillsJson: (() => { try { return JSON.parse(skills) } catch (e) { return [] } })(), hobbiesJson: (() => { try { return JSON.parse(hobbies) } catch (e) { return [] } })(), qualificationsJson: qualificationsArray,
+        ...(groupJoiningDate !== undefined && { groupJoiningDate: groupJoiningDate ? new Date(groupJoiningDate) : null }),
         status: 'Edited',
         extraData: currentExtraData
       }
@@ -793,7 +794,7 @@ router.put('/api/author/reapply-full', verifyToken, upload.any(), async (req, re
 
     const {
       name, phone, whatsapp, bio, penName, city, state, instagram, facebook, linkedin, youtube,
-      qualification, qualifications, institution, subject, dob, experience, skills, hobbies, whyJoining, aadharNumber, address, district, pincode, extraData, transactionId, conflictOfInterestSignature, agreedToGuidelines, agreedToInfoDoc
+      qualification, qualifications, institution, subject, dob, experience, skills, hobbies, whyJoining, aadharNumber, address, district, pincode, extraData, transactionId, conflictOfInterestSignature, agreedToGuidelines, agreedToInfoDoc, groupJoiningDate
     } = req.body;
 
     let booksArray = [];
@@ -858,6 +859,7 @@ router.put('/api/author/reapply-full', verifyToken, upload.any(), async (req, re
         photoUrl, qrCodeUrl, transactionId, paymentScreenshot: paymentScreenshotUrl,
         qualification: finalQualificationString,
         age: dob, experience, skills, hobbies, whyJoining, aadharNumber, address, district, pincode, dob, skillsJson: (() => { try { return JSON.parse(skills) } catch (e) { return [] } })(), hobbiesJson: (() => { try { return JSON.parse(hobbies) } catch (e) { return [] } })(), qualificationsJson: qualificationsArray, status: 'Pending',
+        ...(groupJoiningDate !== undefined && { groupJoiningDate: groupJoiningDate ? new Date(groupJoiningDate) : null }),
         extraData: (() => {
           let parsed = extraData ? JSON.parse(extraData) : (author.extraData || {});
           if (linkedin) parsed.linkedin = linkedin;
@@ -939,6 +941,9 @@ router.put('/api/author/reapply-full', verifyToken, upload.any(), async (req, re
       }
     }
 
+    invalidateCache(`author:dashboard:${req.user.email}`);
+    invalidateCache(`authorData_${req.user.email}`);
+    invalidateCache('adminAuthors');
     res.json({ success: true });
   } catch (error) {
     console.error(error);
@@ -1194,7 +1199,7 @@ router.put('/api/admin/authors/:id/full-update-and-approve', verifyToken, isAdmi
 
     const {
       name, email, phone, whatsapp, bio, penName, city, state, instagram, facebook, linkedin, youtube,
-      qualification, qualifications, institution, subject, dob, experience, skills, hobbies, whyJoining, aadharNumber, address, district, pincode, extraData, transactionId, conflictOfInterestSignature, agreedToGuidelines, agreedToInfoDoc
+      qualification, qualifications, institution, subject, dob, experience, skills, hobbies, whyJoining, aadharNumber, address, district, pincode, extraData, transactionId, conflictOfInterestSignature, agreedToGuidelines, agreedToInfoDoc, groupJoiningDate
     } = req.body;
 
     let booksArray = [];
@@ -1260,6 +1265,7 @@ router.put('/api/admin/authors/:id/full-update-and-approve', verifyToken, isAdmi
         photoUrl, qrCodeUrl, transactionId, paymentScreenshot: paymentScreenshotUrl,
         qualification: finalQualificationString,
         age: dob, experience, skills, hobbies, whyJoining, aadharNumber, address, district, pincode, dob, skillsJson: (() => { try { return JSON.parse(skills) } catch (e) { return [] } })(), hobbiesJson: (() => { try { return JSON.parse(hobbies) } catch (e) { return [] } })(), qualificationsJson: qualificationsArray,
+        ...(groupJoiningDate !== undefined && { groupJoiningDate: groupJoiningDate ? new Date(groupJoiningDate) : null }),
         status: 'Active',
         rejectionReason: null,
         extraData: (() => {
@@ -1323,6 +1329,15 @@ router.put('/api/admin/authors/:id/full-update-and-approve', verifyToken, isAdmi
     }
 
     deleteCatalogueCache();
+    invalidateCache('books');
+    invalidateCache('adminAuthors');
+    invalidateCache('public-stats');
+    invalidateCache('admin:dashboard-stats');
+    if (author.email) {
+      invalidateCache(`author:dashboard:${author.email}`);
+      invalidateCache(`author:events:${author.email}`);
+      invalidateCache(`authorData_${author.email}`);
+    }
     res.json({ success: true });
   } catch (error) {
     console.error(error);
@@ -1509,7 +1524,7 @@ router.post('/api/admin/authors/:id/reject-edits', verifyToken, isAdmin, async (
 router.put('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, email, bio, phone, whatsapp, penName, city, state, address, aadharNumber, qualification, age, experience, skills, hobbies, instagram, facebook, whyJoining, books, district, pincode, dob } = req.body;
+    const { name, email, bio, phone, whatsapp, penName, city, state, address, aadharNumber, qualification, age, experience, skills, hobbies, instagram, facebook, whyJoining, books, district, pincode, dob, groupJoiningDate } = req.body;
     const existingAuthor = await prisma.author.findUnique({ where: { id } });
     let currentExtraData = existingAuthor.extraData || {};
     if (typeof currentExtraData === 'string') {
@@ -1544,6 +1559,7 @@ router.put('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) => {
         ...(dob !== undefined && { dob }),
         ...(skills !== undefined && { skillsJson: (() => { try { return JSON.parse(skills) } catch (e) { return [] } })() }),
         ...(hobbies !== undefined && { hobbiesJson: (() => { try { return JSON.parse(hobbies) } catch (e) { return [] } })() }),
+        ...(groupJoiningDate !== undefined && { groupJoiningDate: groupJoiningDate ? new Date(groupJoiningDate) : null }),
         extraData: currentExtraData
       }
     });
@@ -1576,6 +1592,15 @@ router.put('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) => {
     }
 
     deleteCatalogueCache();
+    invalidateCache('books');
+    invalidateCache('adminAuthors');
+    invalidateCache('public-stats');
+    invalidateCache('admin:dashboard-stats');
+    if (author.email) {
+      invalidateCache(`author:dashboard:${author.email}`);
+      invalidateCache(`author:events:${author.email}`);
+      invalidateCache(`authorData_${author.email}`);
+    }
     res.json(author);
   } catch (err) {
     console.error(err);
@@ -2567,6 +2592,9 @@ router.put('/api/author/profile/bio', verifyToken, upload.single('photo'), async
       where: { id: author.id },
       data: updateData
     });
+    invalidateCache(`author:dashboard:${req.user.email}`);
+    invalidateCache(`authorData_${req.user.email}`);
+    invalidateCache('adminAuthors');
     res.json(updated);
   } catch (err) {
     console.error(err);
