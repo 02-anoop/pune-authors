@@ -1788,7 +1788,7 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       select: {
         quantity: true,
         book: {
-          select: { title: true, genre: true, subGenre: true, mrp: true, author: { select: { name: true } } }
+          select: { title: true, genre: true, mrp: true, author: { select: { name: true } } }
         }
       }
     });
@@ -1800,9 +1800,7 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
     orderItems.forEach(item => {
       if (!item.book) return;
       const authorName = item.book.author?.name || 'Unknown';
-      const genre = item.book.subGenre && item.book.subGenre !== 'Other' && item.book.subGenre !== 'Unknown' 
-        ? `${item.book.genre || 'Other'} (${item.book.subGenre})`
-        : (item.book.genre || 'Other');
+      const genre = item.book.genre || 'Other';
       const bookTitle = item.book.title;
       const itemRev = item.quantity * item.book.mrp;
 
@@ -1829,7 +1827,7 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
         quantity: true,
         price: true,
         book: {
-          select: { title: true, genre: true, subGenre: true, mrp: true, author: { select: { name: true } } }
+          select: { title: true, genre: true, mrp: true, author: { select: { name: true } } }
         },
         posOrder: { select: { event: { select: { name: true } } } }
       }
@@ -1838,9 +1836,7 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
     posItems.forEach(item => {
       if (item.book) {
         const authorName = item.book.author?.name || 'Unknown';
-        const genre = item.book.subGenre && item.book.subGenre !== 'Other' && item.book.subGenre !== 'Unknown' 
-          ? `${item.book.genre || 'Other'} (${item.book.subGenre})`
-          : (item.book.genre || 'Other');
+        const genre = item.book.genre || 'Other';
         const bookTitle = item.book.title;
         const itemRev = item.quantity * (item.price || item.book.mrp || 0);
 
@@ -1888,7 +1884,7 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       select: {
         soldStock: true,
         overrideMrp: true,
-        book: { select: { title: true, genre: true, subGenre: true, mrp: true, author: { select: { name: true } } } },
+        book: { select: { title: true, genre: true, mrp: true, author: { select: { name: true } } } },
         event: { select: { name: true } },
         authorId: true,
         eventId: true
@@ -1901,9 +1897,7 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       const price = item.overrideMrp || item.book.mrp || 0;
       const itemRev = qty * price;
       const authorName = item.book.author?.name || 'Unknown';
-      const genre = item.book.subGenre && item.book.subGenre !== 'Other' && item.book.subGenre !== 'Unknown' 
-        ? `${item.book.genre || 'Other'} (${item.book.subGenre})`
-        : (item.book.genre || 'Other');
+      const genre = item.book.genre || 'Other';
       const bookTitle = item.book.title;
 
       if (!salesByAuthorMap[authorName]) salesByAuthorMap[authorName] = { name: authorName, revenue: 0, units: 0 };
