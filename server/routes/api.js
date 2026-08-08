@@ -730,6 +730,18 @@ router.delete('/api/author/account', verifyToken, async (req, res) => {
     });
     
     if (typeof deleteCatalogueCache === 'function') deleteCatalogueCache();
+
+    // Notify admin team
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      const { getAdminEmails } = require('./utils/email');
+      if (typeof getAdminEmails === 'function') {
+        sendNotificationEmail(
+          getAdminEmails(),
+          `Author Account Deleted: ${author.name}`,
+          emailWrap('Author Self-Deleted', `<p>Author <strong>${author.name}</strong> (${author.email}) has deleted their account and profile. Their books have been archived.</p>`)
+        ).catch(e => console.error('Failed to send admin deletion email:', e));
+      }
+    }
     
     res.json({ success: true });
   } catch (err) {
@@ -748,6 +760,24 @@ router.post('/api/author/rejoin', verifyToken, async (req, res) => {
       where: { id: author.id },
       data: { isArchived: false, status: 'Pending' }
     });
+
+    // ✅ Also un-archive their books and set them to Pending so they appear for admin review
+    await prisma.book.updateMany({
+      where: { authorId: author.id, status: 'Archived' },
+      data: { isArchived: false, status: 'Pending' }
+    });
+    
+    // Notify admin team that this author wants to rejoin
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      const { getAdminEmails } = require('./utils/email');
+      if (typeof getAdminEmails === 'function') {
+        sendNotificationEmail(
+          getAdminEmails(),
+          `Author Rejoin Request: ${author.name}`,
+          emailWrap('Author Rejoin Request', `<p>Author <strong>${author.name}</strong> (${author.email}) has requested to rejoin the platform. Their profile status is now <strong>Pending</strong> and awaiting your review.</p><p>Please log in to the admin dashboard to approve or reject their request.</p>`)
+        ).catch(e => console.error('Failed to send rejoin admin email:', e));
+      }
+    }
     
     res.json({ success: true });
   } catch (err) {
@@ -1085,15 +1115,19 @@ router.delete('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) =
   }
 });
 
-// Restore Author
+// Restore Author (Admin-initiated restore)
 router.put('/api/admin/authors/:id/restore', verifyToken, isAdmin, async (req, res) => {
   try {
     const authorId = parseInt(req.params.id);
-    await prisma.author.update({ where: { id: authorId }, data: { isArchived: false } });
+    const author = await prisma.author.findUnique({ where: { id: authorId } });
+    if (!author) return res.status(404).json({ error: 'Author not found' });
+
+    await prisma.author.update({ where: { id: authorId }, data: { isArchived: false, status: 'Active' } });
     
-    // Also restore their books
+    // Restore only books that were archived (not those that were previously Rejected for other reasons)
+    // Set them back to Approved so they appear in the catalogue immediately
     await prisma.book.updateMany({
-      where: { authorId },
+      where: { authorId, isArchived: true, status: 'Archived' },
       data: { isArchived: false, status: 'Approved' }
     });
 
@@ -1107,6 +1141,16 @@ router.put('/api/admin/authors/:id/restore', verifyToken, isAdmin, async (req, r
     invalidateCache('books');
     invalidateCache('adminAuthors');
     invalidateCache('public-stats');
+    deleteCatalogueCache();
+
+    // Notify author they have been restored
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      sendNotificationEmail(
+        author.email,
+        'Your PAA Author Profile Has Been Restored',
+        emailWrap('Profile Restored', `<p>Dear ${author.name},</p><p>Your author profile and books have been <strong>restored</strong> by the Pune Authors\' Association administration. You can now log in to your dashboard and continue managing your inventory and orders.</p>`)
+      ).catch(e => console.error('Failed to send restore email:', e));
+    }
 
     res.json({ success: true });
   } catch (err) {
@@ -1271,6 +1315,10 @@ router.post('/api/admin/authors/:id/approve', verifyToken, isAdmin, async (req, 
   const wasEdited = extraData.hasPendingEdits || existingAuthor.status === 'Edited';
   const wasReapplied = extraData.isReapplied;
 
+  // Check if there are pending books (new book added by active author)
+  const pendingBooksCount = await prisma.book.count({ where: { authorId: id, status: 'Pending' } });
+  const isNewBookApproval = pendingBooksCount > 0 && existingAuthor.status === 'Active' && !wasEdited && !wasReapplied;
+
   extraData.hasPendingEdits = false;
   extraData.originalProfileData = {};
   extraData.isReapplied = false;
@@ -1285,8 +1333,18 @@ router.post('/api/admin/authors/:id/approve', verifyToken, isAdmin, async (req, 
     data: { status: 'Approved' }
   });
 
-  // Send approval email
-  if (wasEdited) {
+  // Send appropriate email based on scenario
+  if (isNewBookApproval) {
+    // Active author got a new book approved
+    const emailContent = `
+      <p>Dear ${author.name},</p>
+      <p>Great news! Your newly submitted book has been officially <strong>approved</strong> by the Pune Authors' Association editorial team.</p>
+      <p>Your book is now live in the catalogue. You can log in to your dashboard to manage your inventory.</p>
+    `;
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      sendNotificationEmail(author.email, "New Book Approved - PAA", emailWrap("Book Approved", emailContent));
+    }
+  } else if (wasEdited || wasReapplied) {
     const emailContent = `
       <p>Dear ${author.name},</p>
       <p>Your recent profile updates have been officially approved by the Pune Authors' Association editorial team.</p>
@@ -1425,7 +1483,7 @@ router.post('/api/admin/authors/:id/reject-edits', verifyToken, isAdmin, async (
 router.put('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, bio, phone, whatsapp, penName, city, state, address, aadharNumber, qualification, age, experience, skills, hobbies, instagram, facebook, whyJoining, books, district, pincode, dob } = req.body;
+    const { name, email, bio, phone, whatsapp, penName, city, state, address, aadharNumber, qualification, age, experience, skills, hobbies, instagram, facebook, whyJoining, books, district, pincode, dob } = req.body;
     const existingAuthor = await prisma.author.findUnique({ where: { id } });
     let currentExtraData = existingAuthor.extraData || {};
     if (typeof currentExtraData === 'string') {
@@ -1438,6 +1496,7 @@ router.put('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) => {
       where: { id },
       data: {
         ...(name !== undefined && { name }),
+        ...(email !== undefined && email.trim() && { email: email.trim().toLowerCase() }),
         ...(bio !== undefined && { bio }),
         ...(phone !== undefined && { phone }),
         // whatsapp field removed
@@ -2603,30 +2662,7 @@ router.get('/api/admin/pending-books', verifyToken, isAdmin, async (req, res) =>
   }
 });
 
-// Admin: Approve a pending book
-router.post('/api/admin/books/:id/approve', verifyToken, isAdmin, async (req, res) => {
-  try {
-    const bookId = parseInt(req.params.id);
-
-    let isOverpriced = false;
-    if (pages && printFormat && mrp) {
-      const rate = printFormat === 'Black & White' ? 1 : 3;
-      const fairPrice = (parseInt(pages) * rate) + 100;
-      isOverpriced = parseFloat(mrp) > fairPrice;
-    }
-
-    const updated = await prisma.book.update({
-      where: { id: bookId },
-      data: {
-        ...(mrp !== undefined && pages !== undefined && printFormat !== undefined && { overpriced: isOverpriced }), status: 'Approved'
-      }
-    });
-    res.json(updated);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to approve book' });
-  }
-});
+// Note: The primary /api/admin/books/:id/approve route is defined above at line ~1970.
 router.post('/api/author/books', verifyToken, upload.fields([{ name: 'cover', maxCount: 1 }, { name: 'backCover', maxCount: 1 }]), async (req, res) => {
   try {
     const { title, subtitle, genre, subGenre, synopsis, pages, mrp, stock, overpriced, isOverpriced, language, isbn, publisher, publicationDate, edition, format, printFormat, purpose } = req.body;
@@ -4858,36 +4894,8 @@ router.put('/api/author/profile/extra', verifyToken, async (req, res) => {
 });
 
 
-// --- DYNAMIC AUTHOR FIELDS ---
-router.get('/api/admin/author-fields', verifyToken, isAdmin, (req, res) => {
-  try {
-    const settings = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, 'settings.json')));
-    res.json(settings.authorDynamicFields || []);
-  } catch (e) { res.json([]); }
-});
-
-router.post('/api/admin/author-fields', verifyToken, isAdmin, (req, res) => {
-  try {
-    const p = require('path').join(__dirname, 'settings.json');
-    const settings = require('fs').existsSync(p) ? JSON.parse(require('fs').readFileSync(p)) : {};
-    settings.authorDynamicFields = req.body.fields;
-    require('fs').writeFileSync(p, JSON.stringify(settings, null, 2));
-    res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: 'Failed to save settings' }); }
-});
-
-router.put('/api/author/profile/extra', verifyToken, async (req, res) => {
-  try {
-    const author = await prisma.author.findUnique({ where: { email: req.user.email } });
-    await prisma.author.update({
-      where: { id: author.id },
-      data: { extraData: req.body }
-    });
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to save extra data' });
-  }
-});
+// Note: /api/admin/author-fields (GET+POST) and /api/author/profile/extra (PUT) are defined above.
+// Duplicate definitions removed to prevent conflicting logic.
 
 
 

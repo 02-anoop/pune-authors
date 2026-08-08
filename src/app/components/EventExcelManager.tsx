@@ -202,6 +202,16 @@ export default function EventExcelManager({
     });
   };
 
+  const handleAmountPaidChange = (authorId: string, value: string) => {
+    setAuthors(prev => {
+      const next = [...prev];
+      const aIdx = next.findIndex(a => a.authorId === authorId);
+      if (aIdx === -1) return prev;
+      next[aIdx] = { ...next[aIdx], amountPaid: value === "" ? null : parseFloat(value) || 0 };
+      return next;
+    });
+  };
+
   const saveAuthorData = async (authorId: string) => {
     setIsSaving(true);
     try {
@@ -276,6 +286,7 @@ export default function EventExcelManager({
             returnedStock: Math.max(0, (b.actualSent || 0) - (b.soldStock || 0))
           })),
           optInStatus: author.optInStatus || "Registered",
+          amountPaid: author.amountPaid !== undefined ? author.amountPaid : null,
           manualTotalSold: null,
           manualTotalRevenue: null
         };
