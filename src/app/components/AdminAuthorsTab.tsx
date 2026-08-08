@@ -67,84 +67,86 @@ const [showArchived, setShowArchived] = useState(false);
     setSelectedFieldIds(['name', 'email', 'phone']);
   };
 
-  const getQualificationText = (author: any, ed: any) => {
-    if (author.qualificationsJson && Array.isArray(author.qualificationsJson) && author.qualificationsJson.length > 0) {
-      return author.qualificationsJson.map((q: any) => q.qualification || q.degree || '').filter(Boolean).join(', ');
-    }
-    const qualRaw = author.qualification || ed.qualification;
-    if (!qualRaw) return '';
-    if (typeof qualRaw === 'string') {
-      try {
-        const parsed = JSON.parse(qualRaw);
-        if (Array.isArray(parsed)) {
-          return parsed.map((q: any) => q.qualification || q.degree || '').filter(Boolean).join(', ');
-        }
-      } catch (e) { }
-      return qualRaw;
-    }
-    if (Array.isArray(qualRaw)) {
-      return qualRaw.map((q: any) => q.qualification || q.degree || '').filter(Boolean).join(', ');
-    }
-    return String(qualRaw);
+  const getMergedAuthor = (author: any) => {
+    const ed = parseExtraData(author.extraData);
+    const opd = parseExtraData(ed?.originalProfileData);
+    return {
+      ...opd,
+      ...ed,
+      ...author,
+      qualificationsJson: author.qualificationsJson || ed.qualificationsJson || opd.qualificationsJson || author.qualifications || ed.qualifications || opd.qualifications,
+      skillsJson: author.skillsJson || ed.skillsJson || opd.skillsJson || author.skills || ed.skills || opd.skills,
+      hobbiesJson: author.hobbiesJson || ed.hobbiesJson || opd.hobbiesJson || author.hobbies || ed.hobbies || opd.hobbies,
+    };
   };
 
-  const getInstituteText = (author: any, ed: any) => {
-    if (author.institution) return author.institution;
-    if (author.qualificationsJson && Array.isArray(author.qualificationsJson) && author.qualificationsJson.length > 0) {
-      return author.qualificationsJson.map((q: any) => q.institution || q.college || q.university || '').filter(Boolean).join(', ');
-    }
-    const qualRaw = author.qualification || ed.qualification;
-    if (qualRaw) {
-      if (typeof qualRaw === 'string') {
+  const getQualificationText = (a: any) => {
+    const qj = a.qualificationsJson || a.qualifications;
+    if (qj) {
+      if (Array.isArray(qj) && qj.length > 0) {
+        return qj.map((q: any) => typeof q === 'object' ? (q.qualification || q.degree || '') : String(q)).filter(Boolean).join(', ');
+      }
+      if (typeof qj === 'string') {
         try {
-          const parsed = JSON.parse(qualRaw);
+          const parsed = JSON.parse(qj);
           if (Array.isArray(parsed)) {
-            return parsed.map((q: any) => q.institution || q.college || q.university || '').filter(Boolean).join(', ');
+            return parsed.map((q: any) => typeof q === 'object' ? (q.qualification || q.degree || '') : String(q)).filter(Boolean).join(', ');
           }
         } catch (e) { }
-      } else if (Array.isArray(qualRaw)) {
-        return qualRaw.map((q: any) => q.institution || q.college || q.university || '').filter(Boolean).join(', ');
       }
     }
-    return ed.institution || ed.college || ed.university || '';
+    return a.qualification || '';
   };
 
-  const getSkillsText = (author: any, ed: any) => {
-    if (author.skillsJson && Array.isArray(author.skillsJson)) {
-      return author.skillsJson.join(', ');
+  const getInstituteText = (a: any) => {
+    if (a.institution) return a.institution;
+    const qj = a.qualificationsJson || a.qualifications;
+    if (qj) {
+      if (Array.isArray(qj) && qj.length > 0) {
+        return qj.map((q: any) => typeof q === 'object' ? (q.institution || q.college || q.university || '') : '').filter(Boolean).join(', ');
+      }
+      if (typeof qj === 'string') {
+        try {
+          const parsed = JSON.parse(qj);
+          if (Array.isArray(parsed)) {
+            return parsed.map((q: any) => typeof q === 'object' ? (q.institution || q.college || q.university || '') : '').filter(Boolean).join(', ');
+          }
+        } catch (e) { }
+      }
     }
-    const skillsRaw = author.skills || ed.skills;
-    if (!skillsRaw) return '';
-    if (typeof skillsRaw === 'string') {
+    return a.institution || a.college || a.university || '';
+  };
+
+  const getSkillsText = (a: any) => {
+    const sk = a.skillsJson || a.skills;
+    if (!sk) return '';
+    if (Array.isArray(sk)) return sk.join(', ');
+    if (typeof sk === 'string') {
       try {
-        const parsed = JSON.parse(skillsRaw);
+        const parsed = JSON.parse(sk);
         if (Array.isArray(parsed)) return parsed.join(', ');
       } catch (e) { }
-      return skillsRaw;
+      return sk;
     }
-    if (Array.isArray(skillsRaw)) return skillsRaw.join(', ');
-    return String(skillsRaw);
+    return String(sk);
   };
 
-  const getHobbiesText = (author: any, ed: any) => {
-    if (author.hobbiesJson && Array.isArray(author.hobbiesJson)) {
-      return author.hobbiesJson.join(', ');
-    }
-    const hobbiesRaw = author.hobbies || ed.hobbies;
-    if (!hobbiesRaw) return '';
-    if (typeof hobbiesRaw === 'string') {
+  const getHobbiesText = (a: any) => {
+    const hb = a.hobbiesJson || a.hobbies;
+    if (!hb) return '';
+    if (Array.isArray(hb)) return hb.join(', ');
+    if (typeof hb === 'string') {
       try {
-        const parsed = JSON.parse(hobbiesRaw);
+        const parsed = JSON.parse(hb);
         if (Array.isArray(parsed)) return parsed.join(', ');
       } catch (e) { }
-      return hobbiesRaw;
+      return hb;
     }
-    if (Array.isArray(hobbiesRaw)) return hobbiesRaw.join(', ');
-    return String(hobbiesRaw);
+    return String(hb);
   };
 
-  const getAgeText = (author: any, ed: any) => {
-    const rawAge = author.age || author.dob || ed.age || ed.dob || '';
+  const getAgeText = (a: any) => {
+    const rawAge = a.age || a.dob || '';
     if (!rawAge) return '';
     if (typeof rawAge === 'string' && rawAge.match(/^\d{4}-\d{2}-\d{2}/)) {
       const birthYear = new Date(rawAge).getFullYear();
@@ -156,18 +158,12 @@ const [showArchived, setShowArchived] = useState(false);
     return String(rawAge);
   };
 
-  const getSocialMediaText = (author: any, ed: any) => {
+  const getSocialMediaText = (a: any) => {
     const links: string[] = [];
-    const ig = author.instagram || ed.instagram;
-    const fb = author.facebook || ed.facebook;
-    const li = ed.linkedin || author.linkedin;
-    const yt = ed.youtube || author.youtube;
-
-    if (ig) links.push(`Instagram: ${ig}`);
-    if (fb) links.push(`Facebook: ${fb}`);
-    if (li) links.push(`LinkedIn: ${li}`);
-    if (yt) links.push(`YouTube: ${yt}`);
-
+    if (a.instagram) links.push(`Instagram: ${a.instagram}`);
+    if (a.facebook) links.push(`Facebook: ${a.facebook}`);
+    if (a.linkedin) links.push(`LinkedIn: ${a.linkedin}`);
+    if (a.youtube) links.push(`YouTube: ${a.youtube}`);
     return links.length > 0 ? links.join('  |  ') : 'N/A';
   };
 
@@ -228,7 +224,7 @@ const [showArchived, setShowArchived] = useState(false);
       titleCell.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
       titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0B1A2E' } };
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      sheet.getRow(1).height = 38;
+      sheet.getRow(1).height = 40;
       
       // Subtitle Banner (Heading 2)
       sheet.mergeCells(2, 1, 2, selectedHeaders.length);
@@ -237,82 +233,98 @@ const [showArchived, setShowArchived] = useState(false);
       subTitleCell.font = { name: 'Arial', size: 10, italic: true, bold: true, color: { argb: 'FFFFFFFF' } };
       subTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
       subTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      sheet.getRow(2).height = 22;
+      sheet.getRow(2).height = 24;
 
       // Blank Spacer Row
       sheet.addRow([]);
-      sheet.getRow(3).height = 10;
+      sheet.getRow(3).height = 12;
       
       // Header Row (Column Titles)
       const headerRow = sheet.addRow(selectedHeaders);
-      headerRow.height = 28;
+      headerRow.height = 32;
       headerRow.eachCell((cell) => {
         cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF000000' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4AF37' } }; // Warm Gold Header
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF59E0B' } }; // Bright Amber Gold
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         cell.border = {
           top: { style: 'medium', color: { argb: 'FF0B1A2E' } },
           bottom: { style: 'medium', color: { argb: 'FF0B1A2E' } },
-          left: { style: 'thin', color: { argb: 'FFB8860B' } },
-          right: { style: 'thin', color: { argb: 'FFB8860B' } }
+          left: { style: 'thin', color: { argb: 'FFD97706' } },
+          right: { style: 'thin', color: { argb: 'FFD97706' } }
         };
       });
 
-      // Vibrant Soft Palette for Excel Columns
-      const colPalette = [
-        'FFFFE4E6', // Soft Rose
-        'FFFFF3CD', // Soft Gold
-        'FFE0F2FE', // Soft Cyan
-        'FFDCFCE7', // Soft Mint
-        'FFF3E8FF', // Soft Lavender
-        'FFFFEDD5', // Soft Peach
-        'FFE0E7FF', // Soft Indigo
-        'FFFCE7F3', // Soft Pink
-        'FFFEF3C7', // Soft Amber
-        'FFECFDF5', // Soft Emerald
-      ];
+      // Bright Vibrant Color Palette for Excel Columns
+      const fieldColorMap: Record<string, string> = {
+        name: 'FFE4E6',        // Bright Light Coral / Rose
+        penName: 'FEF3C7',     // Bright Gold / Amber
+        email: 'E0F2FE',       // Bright Sky Blue
+        phone: 'DCFCE7',       // Bright Mint Green
+        qualification: 'F3E8FF',// Bright Lavender Purple
+        institution: 'CFFAFE',  // Bright Cyan
+        city: 'FFEDD5',        // Bright Peach Orange
+        state: 'FEF9C3',       // Bright Yellow
+        age: 'E0E7FF',         // Bright Indigo
+        skills: 'D1FAE5',       // Bright Emerald
+        hobbies: 'FCE7F3',      // Bright Pink
+        createdAt: 'ECFCCB',    // Bright Lime
+        booksCount: 'DBEAFE',   // Bright Light Blue
+        socialMedia: 'EDE9FE',  // Bright Violet
+        booksData: 'FFE4E6',    // Bright Rose
+      };
 
       // Data Rows
-      targetAuthors.forEach((author: any) => {
-        const ed = parseExtraData(author.extraData);
+      targetAuthors.forEach((rawAuthor: any) => {
+        const m = getMergedAuthor(rawAuthor);
         const rowData: any[] = [];
 
         selectedFieldIds.forEach(fieldId => {
           let val = '';
           switch (fieldId) {
-            case 'name': val = author.name || ''; break;
-            case 'penName': val = author.penName || ed.penName || ''; break;
-            case 'email': val = author.email || ''; break;
-            case 'phone': val = author.phone || ed.phone || ''; break;
-            case 'qualification': val = getQualificationText(author, ed); break;
-            case 'institution': val = getInstituteText(author, ed); break;
-            case 'city': val = author.city || ed.city || ''; break;
-            case 'state': val = author.state || ed.state || ''; break;
-            case 'age': val = getAgeText(author, ed); break;
-            case 'skills': val = getSkillsText(author, ed); break;
-            case 'hobbies': val = getHobbiesText(author, ed); break;
-            case 'createdAt': val = author.createdAt ? new Date(author.createdAt).toLocaleDateString() : ''; break;
-            case 'booksCount': val = author.books ? author.books.length : (author._count ? author._count.books : 0); break;
-            case 'socialMedia': val = getSocialMediaText(author, ed); break;
+            case 'name': val = m.name || ''; break;
+            case 'penName': val = m.penName || ''; break;
+            case 'email': val = m.email || ''; break;
+            case 'phone': val = m.phone || ''; break;
+            case 'qualification': val = getQualificationText(m); break;
+            case 'institution': val = getInstituteText(m); break;
+            case 'city': val = m.city || ''; break;
+            case 'state': val = m.state || ''; break;
+            case 'age': val = getAgeText(m); break;
+            case 'skills': val = getSkillsText(m); break;
+            case 'hobbies': val = getHobbiesText(m); break;
+            case 'createdAt': val = m.createdAt ? new Date(m.createdAt).toLocaleDateString() : ''; break;
+            case 'booksCount': val = m.books ? m.books.length : (m._count ? m._count.books : 0); break;
+            case 'socialMedia': val = getSocialMediaText(m); break;
             case 'booksData': 
-              val = author.books && author.books.length > 0 
-                ? author.books.map((b: any) => `${b.title} (${b.genre || 'General'}, MRP: ₹${b.mrp || 0})`).join('; ')
+              val = m.books && m.books.length > 0 
+                ? m.books.map((b: any) => `${b.title} (${b.genre || 'General'}, MRP: ₹${b.mrp || 0})`).join('; ')
                 : 'No books'; 
               break;
             default:
-              val = ed[fieldId] !== undefined && ed[fieldId] !== null 
-                ? (typeof ed[fieldId] === 'object' ? JSON.stringify(ed[fieldId]) : String(ed[fieldId])) 
-                : (author[fieldId] || '');
+              val = m[fieldId] !== undefined && m[fieldId] !== null 
+                ? (typeof m[fieldId] === 'object' ? JSON.stringify(m[fieldId]) : String(m[fieldId])) 
+                : '';
               break;
           }
           rowData.push(val);
         });
 
         const addedRow = sheet.addRow(rowData);
-        addedRow.height = 22;
+        
+        // Calculate dynamic row height based on text content
+        let maxLines = 1;
+        rowData.forEach(val => {
+          const str = String(val);
+          if (str.length > 40) {
+            const lines = Math.ceil(str.length / 35);
+            if (lines > maxLines) maxLines = lines;
+          }
+        });
+        addedRow.height = Math.max(26, Math.min(maxLines * 18, 90));
 
         addedRow.eachCell((cell, colIndex) => {
-          cell.font = { name: 'Arial', size: 10, color: { argb: 'FF1F2937' } };
+          const fieldId = selectedFieldIds[colIndex - 1];
+          cell.font = { name: 'Arial', size: 10, color: { argb: 'FF111827' } };
           cell.border = {
             top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
             bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
@@ -320,28 +332,36 @@ const [showArchived, setShowArchived] = useState(false);
             right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
           };
 
-          // Apply rich palette colors based on column index
-          const bgCol = colPalette[(colIndex - 1) % colPalette.length];
+          // Apply rich vibrant palette colors based on field ID
+          const bgCol = 'FF' + (fieldColorMap[fieldId] || 'FFFFFF');
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgCol } };
 
-          if (['age', 'booksCount', 'createdAt'].includes(selectedFieldIds[colIndex - 1])) {
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
-          } else {
-            cell.alignment = { horizontal: 'left', vertical: 'middle' };
-          }
+          const isCenterAligned = ['age', 'booksCount', 'createdAt'].includes(fieldId);
+          cell.alignment = { 
+            horizontal: isCenterAligned ? 'center' : 'left', 
+            vertical: 'middle',
+            wrapText: true 
+          };
         });
       });
 
-      // Auto width
-      sheet.columns.forEach((column) => {
-        let maxLength = 12;
-        column.eachCell?.({ includeEmpty: true }, (cell) => {
-          const columnValue = cell.value ? cell.value.toString() : '';
-          if (columnValue.length > maxLength && columnValue.length < 60) {
-            maxLength = columnValue.length;
+      // Auto width starting from Header Row 4 (ignoring title banner rows 1 & 2)
+      sheet.columns.forEach((column, colIdx) => {
+        let maxLength = 16;
+        sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+          if (rowNumber >= 4) { // Only inspect Header and Data rows
+            const cell = row.getCell(colIdx + 1);
+            const columnValue = cell.value ? cell.value.toString() : '';
+            // If cell has multi-line text, measure longest line length
+            const lineLengths = columnValue.split('\n').map((l: string) => l.length);
+            const maxLineLen = Math.max(...lineLengths, 0);
+            if (maxLineLen > maxLength) {
+              maxLength = maxLineLen;
+            }
           }
         });
-        column.width = maxLength + 3;
+        // Cap column width between 18 and 50 so long text wraps neatly
+        column.width = Math.max(18, Math.min(maxLength + 4, 50));
       });
 
       const buffer = await workbook.xlsx.writeBuffer();
