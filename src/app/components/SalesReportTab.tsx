@@ -19,13 +19,13 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
   const prevEndDate = useRef('');
   const hasLoadedInitialData = useRef(false);
   const [tableChannelFilter, setTableChannelFilter] = useState('All');
-  const [tableGenreFilter, setTableGenreFilter] = useState('All');
-  const [tableSubGenreFilter, setTableSubGenreFilter] = useState('All');
+  const [kpiGenreFilter, setKpiGenreFilter] = useState('All');
+  const [kpiSubGenreFilter, setKpiSubGenreFilter] = useState('All');
   const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
   useEffect(() => {
-    setTableSubGenreFilter('All');
-  }, [tableGenreFilter]);
+    setKpiSubGenreFilter('All');
+  }, [kpiGenreFilter]);
 
   useEffect(() => {
     if (filterType === 'custom') return;
@@ -105,7 +105,7 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
     sheet.getRow(1).height = 30;
     
     // Add headers (Bright Yellow with Black Text)
-    const headers = ['Date', 'Order ID', 'Channel', 'Event', 'Author', 'Title', 'Genre', 'Sub-genre', 'Quantity', 'Revenue'];
+    const headers = ['Date', 'Order ID', 'Channel', 'Event', 'Author', 'Title', 'Quantity', 'Revenue'];
     const headerRow = sheet.addRow(headers);
     headerRow.height = 24;
     headerRow.eachCell((cell) => {
@@ -129,8 +129,6 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
         r.event,
         r.author,
         r.title,
-        r.genre,
-        r.subGenre,
         r.qty,
         r.revenue
       ];
@@ -167,10 +165,8 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
         else if (colNumber === 4) colBgColor = 'FFDCA8'; // Solid light orange/peach
         else if (colNumber === 5) colBgColor = 'B3E5FC'; // Solid light cyan
         else if (colNumber === 6) colBgColor = 'C7D2FE'; // Solid light lavender
-        else if (colNumber === 7) colBgColor = 'E1BEE7'; // Genre
-        else if (colNumber === 8) colBgColor = 'F3E8FF'; // Sub-genre
-        else if (colNumber === 9) colBgColor = 'C8E6C9'; // Solid light green
-        else if (colNumber === 10) colBgColor = 'E1BEE7'; // Solid light purple
+        else if (colNumber === 7) colBgColor = 'C8E6C9'; // Solid light green
+        else if (colNumber === 8) colBgColor = 'E1BEE7'; // Solid light purple
 
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colBgColor } };
       });
@@ -200,29 +196,14 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
   // Memoized filtered data to avoid recalculating on re-renders
   const filteredTableData = useMemo(() => {
     if (!salesData?.tableData) return [];
-    return salesData.tableData.filter((r: any) => {
-      const channelMatch = tableChannelFilter === 'All' || r.channel === tableChannelFilter;
-      const genreMatch = tableGenreFilter === 'All' || r.genre === tableGenreFilter;
-      const subGenreMatch = tableSubGenreFilter === 'All' || r.subGenre === tableSubGenreFilter;
-      return channelMatch && genreMatch && subGenreMatch;
-    });
-  }, [salesData?.tableData, tableChannelFilter, tableGenreFilter, tableSubGenreFilter]);
+    return salesData.tableData.filter((r: any) => tableChannelFilter === 'All' || r.channel === tableChannelFilter);
+  }, [salesData?.tableData, tableChannelFilter]);
 
   const uniqueGenres = useMemo(() => {
     if (!salesData?.tableData) return ['All'];
     const genres = Array.from(new Set(salesData.tableData.map((r: any) => r.genre).filter((g: any) => g && g !== '-')));
     return ['All', ...genres.sort() as string[]];
   }, [salesData?.tableData]);
-
-  const uniqueSubGenres = useMemo(() => {
-    if (!salesData?.tableData) return ['All'];
-    let filtered = salesData.tableData;
-    if (tableGenreFilter !== 'All') {
-      filtered = filtered.filter((r: any) => r.genre === tableGenreFilter);
-    }
-    const subGenres = Array.from(new Set(filtered.map((r: any) => r.subGenre).filter((s: any) => s && s !== '-')));
-    return ['All', ...subGenres.sort() as string[]];
-  }, [salesData?.tableData, tableGenreFilter]);
 
   const channelCounts = useMemo(() => {
     if (!salesData?.tableData) return { All: 0, 'Web Orders': 0, 'Events': 0, 'Book Fairs': 0 };
@@ -234,17 +215,39 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
     };
   }, [salesData?.tableData]);
 
-  const genreSalesData = useMemo(() => {
-    if (!salesData?.tableData) return [];
-    const map: Record<string, { genre: string; books: number; revenue: number }> = {};
-    salesData.tableData.forEach((row: any) => {
-      const g = row.genre && row.genre !== '-' ? row.genre : 'Other';
-      if (!map[g]) map[g] = { genre: g, books: 0, revenue: 0 };
-      map[g].books += row.qty || 0;
-      map[g].revenue += row.revenue || 0;
+  const kpiUniqueSubGenres = useMemo(() => {
+    if (!salesData?.tableData) return ['All'];
+    let filtered = salesData.tableData;
+    if (kpiGenreFilter !== 'All') {
+      filtered = filtered.filter((r: any) => r.genre === kpiGenreFilter);
+    }
+    const subGenres = Array.from(new Set(filtered.map((r: any) => r.subGenre).filter((s: any) => s && s !== '-')));
+    return ['All', ...subGenres.sort() as string[]];
+  }, [salesData?.tableData, kpiGenreFilter]);
+
+  const kpiStats = useMemo(() => {
+    let books = 0;
+    let revenue = 0;
+    let channels = { 'Web Orders': 0, 'Events': 0, 'Book Fairs': 0 };
+
+    if (!salesData?.tableData) return { books, revenue, channels };
+
+    salesData.tableData.forEach((r: any) => {
+      const genreMatch = kpiGenreFilter === 'All' || r.genre === kpiGenreFilter;
+      const subGenreMatch = kpiSubGenreFilter === 'All' || r.subGenre === kpiSubGenreFilter;
+      
+      if (genreMatch && subGenreMatch) {
+        books += (r.qty || 0);
+        const rev = (r.revenue || 0);
+        revenue += rev;
+        if (channels[r.channel as keyof typeof channels] !== undefined) {
+          channels[r.channel as keyof typeof channels] += rev;
+        }
+      }
     });
-    return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [salesData?.tableData]);
+
+    return { books, revenue, channels };
+  }, [salesData?.tableData, kpiGenreFilter, kpiSubGenreFilter]);
 
   return (
     <div className="space-y-6">
@@ -501,22 +504,59 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
               </div>
 
               <div className="border border-paa-navy/5 p-5 md:p-6 rounded-2xl bg-white shadow-sm flex flex-col">
-                <h4 className="text-xs font-bold text-paa-navy uppercase tracking-widest mb-2">Sales by Genre</h4>
-                <p className="text-[10px] text-gray-400 mb-4 font-medium">Top performing categories</p>
-                <div className="flex-1 w-full overflow-y-auto pr-2 space-y-3 custom-scrollbar min-h-[220px]">
-                  {genreSalesData.length > 0 ? genreSalesData.map((g, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-gray-50/50 p-2.5 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                      <div className="min-w-0 pr-2">
-                        <p className="text-xs font-bold text-paa-navy truncate" title={g.genre}>{g.genre}</p>
-                        <p className="text-[10px] font-semibold text-indigo-500/80 uppercase tracking-widest">{g.books} units</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-[11px] font-black text-paa-navy">₹{g.revenue.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  )) : (
-                    <div className="h-full flex items-center justify-center text-gray-400 text-xs italic">No genre data</div>
+                <h4 className="text-xs font-bold text-paa-navy uppercase tracking-widest mb-4">Genre Insights</h4>
+                
+                <div className="flex flex-col gap-2 mb-6">
+                  <select 
+                    value={kpiGenreFilter} 
+                    onChange={e => setKpiGenreFilter(e.target.value)} 
+                    className="px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest text-paa-navy border border-gray-200 outline-none focus:border-indigo-500 bg-gray-50/50 hover:bg-gray-50 transition-colors w-full"
+                  >
+                    {uniqueGenres.map(g => (
+                      <option key={g} value={g}>{g === 'All' ? 'All Genres' : g}</option>
+                    ))}
+                  </select>
+                  
+                  {kpiGenreFilter !== 'All' && (
+                    <select 
+                      value={kpiSubGenreFilter} 
+                      onChange={e => setKpiSubGenreFilter(e.target.value)} 
+                      className="px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest text-paa-navy border border-gray-200 outline-none focus:border-indigo-500 bg-gray-50/50 hover:bg-gray-50 transition-colors w-full"
+                    >
+                      {kpiUniqueSubGenres.map(sg => (
+                        <option key={sg} value={sg}>{sg === 'All' ? 'All Sub-genres' : sg}</option>
+                      ))}
+                    </select>
                   )}
+                </div>
+
+                <div className="flex-1 flex flex-col justify-end">
+                  <div className="flex justify-between items-end mb-6">
+                    <div>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Books Sold</p>
+                      <p className="text-2xl font-black text-paa-navy leading-none">{kpiStats.books}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Revenue</p>
+                      <p className="text-2xl font-black text-indigo-600 leading-none">₹{kpiStats.revenue.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2.5 border-t border-gray-100 pt-5">
+                    <p className="text-[9px] font-bold tracking-widest text-gray-400 uppercase mb-3">Revenue by Channel</p>
+                    <div className="flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" aria-hidden="true"></div><span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">Web</span></div>
+                      <span className="text-paa-navy font-bold">₹{kpiStats.channels['Web Orders'].toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500" aria-hidden="true"></div><span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">Events</span></div>
+                      <span className="text-paa-navy font-bold">₹{kpiStats.channels['Events'].toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#ebd8c0]" aria-hidden="true"></div><span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">Fairs</span></div>
+                      <span className="text-paa-navy font-bold">₹{kpiStats.channels['Book Fairs'].toLocaleString()}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -553,42 +593,20 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
           <div className="bg-white border border-paa-navy/5 rounded-2xl shadow-sm overflow-hidden relative min-h-[200px]" style={{ contentVisibility: 'auto' }}>
             <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/50">
               <h4 className="text-xs font-bold text-paa-navy uppercase tracking-widest">Raw Sales Data</h4>
-              <div className="flex flex-col sm:flex-row items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Channel Filters">
-                  {(['All', 'Web Orders', 'Events', 'Book Fairs'] as const).map(ch => {
-                    const tabCount = channelCounts[ch];
-                    return (
-                      <button
-                        key={ch}
-                        onClick={() => setTableChannelFilter(ch)}
-                        aria-pressed={tableChannelFilter === ch}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors flex items-center gap-1.5 ${tableChannelFilter === ch ? 'bg-paa-navy text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}
-                      >
-                        {ch === 'Book Fairs' ? 'Fairs' : ch} <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tableChannelFilter === ch ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{tabCount}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <select
-                    value={tableGenreFilter}
-                    onChange={(e) => setTableGenreFilter(e.target.value)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-paa-navy border border-gray-200 outline-none focus:border-indigo-500 bg-white min-w-[120px]"
-                  >
-                    {uniqueGenres.map(g => (
-                      <option key={g} value={g}>{g === 'All' ? 'All Genres' : g}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={tableSubGenreFilter}
-                    onChange={(e) => setTableSubGenreFilter(e.target.value)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-paa-navy border border-gray-200 outline-none focus:border-indigo-500 bg-white min-w-[120px]"
-                  >
-                    {uniqueSubGenres.map(sg => (
-                      <option key={sg} value={sg}>{sg === 'All' ? 'All Sub-genres' : sg}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Channel Filters">
+                {(['All', 'Web Orders', 'Events', 'Book Fairs'] as const).map(ch => {
+                  const tabCount = channelCounts[ch];
+                  return (
+                    <button
+                      key={ch}
+                      onClick={() => setTableChannelFilter(ch)}
+                      aria-pressed={tableChannelFilter === ch}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors flex items-center gap-1.5 ${tableChannelFilter === ch ? 'bg-paa-navy text-white' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}
+                    >
+                      {ch === 'Book Fairs' ? 'Fairs' : ch} <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tableChannelFilter === ch ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>{tabCount}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -596,15 +614,13 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
                 <thead className="bg-indigo-50 border-b-2 border-indigo-100">
                   <tr>
                     <th className="w-[5%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">S.No</th>
-                    <th className="w-[10%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Date</th>
-                    <th className="w-[12%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Order ID</th>
-                    <th className="w-[10%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Channel</th>
-                    <th className="w-[15%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Author</th>
-                    <th className="w-[15%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Book Title</th>
-                    <th className="w-[10%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Genre</th>
-                    <th className="w-[10%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Sub-genre</th>
-                    <th className="w-[5%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100 text-right">Qty</th>
-                    <th className="w-[8%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100 text-right">Rev (₹)</th>
+                    <th className="w-[12%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Date</th>
+                    <th className="w-[15%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Order ID</th>
+                    <th className="w-[12%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Channel</th>
+                    <th className="w-[20%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Author</th>
+                    <th className="w-[25%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100">Book Title</th>
+                    <th className="w-[8%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100 text-right">Qty</th>
+                    <th className="w-[10%] px-5 py-3 !text-[14px] font-bold uppercase tracking-widest !text-indigo-800 border-b border-gray-100 text-right">Rev (₹)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 bg-white">
@@ -622,9 +638,7 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
                         </span>
                       </td>
                       <td className="px-5 py-3 text-xs font-semibold text-paa-navy truncate pr-2" title={row.author}>{row.author}</td>
-                      <td className="px-5 py-3 pr-2 text-xs text-paa-navy truncate max-w-[150px]" title={row.title}>{row.title}</td>
-                      <td className="px-5 py-3 pr-2 text-xs text-gray-500 truncate" title={row.genre}>{row.genre}</td>
-                      <td className="px-5 py-3 pr-2 text-xs text-gray-500 truncate" title={row.subGenre}>{row.subGenre}</td>
+                      <td className="px-5 py-3 pr-2 text-xs text-paa-navy truncate" title={row.title}>{row.title}</td>
                       <td className="px-5 py-3 text-xs font-bold text-paa-navy text-right">{row.qty}</td>
                       <td className="px-5 py-3 text-xs font-black text-indigo-600 text-right">₹{row.revenue}</td>
                     </tr>
