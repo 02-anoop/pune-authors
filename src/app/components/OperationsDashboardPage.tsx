@@ -8885,7 +8885,7 @@ const totalAuthorsBase = eventRegistrations.length;
             { id: "documents", label: "Policy Documents", icon: FileText },
             {
               id: "authors",
-              label: "Authors Menu",
+              label: "List of Authors",
               icon: Users,
               hasAlert: pendingAlerts.authors,
             },
