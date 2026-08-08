@@ -3539,61 +3539,111 @@ router.get('/api/admin/sales-report', verifyToken, isAdmin, async (req, res) => 
       });
     });
 
-    const legacyEvents = await prisma.event.findMany({
+    const manualEvents = await prisma.event.findMany({
       where: {
-        status: 'Legacy Archive'
+        OR: [
+          { status: 'Legacy Archive' },
+          { livePosEnabled: false }
+        ]
+      },
+      include: {
+        eventAuthors: {
+          where: { manualTotalSold: { gt: 0 } },
+          include: { author: { include: { books: true } } }
+        }
       }
     });
 
     const posEventIds = new Set(posOrders.filter(po => po.eventId).map(po => po.eventId));
 
-    legacyEvents.forEach(evt => {
+    manualEvents.forEach(evt => {
       let evtDate = new Date(evt.date);
       if (isNaN(evtDate.getTime())) {
         evtDate = new Date(evt.createdAt);
       }
 
       if (evtDate >= start && evtDate <= end) {
-        // Prevent double counting if POS orders already exist for this archived event
+        // Prevent double counting if POS orders already exist for this event
         if (posEventIds.has(evt.id)) return;
-
-        const qty = evt.aggSold || 0;
-        const rev = evt.aggRevenue || (qty * 200) || 0;
 
         const isBookFair = evt.eventType === 'Book Fair' || evt.name?.toLowerCase().includes('fair');
         const channelName = isBookFair ? 'Book Fairs' : 'Events';
         const kpiKey = isBookFair ? 'bookFairs' : 'events';
 
-        if (qty > 0 || rev > 0) {
-          totalRevenue += rev;
-          totalBooksSold += qty;
+        let totalEvtSold = evt.aggSold || 0;
+        let totalEvtRev = evt.aggRevenue || (totalEvtSold * 200) || 0;
+
+        if (totalEvtSold > 0 || totalEvtRev > 0) {
+          totalRevenue += totalEvtRev;
+          totalBooksSold += totalEvtSold;
 
           const fullDateStr = evtDate.toISOString().split('T')[0];
           const monthStr = evtDate.toISOString().slice(0, 7);
           const chartDateStr = (filterType === 'ytd' || filterType === 'lifetime') ? monthStr : fullDateStr;
 
           if (!chartDataMap[chartDateStr]) chartDataMap[chartDateStr] = { date: chartDateStr, revenue: 0, books: 0 };
-          chartDataMap[chartDateStr].revenue += rev;
-          chartDataMap[chartDateStr].books += qty;
+          chartDataMap[chartDateStr].revenue += totalEvtRev;
+          chartDataMap[chartDateStr].books += totalEvtSold;
 
-          channelDataMap[channelName] += rev;
-          kpiSplits[kpiKey].revenue += rev;
-          kpiSplits[kpiKey].books += qty;
+          channelDataMap[channelName] += totalEvtRev;
+          kpiSplits[kpiKey].revenue += totalEvtRev;
+          kpiSplits[kpiKey].books += totalEvtSold;
           kpiSplits[kpiKey].orders += 1;
           totalOrders += 1;
 
-          tableData.push({
-            date: fullDateStr,
-            orderId: evt.name || `LEGACY-${evt.id}`,
-            channel: channelName,
-            event: evt.name,
-            author: `${evt.aggAuthors || 0} Authors`,
-            title: '-',
-            genre: '-',
-            subGenre: '-',
-            qty,
-            revenue: rev
-          });
+          let unaccountedQty = totalEvtSold;
+          let unaccountedRev = totalEvtRev;
+
+          if (evt.eventAuthors && evt.eventAuthors.length > 0) {
+            evt.eventAuthors.forEach(ea => {
+              const qty = ea.manualTotalSold;
+              let rev = ea.manualTotalRevenue || 0;
+              if (rev === 0 && totalEvtSold > 0) {
+                rev = Math.round((qty / totalEvtSold) * totalEvtRev);
+              }
+
+              unaccountedQty -= qty;
+              unaccountedRev -= rev;
+
+              let title = '-';
+              let genre = 'Other';
+              let subGenre = '-';
+              if (ea.author && ea.author.books && ea.author.books.length > 0) {
+                const primaryBook = ea.author.books[0];
+                title = ea.author.books.length > 1 ? 'Multiple Books' : primaryBook.title;
+                genre = primaryBook.genre || 'Other';
+                subGenre = primaryBook.subGenre || '-';
+              }
+
+              tableData.push({
+                date: fullDateStr,
+                orderId: evt.name || `EVENT-${evt.id}`,
+                channel: channelName,
+                event: evt.name,
+                author: ea.author?.name || 'Unknown Author',
+                title: title,
+                genre: genre,
+                subGenre: subGenre,
+                qty,
+                revenue: rev
+              });
+            });
+          }
+
+          if (unaccountedQty > 0 || unaccountedRev > 0) {
+            tableData.push({
+              date: fullDateStr,
+              orderId: evt.name || `EVENT-${evt.id}`,
+              channel: channelName,
+              event: evt.name,
+              author: `${evt.aggAuthors || 0} Authors`,
+              title: '-',
+              genre: 'Other',
+              subGenre: '-',
+              qty: unaccountedQty,
+              revenue: unaccountedRev > 0 ? unaccountedRev : 0
+            });
+          }
         }
       }
     });
