@@ -34,7 +34,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries, pendingFines,
     delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
     orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
-    completedOrders
+    completedOrders, topParticipatingAuthors
   } = useMemo(() => {
     // Low stock books (threshold < 10)
     // Exclude if inventory is same AND notified within 24 hours.
@@ -179,11 +179,20 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     const completedOrdersCount = orders.filter((o: any) => o.status === 'Completed' || o.status === 'Dispatched').length;
     const avgOrderValue = completedOrdersCount > 0 ? Math.round(totalRevenueWeb / completedOrdersCount) : 0;
 
+    // Chart Data 5: Top 20 Authors by Participation
+    const topParticipatingAuthors = [...authors]
+      .map(a => {
+        const stats = getAuthorParticipationStats(a, events);
+        return { name: a.name, percentage: stats.percentage, participated: stats.participated, total: stats.total };
+      })
+      .sort((a, b) => b.percentage - a.percentage || b.participated - a.participated)
+      .slice(0, 20);
+
     return {
       lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries: prevQueries, pendingFines,
       delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
       orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
-      completedOrders: completedOrdersCount
+      completedOrders: completedOrdersCount, topParticipatingAuthors
     };
   }, [books, authors, orders, events, stats, localDismissed, notifiedBooks, prevQueries, lastAdminVisit]);
 
@@ -545,6 +554,40 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
                 </div>
               </div>
             )) : <p className="text-xs text-gray-400 py-4 text-center">No completed sales yet.</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* ════ Participation Graph Row ════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
+          <h3 className="text-base font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-purple-500" aria-hidden="true" /> Top 20 Authors by Participation
+          </h3>
+          <div className="h-80 w-full">
+            {topParticipatingAuthors && topParticipatingAuthors.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topParticipatingAuthors} margin={{ top: 15, right: 10, left: 0, bottom: 45 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="name" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} angle={-45} textAnchor="end" interval={0} height={60} />
+                  <YAxis fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
+                  <RechartsTooltip
+                    cursor={{ fill: '#f3f4f6' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                    formatter={(value: any, name: any, props: any) => {
+                      return [`${value}% (${props.payload.participated}/${props.payload.total} events)`, 'Participation'];
+                    }}
+                  />
+                  <Bar dataKey="percentage" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Participation">
+                    {topParticipatingAuthors.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400 text-xs">No participation data available.</div>
+            )}
           </div>
         </div>
       </div>
