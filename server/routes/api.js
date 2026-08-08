@@ -8470,6 +8470,20 @@ router.post('/api/author-invitation', async (req, res) => {
           sendNotificationEmail(author.email, subject, emailWrap("Event Invitation", emailContent)).catch(err => {
             console.error("Failed to send invitation email:", err);
           });
+
+          const { getAdminEmails } = require('../utils/email');
+          if (typeof getAdminEmails === 'function') {
+            const adminSubject = `New Event Invitation Submitted to ${author.name}`;
+            const adminContentHtml = `
+              <p>An event invitation has been sent to author <strong>${author.name}</strong>.</p>
+              <p><strong>Organizer:</strong> ${req.body.customerName} (${req.body.customerEmail})</p>
+              <p><strong>Event:</strong> ${req.body.eventTitle} (${req.body.eventType})</p>
+              <p>Please check the admin dashboard for full details.</p>
+            `;
+            sendNotificationEmail(getAdminEmails(), adminSubject, emailWrap("New Event Invitation", adminContentHtml)).catch(err => {
+              console.error("Failed to send admin invitation email:", err);
+            });
+          }
         }
       }
     } catch (emailErr) {
