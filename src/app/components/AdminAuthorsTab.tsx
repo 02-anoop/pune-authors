@@ -579,12 +579,36 @@ const [showArchived, setShowArchived] = useState(false);
       return <AuthorFullProfileView author={selectedAuthor} onBack={() => setSelectedAuthor(null)} />;
     }
 
+    const filteredAuthors = useMemo(() => {
+      return authors.filter(a => {
+        if (showArchived) return a.isArchived;
+        if (a.isArchived) return false;
+        const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData); } catch (e) { return {}; } })() : (a.extraData || {});
+        const isReapplied = ed?.isReapplied === true;
+        const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase()) || (a.email && a.email.toLowerCase().includes(searchTerm.toLowerCase())) || (a.books && a.books.some((b: any) => b.title.toLowerCase().includes(searchTerm.toLowerCase()) || (b.genre && b.genre.toLowerCase().includes(searchTerm.toLowerCase()))));
+        if (!matchesSearch) return false;
+        if (authorStatusFilter === 'All') return true;
+        if (authorStatusFilter === 'Reapplied') return isReapplied && a.status === 'Pending';
+        if (authorStatusFilter === 'Pending') return a.status === 'Pending' && !isReapplied;
+        if (authorStatusFilter === 'Edited') return a.status === 'Edited';
+        return a.status === authorStatusFilter;
+      }).sort((a, b) => {
+        const edA = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData); } catch (e) { return {}; } })() : (a.extraData || {});
+        const edB = typeof b.extraData === 'string' ? (() => { try { return JSON.parse(b.extraData); } catch (e) { return {}; } })() : (b.extraData || {});
+        if (edA?.isReapplied && !edB?.isReapplied) return -1;
+        if (!edA?.isReapplied && edB?.isReapplied) return 1;
+        if (a.status === 'Pending' && b.status !== 'Pending') return -1;
+        if (a.status !== 'Pending' && b.status === 'Pending') return 1;
+        return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+      });
+    }, [authors, showArchived, searchTerm, authorStatusFilter]);
+
     return (
       <div className="bg-white border border-paa-navy/5 shadow-premium hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-500 ease-out flex flex-col">
         <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-t-xl">
           <div className="flex items-center gap-3">
             <h3 className="text-2xl font-serif font-semibold text-[#0b1a2e] tracking-tight">List of Authors</h3>
-            <span className="bg-[#0b1a2e]/10 text-[#0b1a2e] py-1 px-3 text-xs font-bold shadow-sm rounded-full">{authors.length} Total</span>
+            <span className="bg-[#0b1a2e]/10 text-[#0b1a2e] py-1 px-3 text-xs font-bold shadow-sm rounded-full">{filteredAuthors.length} Total</span>
           </div>
           <div className="relative shrink-0">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
@@ -673,27 +697,7 @@ const [showArchived, setShowArchived] = useState(false);
               </tr>
             </thead>
             <tbody>
-              {authors.filter(a => {
-                if (showArchived) return a.isArchived;
-                if (a.isArchived) return false;
-                const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData); } catch (e) { return {}; } })() : (a.extraData || {});
-                const isReapplied = ed?.isReapplied === true;
-                const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase()) || (a.email && a.email.toLowerCase().includes(searchTerm.toLowerCase())) || (a.books && a.books.some((b: any) => b.title.toLowerCase().includes(searchTerm.toLowerCase()) || (b.genre && b.genre.toLowerCase().includes(searchTerm.toLowerCase()))));
-                if (!matchesSearch) return false;
-                if (authorStatusFilter === 'All') return true;
-                if (authorStatusFilter === 'Reapplied') return isReapplied && a.status === 'Pending';
-                if (authorStatusFilter === 'Pending') return a.status === 'Pending' && !isReapplied;
-                if (authorStatusFilter === 'Edited') return a.status === 'Edited';
-                return a.status === authorStatusFilter;
-              }).sort((a, b) => {
-                const edA = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData); } catch (e) { return {}; } })() : (a.extraData || {});
-                const edB = typeof b.extraData === 'string' ? (() => { try { return JSON.parse(b.extraData); } catch (e) { return {}; } })() : (b.extraData || {});
-                if (edA?.isReapplied && !edB?.isReapplied) return -1;
-                if (!edA?.isReapplied && edB?.isReapplied) return 1;
-                if (a.status === 'Pending' && b.status !== 'Pending') return -1;
-                if (a.status !== 'Pending' && b.status === 'Pending') return 1;
-                return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
-              }).map((author, idx) => (
+              {filteredAuthors.map((author, idx) => (
                 <tr key={author.id} className={`${selectedAuthorIds.includes(author.id) ? 'bg-indigo-100' : (idx % 2 === 0 ? 'bg-white' : 'bg-[#ebd8c0]')} hover:bg-sky-100 transition-colors`}>
                   <td className="text-center p-1 border-[1.5px] border-black align-middle">
                     <input
