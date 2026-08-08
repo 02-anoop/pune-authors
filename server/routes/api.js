@@ -2502,6 +2502,7 @@ router.put('/api/author/inventory/:id', verifyToken, async (req, res) => {
       where: { id: bookId, authorId: author.id },
       data: { stock: parseInt(stock) }
     });
+    invalidateCache(`author:dashboard:${req.user.email}`);
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -2659,6 +2660,7 @@ router.put('/api/author/books/:id', verifyToken, async (req, res) => {
       }
     });
     deleteCatalogueCache();
+    invalidateCache(`author:dashboard:${req.user.email}`);
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -2680,20 +2682,14 @@ router.put('/api/author/books/:id/cover', verifyToken, upload.single('cover'), a
 
     const coverUrl = `/uploads/${req.file.filename}`;
 
-    let isOverpriced = false;
-    if (pages && printFormat && mrp) {
-      const rate = printFormat === 'Black & White' ? 1 : 3;
-      const fairPrice = (parseInt(pages) * rate) + 100;
-      isOverpriced = parseFloat(mrp) > fairPrice;
-    }
-
     const updated = await prisma.book.update({
       where: { id: bookId },
       data: {
-        ...(mrp !== undefined && pages !== undefined && printFormat !== undefined && { overpriced: isOverpriced }), coverUrl
+        coverUrl
       }
     });
     deleteCatalogueCache();
+    invalidateCache(`author:dashboard:${req.user.email}`);
     res.json(updated);
   } catch (err) {
     console.error(err);
