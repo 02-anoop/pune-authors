@@ -82,20 +82,41 @@ const [showArchived, setShowArchived] = useState(false);
 
   const getQualificationText = (a: any) => {
     const qj = a.qualificationsJson || a.qualifications;
+    const formatEntry = (q: any) => {
+      if (typeof q !== 'object' || !q) return String(q || '');
+      const deg = q.qualification || q.degree || '';
+      const subj = q.subject || q.major || q.specialization || '';
+      if (deg && subj && subj !== 'N/A' && subj !== 'NA') return `${deg} (${subj})`;
+      return deg || subj || '';
+    };
+
     if (qj) {
       if (Array.isArray(qj) && qj.length > 0) {
-        return qj.map((q: any) => typeof q === 'object' ? (q.qualification || q.degree || '') : String(q)).filter(Boolean).join(', ');
+        const formatted = qj.map(formatEntry).filter(Boolean);
+        if (formatted.length > 0) return formatted.join(', ');
       }
       if (typeof qj === 'string') {
         try {
           const parsed = JSON.parse(qj);
-          if (Array.isArray(parsed)) {
-            return parsed.map((q: any) => typeof q === 'object' ? (q.qualification || q.degree || '') : String(q)).filter(Boolean).join(', ');
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const formatted = parsed.map(formatEntry).filter(Boolean);
+            if (formatted.length > 0) return formatted.join(', ');
           }
         } catch (e) { }
       }
     }
-    return a.qualification || '';
+
+    const raw = a.qualification || '';
+    if (typeof raw === 'string' && raw.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const formatted = parsed.map(formatEntry).filter(Boolean);
+          if (formatted.length > 0) return formatted.join(', ');
+        }
+      } catch (e) { }
+    }
+    return raw;
   };
 
   const getInstituteText = (a: any) => {
