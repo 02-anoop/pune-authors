@@ -7320,7 +7320,7 @@ const totalAuthorsBase = eventRegistrations.length;
                 )}
                 {filteredTableEvents.length > 0 && (
                   <tr className="bg-[#F7C79B] font-bold text-black border-[1.5px] border-black text-[13px]">
-                    <td colSpan={8} className="p-1 text-right pr-4 align-middle border-[1.5px] border-black">
+                    <td colSpan={8} className="p-1 text-center font-bold uppercase tracking-widest align-middle border-[1.5px] border-black">
                       Yearly Total
                     </td>
                     <td className="p-1 text-center align-middle border-[1.5px] border-black">
