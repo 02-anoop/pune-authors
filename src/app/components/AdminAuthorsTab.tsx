@@ -233,7 +233,7 @@ const [showArchived, setShowArchived] = useState(false);
         booksData: 'Books Catalogue',
       };
 
-      const selectedHeaders = selectedFieldIds.map(id => headersMap[id] || id);
+      const selectedHeaders = ['Sr. No.', ...selectedFieldIds.map(id => headersMap[id] || id)];
 
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Authors Directory');
@@ -295,9 +295,9 @@ const [showArchived, setShowArchived] = useState(false);
       };
 
       // Data Rows
-      targetAuthors.forEach((rawAuthor: any) => {
+      targetAuthors.forEach((rawAuthor: any, idx: number) => {
         const m = getMergedAuthor(rawAuthor);
-        const rowData: any[] = [];
+        const rowData: any[] = [idx + 1]; // Sr. No. (1, 2, 3, ...)
 
         selectedFieldIds.forEach(fieldId => {
           let val = '';
@@ -344,7 +344,21 @@ const [showArchived, setShowArchived] = useState(false);
         addedRow.height = Math.max(26, Math.min(maxLines * 18, 90));
 
         addedRow.eachCell((cell, colIndex) => {
-          const fieldId = selectedFieldIds[colIndex - 1];
+          if (colIndex === 1) {
+            // Format Sr. No. Column
+            cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF1E293B' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }; // Light Slate
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+              bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+              left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+              right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+            };
+            return;
+          }
+
+          const fieldId = selectedFieldIds[colIndex - 2];
           cell.font = { name: 'Arial', size: 10, color: { argb: 'FF111827' } };
           cell.border = {
             top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
@@ -368,6 +382,10 @@ const [showArchived, setShowArchived] = useState(false);
 
       // Auto width starting from Header Row 4 (ignoring title banner rows 1 & 2)
       sheet.columns.forEach((column, colIdx) => {
+        if (colIdx === 0) {
+          column.width = 10;
+          return;
+        }
         let maxLength = 16;
         sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
           if (rowNumber >= 4) { // Only inspect Header and Data rows
