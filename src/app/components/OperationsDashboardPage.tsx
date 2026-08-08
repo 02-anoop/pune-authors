@@ -7517,9 +7517,9 @@ const totalAuthorsBase = eventRegistrations.length;
       });
 
       authors.forEach((author) => {
-        const joinedDate = author.createdAt
-          ? new Date(author.createdAt).toLocaleDateString()
-          : "";
+        const joinedDate = author.groupJoiningDate
+          ? new Date(author.groupJoiningDate).toLocaleDateString()
+          : (author.createdAt ? new Date(author.createdAt).toLocaleDateString() : "");
         const extra =
           typeof author.extraData === "string"
             ? JSON.parse(author.extraData)

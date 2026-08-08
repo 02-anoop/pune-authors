@@ -1086,7 +1086,7 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
 
       return {
         ...a,
-        joined: a.createdAt.toISOString().split('T')[0],
+        joined: a.groupJoiningDate ? a.groupJoiningDate.toISOString().split('T')[0] : a.createdAt.toISOString().split('T')[0],
         totalBooks: a._count.books,
         eventsPart: a._count.eventRegistrations + a._count.eventAuthors,
         eventParticipation: a.eventAuthors.map(ea => ({
