@@ -67,21 +67,44 @@ const [showArchived, setShowArchived] = useState(false);
     setSelectedFieldIds(['name', 'email', 'phone']);
   };
 
+  const pickFirst = (...vals: any[]) => {
+    for (const v of vals) {
+      if (v !== null && v !== undefined && v !== '') {
+        if (Array.isArray(v) && v.length === 0) continue;
+        return v;
+      }
+    }
+    return '';
+  };
+
   const getMergedAuthor = (author: any) => {
     const ed = parseExtraData(author.extraData);
     const opd = parseExtraData(ed?.originalProfileData);
+
+    // Only explicitly pick fields that may be stored in extraData/originalProfileData.
+    // Do NOT spread ...ed or ...opd — that would overwrite root fields like name, email, books, etc.
     return {
-      ...opd,
-      ...ed,
       ...author,
-      qualificationsJson: author.qualificationsJson || ed.qualificationsJson || opd.qualificationsJson || author.qualifications || ed.qualifications || opd.qualifications,
-      skillsJson: author.skillsJson || ed.skillsJson || opd.skillsJson || author.skills || ed.skills || opd.skills,
-      hobbiesJson: author.hobbiesJson || ed.hobbiesJson || opd.hobbiesJson || author.hobbies || ed.hobbies || opd.hobbies,
+      qualification: pickFirst(author.qualification, ed.qualification, opd.qualification),
+      qualificationsJson: pickFirst(author.qualificationsJson, ed.qualificationsJson, opd.qualificationsJson, author.qualifications, ed.qualifications, opd.qualifications),
+      institution: pickFirst(author.institution, ed.institution, opd.institution, ed.college, opd.college, ed.university, opd.university),
+      skills: pickFirst(author.skills, ed.skills, opd.skills),
+      skillsJson: pickFirst(author.skillsJson, ed.skillsJson, opd.skillsJson, author.skills, ed.skills, opd.skills),
+      hobbies: pickFirst(author.hobbies, ed.hobbies, opd.hobbies),
+      hobbiesJson: pickFirst(author.hobbiesJson, ed.hobbiesJson, opd.hobbiesJson, author.hobbies, ed.hobbies, opd.hobbies),
+      age: pickFirst(author.age, author.dob, ed.age, ed.dob, opd.age, opd.dob),
+      instagram: pickFirst(author.instagram, ed.instagram, opd.instagram),
+      facebook: pickFirst(author.facebook, ed.facebook, opd.facebook),
+      linkedin: pickFirst(author.linkedin, ed.linkedin, opd.linkedin),
+      youtube: pickFirst(author.youtube, ed.youtube, opd.youtube),
+      penName: pickFirst(author.penName, ed.penName, opd.penName),
+      city: pickFirst(author.city, ed.city, opd.city),
+      state: pickFirst(author.state, ed.state, opd.state),
     };
   };
 
   const getQualificationText = (a: any) => {
-    const qj = a.qualificationsJson || a.qualifications;
+    const qj = a.qualificationsJson || a.qualification;
     const formatEntry = (q: any) => {
       if (typeof q !== 'object' || !q) return String(q || '');
       const deg = q.qualification || q.degree || '';
@@ -121,7 +144,7 @@ const [showArchived, setShowArchived] = useState(false);
 
   const getInstituteText = (a: any) => {
     if (a.institution) return a.institution;
-    const qj = a.qualificationsJson || a.qualifications;
+    const qj = a.qualificationsJson || a.qualification;
     if (qj) {
       if (Array.isArray(qj) && qj.length > 0) {
         return qj.map((q: any) => typeof q === 'object' ? (q.institution || q.college || q.university || '') : '').filter(Boolean).join(', ');
@@ -199,7 +222,8 @@ const [showArchived, setShowArchived] = useState(false);
           const res = await axios.get(`${API}/api/admin/authors?limit=5000`, {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
           });
-          targetAuthors = res.data.authors || authors || [];
+          const fetchedList = res.data.data || res.data.authors || (Array.isArray(res.data) ? res.data : []);
+          targetAuthors = fetchedList.length > 0 ? fetchedList : (authors || []);
         } catch (e) {
           targetAuthors = authors || [];
         }
