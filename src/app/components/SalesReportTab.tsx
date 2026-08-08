@@ -234,6 +234,18 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
     };
   }, [salesData?.tableData]);
 
+  const genreSalesData = useMemo(() => {
+    if (!salesData?.tableData) return [];
+    const map: Record<string, { genre: string; books: number; revenue: number }> = {};
+    salesData.tableData.forEach((row: any) => {
+      const g = row.genre && row.genre !== '-' ? row.genre : 'Other';
+      if (!map[g]) map[g] = { genre: g, books: 0, revenue: 0 };
+      map[g].books += row.qty || 0;
+      map[g].revenue += row.revenue || 0;
+    });
+    return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+  }, [salesData?.tableData]);
+
   return (
     <div className="space-y-6">
       {/* Top Bar: Controls */}
@@ -324,10 +336,16 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-2 h-[300px] bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
               <div className="h-4 w-40 bg-gray-200 animate-pulse rounded mb-6"></div>
               <div className="flex-1 w-full bg-gray-50 animate-pulse rounded-xl"></div>
+            </div>
+            <div className="h-[300px] bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
+              <div className="h-4 w-32 bg-gray-200 animate-pulse rounded mb-4"></div>
+              <div className="flex-1 space-y-4">
+                {[1, 2, 3, 4].map(i => <div key={i} className="h-10 w-full bg-gray-50 animate-pulse rounded-lg"></div>)}
+              </div>
             </div>
             <div className="h-[300px] bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
               <div className="h-4 w-32 bg-gray-200 animate-pulse rounded mb-2"></div>
@@ -405,7 +423,7 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
           </div>
 
           {/* Row 2: Visualizations - Recharts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative min-h-[300px]">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 relative min-h-[300px]">
               <div className="lg:col-span-2 border border-paa-navy/5 p-5 md:p-6 rounded-2xl bg-white shadow-sm flex flex-col">
                 <h4 className="text-xs font-bold text-paa-navy uppercase tracking-widest mb-6">Revenue Over Time</h4>
                 <div className="flex-1 w-full min-h-[250px]">
@@ -479,6 +497,26 @@ export const SalesReportTab = ({ refreshTrigger }: { refreshTrigger?: number }) 
                       </Line>
                     </LineChart>
                   </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="border border-paa-navy/5 p-5 md:p-6 rounded-2xl bg-white shadow-sm flex flex-col">
+                <h4 className="text-xs font-bold text-paa-navy uppercase tracking-widest mb-2">Sales by Genre</h4>
+                <p className="text-[10px] text-gray-400 mb-4 font-medium">Top performing categories</p>
+                <div className="flex-1 w-full overflow-y-auto pr-2 space-y-3 custom-scrollbar min-h-[220px]">
+                  {genreSalesData.length > 0 ? genreSalesData.map((g, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-gray-50/50 p-2.5 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                      <div className="min-w-0 pr-2">
+                        <p className="text-xs font-bold text-paa-navy truncate" title={g.genre}>{g.genre}</p>
+                        <p className="text-[10px] font-semibold text-indigo-500/80 uppercase tracking-widest">{g.books} units</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-[11px] font-black text-paa-navy">₹{g.revenue.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="h-full flex items-center justify-center text-gray-400 text-xs italic">No genre data</div>
+                  )}
                 </div>
               </div>
 
