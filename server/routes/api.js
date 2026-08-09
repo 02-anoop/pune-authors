@@ -974,7 +974,7 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
 
     const allSystemEvents = await prisma.event.findMany({
       where: { broadcastStatus: { not: 'Draft' } },
-      select: { id: true, date: true, status: true }
+      select: { id: true, date: true, status: true, eventType: true }
     });
 
     const [authors, total] = await Promise.all([
@@ -1036,13 +1036,31 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
             select: {
               eventId: true,
               optInStatus: true,
-              event: { select: { name: true, date: true } }
+              event: { select: { name: true, date: true, eventType: true } }
             }
           },
           eventRegistrations: {
             select: {
               activityId: true,
               status: true
+            }
+          },
+          donationRegistrations: {
+            select: {
+              announcement: {
+                select: {
+                  libraryId: true
+                }
+              }
+            }
+          },
+          _count: {
+            select: {
+              books: true,
+              eventRegistrations: true,
+              eventAuthors: true,
+              donationRegistrations: true,
+              authorInvitations: true
             }
           }
         },
@@ -1067,26 +1085,71 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
       } catch (e) { return new Date(0); }
     };
 
+    // Fetch all event request contactInquiries submitted by authors
+    const allEventRequests = await prisma.contactInquiry.findMany({
+      where: { message: { contains: '[EVENT REQUEST]' } },
+      select: { email: true, name: true }
+    });
+
+    const eventReqCountMap = {};
+    allEventRequests.forEach(er => {
+      if (er.email) {
+        const em = er.email.toLowerCase().trim();
+        eventReqCountMap[em] = (eventReqCountMap[em] || 0) + 1;
+      }
+    });
+
     const mapped = authors.map(a => {
       const joinDate = a.groupJoiningDate ? new Date(a.groupJoiningDate) : new Date(a.createdAt);
       joinDate.setHours(0, 0, 0, 0);
 
-      let eligibleCount = 0;
+      // Split eligible events into Events (Meet the Authors) and Fairs (Stall) since joining date
+      let eligibleEventsCount = 0;
+      let eligibleFairsCount = 0;
       allSystemEvents.forEach(e => {
         const eTime = parseEvDate(e.date || e.startDate).getTime();
-        if (eTime >= joinDate.getTime()) eligibleCount++;
+        if (eTime >= joinDate.getTime()) {
+          if (e.eventType === 'Stall') eligibleFairsCount++;
+          else eligibleEventsCount++;
+        }
       });
+      const eligibleCount = eligibleEventsCount + eligibleFairsCount;
 
-      let participatedCount = 0;
+      // Split participated into Events and Fairs
+      let participatedEventsCount = 0;
+      let participatedFairsCount = 0;
+      const VALID_STATUSES = ['Registered', 'Approved', 'Pending Approval'];
       if (a.eventAuthors) {
-        participatedCount += a.eventAuthors.filter(ei => ei.optInStatus === 'Registered' || ei.optInStatus === 'Approved' || ei.optInStatus === 'Pending Approval').length;
+        a.eventAuthors.forEach(ei => {
+          if (VALID_STATUSES.includes(ei.optInStatus)) {
+            if (ei.event && ei.event.eventType === 'Stall') participatedFairsCount++;
+            else participatedEventsCount++;
+          }
+        });
       }
       if (a.eventRegistrations) {
         const inviteEventIds = new Set(a.eventAuthors ? a.eventAuthors.map(ei => ei.eventId) : []);
-        participatedCount += a.eventRegistrations.filter(er => {
-          if (er.activityId && inviteEventIds.has(er.activityId)) return false;
-          return er.status === 'Registered' || er.status === 'Approved' || er.status === 'Pending Approval';
-        }).length;
+        a.eventRegistrations.forEach(er => {
+          if (er.activityId && inviteEventIds.has(er.activityId)) return;
+          if (VALID_STATUSES.includes(er.status)) participatedEventsCount++;
+        });
+      }
+      const participatedCount = participatedEventsCount + participatedFairsCount;
+
+      const edParsed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData || '{}') } catch (e) { return {} } })() : (a.extraData || {});
+      const aEmail = (a.email || '').toLowerCase().trim();
+      const reqCount = eventReqCountMap[aEmail] || 0;
+      const extraOrgCount = edParsed.eventsOrganisedCount || edParsed.organizedEventsCount || edParsed.organizedEvents || 0;
+      const eventsOrganisedCount = Math.max(reqCount, typeof extraOrgCount === 'number' ? extraOrgCount : 0);
+
+      // Count distinct libraries donated to by this author
+      const distinctLibraries = new Set();
+      if (a.donationRegistrations) {
+        a.donationRegistrations.forEach(dr => {
+          if (dr.announcement && dr.announcement.libraryId) {
+            distinctLibraries.add(dr.announcement.libraryId);
+          }
+        });
       }
 
       return {
@@ -1098,9 +1161,20 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
           ...ea,
           status: ea.optInStatus === 'Awaiting Approval' ? 'Pending' : ea.optInStatus
         })),
+        // Combined (original)
         aggEligibleEvents: eligibleCount,
         aggParticipatedEvents: participatedCount,
-        extraData: typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData || '{}') } catch (e) { return {} } })() : (a.extraData || {})
+        // Events (Meet the Authors)
+        aggEligibleEventsMeet: eligibleEventsCount,
+        aggParticipatedEventsMeet: participatedEventsCount,
+        // Fairs (Stall)
+        aggEligibleFairs: eligibleFairsCount,
+        aggParticipatedFairs: participatedFairsCount,
+        // Library donations (count of distinct libraries donated to)
+        libraryDonationsCount: distinctLibraries.size,
+        // Events organised by the author
+        eventsOrganisedCount: eventsOrganisedCount,
+        extraData: edParsed
       };
     });
 

@@ -714,6 +714,9 @@ const [showArchived, setShowArchived] = useState(false);
                 <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">Location</th>
                 <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">Status</th>
                 <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">Participation</th>
+                <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">Fairs</th>
+                <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">Library Donations</th>
+                <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">Events Organised</th>
                 <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">Books</th>
                 <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">Actions</th>
               </tr>
@@ -801,6 +804,7 @@ const [showArchived, setShowArchived] = useState(false);
                       );
                     })()}
                   </td>
+                  {/* Overall Participation */}
                   <td className="p-1 border-[1.5px] border-black text-center align-middle">
                     {author.aggEligibleEvents > 0 ? (
                       <div>
@@ -810,6 +814,27 @@ const [showArchived, setShowArchived] = useState(false);
                     ) : (
                       <span className="text-gray-400 text-xs font-bold uppercase">N/A</span>
                     )}
+                  </td>
+                  {/* Fairs (Stall) */}
+                  <td className="p-1 border-[1.5px] border-black text-center align-middle">
+                    {author.aggEligibleFairs > 0 ? (
+                      <div>
+                        <div className="font-bold text-purple-700 text-sm">{author.aggParticipatedFairs}/{author.aggEligibleFairs}</div>
+                        <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Fairs</div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-xs font-bold uppercase">N/A</span>
+                    )}
+                  </td>
+                  {/* Library Donations */}
+                  <td className="p-1 border-[1.5px] border-black text-center align-middle">
+                    <div className="font-bold text-emerald-700 text-sm">{author.libraryDonationsCount ?? 0}</div>
+                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Libraries</div>
+                  </td>
+                  {/* Events Organised */}
+                  <td className="p-1 border-[1.5px] border-black text-center align-middle">
+                    <div className="font-bold text-orange-700 text-sm">{author.eventsOrganisedCount ?? 0}</div>
+                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Organised</div>
                   </td>
                   <td className="p-1 border-[1.5px] border-black text-center font-bold text-paa-navy align-middle">
                     {author.totalBooks}
