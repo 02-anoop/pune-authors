@@ -557,31 +557,6 @@ const [showArchived, setShowArchived] = useState(false);
       }
     };
 
-    if (selectedPendingAuthor) {
-      return (
-        <div className="bg-white fixed inset-0 z-50 overflow-y-auto">
-          <AuthorRegistrationPage
-            initialData={selectedPendingAuthor}
-            isAdminEdit={true}
-            onAdminCancel={() => setSelectedPendingAuthor(null)}
-            onAdminSave={() => {
-              setSelectedPendingAuthor(null);
-              fetchAuthors();
-              if (typeof fetchBooks === 'function') fetchBooks();
-            }}
-            onAdminReject={() => {
-              openRejectAuthorModal(selectedPendingAuthor);
-              setSelectedPendingAuthor(null);
-            }}
-          />
-        </div>
-      );
-    }
-
-    if (selectedAuthor) {
-      return <AuthorFullProfileView author={selectedAuthor} onBack={() => setSelectedAuthor(null)} />;
-    }
-
     const filteredAuthors = useMemo(() => {
       if (showArchived) {
         // Show the archived authors fetched from the backend
@@ -611,8 +586,33 @@ const [showArchived, setShowArchived] = useState(false);
       });
     }, [authors, archivedAuthors, showArchived, searchTerm, authorStatusFilter]);
 
+    if (selectedPendingAuthor) {
+      return (
+        <div className="bg-white fixed inset-0 z-50 overflow-y-auto">
+          <AuthorRegistrationPage
+            initialData={selectedPendingAuthor}
+            isAdminEdit={true}
+            onAdminCancel={() => setSelectedPendingAuthor(null)}
+            onAdminSave={() => {
+              setSelectedPendingAuthor(null);
+              fetchAuthors();
+              if (typeof fetchBooks === 'function') fetchBooks();
+            }}
+            onAdminReject={() => {
+              openRejectAuthorModal(selectedPendingAuthor);
+              setSelectedPendingAuthor(null);
+            }}
+          />
+        </div>
+      );
+    }
+
+    if (selectedAuthor) {
+      return <AuthorFullProfileView author={selectedAuthor} onBack={() => setSelectedAuthor(null)} />;
+    }
+
     return (
-      <div className="bg-white border border-paa-navy/5 shadow-premium hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-500 ease-out flex flex-col">
+      <div className="bg-white border border-paa-navy/5 shadow-premium hover:shadow-premium-hover transition-all duration-500 ease-out flex flex-col max-h-[calc(100vh-120px)] overflow-auto">
         <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-t-xl">
           <div className="flex items-center gap-3">
             <h3 className="text-2xl font-serif font-semibold text-[#0b1a2e] tracking-tight">List of Authors</h3>
@@ -691,9 +691,9 @@ const [showArchived, setShowArchived] = useState(false);
           </div>
         </div>
 
-        <div className="overflow-x-auto w-full" style={{ contentVisibility: "auto", containIntrinsicSize: "800px" }}>
+        <div className="w-full relative" style={{ contentVisibility: "auto", containIntrinsicSize: "800px" }}>
           <table className="w-full text-left text-[11px] border-collapse border-[1.5px] border-black">
-            <thead className="bg-indigo-50 border-b-2 border-indigo-100">
+            <thead className="bg-indigo-50 border-b-2 border-indigo-100 sticky top-0 z-10 shadow-sm">
               <tr>
                 <th className="w-10 text-center p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">
                   <input
@@ -709,7 +709,7 @@ const [showArchived, setShowArchived] = useState(false);
                     className="w-4 h-4 rounded border-gray-300 text-paa-navy focus:ring-paa-navy cursor-pointer"
                   />
                 </th>
-                <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">Author Details</th>
+                <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">Author Name</th>
                 <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">Contact</th>
                 <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">Location</th>
                 <th className="p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">Status</th>
@@ -806,14 +806,19 @@ const [showArchived, setShowArchived] = useState(false);
                   </td>
                   {/* Overall Participation */}
                   <td className="p-1 border-[1.5px] border-black text-center align-middle">
-                    {author.aggEligibleEvents > 0 ? (
-                      <div>
-                        <div className="font-bold text-paa-navy text-sm">{Math.round((author.aggParticipatedEvents / author.aggEligibleEvents) * 100)}%</div>
-                        <div className="text-[10px] font-medium text-gray-500 uppercase">{author.aggParticipatedEvents}/{author.aggEligibleEvents} Events & Fairs</div>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 text-xs font-bold uppercase">N/A</span>
-                    )}
+                    {(() => {
+                      const eligibleEventsOnly = Math.max(0, (author.aggEligibleEvents || 0) - (author.aggEligibleFairs || 0));
+                      const participatedEventsOnly = Math.max(0, (author.aggParticipatedEvents || 0) - (author.aggParticipatedFairs || 0));
+                      
+                      return eligibleEventsOnly > 0 ? (
+                        <div>
+                          <div className="font-bold text-paa-navy text-sm">{Math.round((participatedEventsOnly / eligibleEventsOnly) * 100)}%</div>
+                          <div className="text-[10px] font-medium text-gray-500 uppercase">{participatedEventsOnly}/{eligibleEventsOnly} Events</div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs font-bold uppercase">N/A</span>
+                      );
+                    })()}
                   </td>
                   {/* Fairs (Stall) */}
                   <td className="p-1 border-[1.5px] border-black text-center align-middle">

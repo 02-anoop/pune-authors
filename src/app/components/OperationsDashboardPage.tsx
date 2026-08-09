@@ -953,6 +953,9 @@ export function OperationsDashboardPage() {
   const [authorsPage, setAuthorsPage] = useState(1);
 
   // Modals state
+  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [participantsData, setParticipantsData] = useState<any>(null);
+  const [isLoadingParticipants, setIsLoadingParticipants] = useState(false);
   const [isAuthorModalOpen, setIsAuthorModalOpen] = useState(false);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
@@ -3511,7 +3514,7 @@ export function OperationsDashboardPage() {
           </div>
         </div>
       )}
-      <div className="bg-white border border-paa-navy/5 shadow-premium hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-500 ease-out flex flex-col">
+      <div className="bg-white border border-paa-navy/5 shadow-premium hover:shadow-premium-hover transition-all duration-500 ease-out flex flex-col max-h-[calc(100vh-120px)] overflow-auto">
         <div className="p-4 border-b border-paa-navy/5 flex flex-col gap-3 bg-white">
           <div className="flex items-center gap-2">
             <h3 className="text-2xl font-serif font-semibold text-paa-navy tracking-tight">
@@ -3560,7 +3563,7 @@ export function OperationsDashboardPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto w-full">
+        <div className="w-full relative">
           <table className="w-full text-left text-[11px] border-collapse" style={{ minWidth: 2200 }}>
             <thead>
               <tr>
@@ -5957,13 +5960,16 @@ const totalAuthorsBase = eventRegistrations.length;
 
     const chartData = chartEvents.map((e: any) => ({
       name: e.name,
-      booksSold:
-        (e.isLegacy
+      booksSold: Number(
+        e.aggSold != null
           ? e.aggSold
-          : e.eventBooks?.reduce(
-              (s: number, eb: any) => s + (eb.soldStock || 0),
-              0,
-            )) || 0,
+          : e.isLegacy
+            ? (e.aggSold || 0)
+            : e.eventBooks?.reduce(
+                (s: number, eb: any) => s + (eb.soldStock || 0),
+                0,
+              ) || 0
+      ) || 0,
     }));
 
     let dateRangeString = "All Time";
@@ -6097,14 +6103,11 @@ const totalAuthorsBase = eventRegistrations.length;
       .filter((evt) => evt.participationPercentage > 0)
       .sort((a, b) => b.participationPercentage - a.participationPercentage);
 
-    const handleDownloadParticipantsList = async () => {
-      const toastId = toast.loading("Generating Participants List...");
+    const handleViewParticipantsList = async () => {
+      setShowParticipantsModal(true);
+      if (participantsData) return; // Prevent re-fetching if data already exists
+      setIsLoadingParticipants(true);
       try {
-        const ExcelJS = (await import("exceljs")).default;
-        const { saveAs } = await import("file-saver");
-        const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet("Participants List");
-
         const sortedEvents = [...allCombinedEvents].sort((a, b) => {
           let da = new Date(a.date).getTime();
           let db = new Date(b.date).getTime();
@@ -6115,54 +6118,6 @@ const totalAuthorsBase = eventRegistrations.length;
 
         const headers = ["S.No", "Author Name"];
         sortedEvents.forEach((e) => headers.push(e.name));
-
-        const headerRow = sheet.addRow(headers);
-        headerRow.eachCell((cell, colNumber) => {
-          cell.font = { bold: true, color: { argb: "FF000000" } };
-          cell.alignment = {
-            horizontal: "center",
-            vertical: "middle",
-            wrapText: true,
-          };
-          cell.border = {
-            top: { style: "thin" },
-            bottom: { style: "thin" },
-            left: { style: "thin" },
-            right: { style: "thin" },
-          };
-
-          if (colNumber <= 2) {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFD4AF37" },
-            };
-          } else {
-            const evt = sortedEvents[colNumber - 3];
-            const catLower = (
-              evt.category ||
-              evt.eventType ||
-              evt.name ||
-              ""
-            ).toLowerCase();
-            let catColor = "FFFFFFFF";
-            if (catLower.includes("housing") || catLower.includes("college"))
-              catColor = "FFF4C2C2";
-            else if (
-              catLower.includes("corporate") ||
-              catLower.includes("university")
-            )
-              catColor = "FFFFFF00";
-            else if (catLower.includes("book fair")) catColor = "FF00FF00";
-            else if (catLower.includes("fair")) catColor = "FF90EE90";
-            else catColor = "FFB0C4DE";
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: catColor },
-            };
-          }
-        });
 
         const columnSums = new Array(sortedEvents.length).fill(0);
 
@@ -6175,6 +6130,8 @@ const totalAuthorsBase = eventRegistrations.length;
           },
         );
         const allAuthors = authorsRes.data.data || [];
+        
+        const rows: any[][] = [];
 
         allAuthors.forEach((author: any, idx: number) => {
           const rowData = [idx + 1, author.name];
@@ -6209,21 +6166,57 @@ const totalAuthorsBase = eventRegistrations.length;
               rowData.push("");
             }
           });
+          
+          rows.push(rowData);
+        });
 
+        setParticipantsData({ headers, rows, sums: columnSums, sortedEvents });
+      } catch (err) {
+        toast.error("Failed to fetch Participants List");
+        console.error(err);
+      } finally {
+        setIsLoadingParticipants(false);
+      }
+    };
+
+    const handleDownloadExcel = async () => {
+      if (!participantsData) return;
+      const toastId = toast.loading("Generating Excel file...");
+      try {
+        const ExcelJS = (await import("exceljs")).default;
+        const { saveAs } = await import("file-saver");
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet("Participants List");
+        
+        const { headers, rows, sums, sortedEvents } = participantsData;
+        
+        const headerRow = sheet.addRow(headers);
+        headerRow.eachCell((cell, colNumber) => {
+          cell.font = { bold: true, color: { argb: "FF000000" } };
+          cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+          cell.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+
+          if (colNumber <= 2) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD4AF37" } };
+          } else {
+            const evt = sortedEvents[colNumber - 3];
+            const catLower = (evt.category || evt.eventType || evt.name || "").toLowerCase();
+            let catColor = "FFFFFFFF";
+            if (catLower.includes("housing") || catLower.includes("college")) catColor = "FFF4C2C2";
+            else if (catLower.includes("corporate") || catLower.includes("university")) catColor = "FFFFFF00";
+            else if (catLower.includes("book fair")) catColor = "FF00FF00";
+            else if (catLower.includes("fair")) catColor = "FF90EE90";
+            else catColor = "FFB0C4DE";
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: catColor } };
+          }
+        });
+
+        rows.forEach((rowData: any[]) => {
           const addedRow = sheet.addRow(rowData);
           addedRow.eachCell((cell, colNumber) => {
-            cell.border = {
-              top: { style: "thin" },
-              bottom: { style: "thin" },
-              left: { style: "thin" },
-              right: { style: "thin" },
-            };
+            cell.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
             if (colNumber > 2 && cell.value === "PARTICIPATED") {
-              cell.fill = {
-                type: "pattern",
-                pattern: "solid",
-                fgColor: { argb: "FF00FF00" },
-              };
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF00FF00" } };
               cell.font = { bold: true };
               cell.alignment = { horizontal: "center" };
             } else if (colNumber === 2) {
@@ -6233,47 +6226,24 @@ const totalAuthorsBase = eventRegistrations.length;
         });
 
         const sumRowData: any[] = ["-", "TOTAL PARTICIPANTS"];
-        columnSums.forEach((sum) => sumRowData.push(sum));
+        sums.forEach((sum: number) => sumRowData.push(sum));
         const sumRow = sheet.addRow(sumRowData);
         sumRow.eachCell((cell, colNumber) => {
           cell.font = { bold: true };
           cell.alignment = { horizontal: "center" };
-          cell.border = {
-            top: { style: "thick" },
-            bottom: { style: "thick" },
-            left: { style: "thin" },
-            right: { style: "thin" },
-          };
+          cell.border = { top: { style: "thick" }, bottom: { style: "thick" }, left: { style: "thin" }, right: { style: "thin" } };
           if (colNumber > 2) {
             const evt = sortedEvents[colNumber - 3];
-            const catLower = (
-              evt.category ||
-              evt.eventType ||
-              evt.name ||
-              ""
-            ).toLowerCase();
+            const catLower = (evt.category || evt.eventType || evt.name || "").toLowerCase();
             let catColor = "FFFFFFFF";
-            if (catLower.includes("housing") || catLower.includes("college"))
-              catColor = "FFF4C2C2";
-            else if (
-              catLower.includes("corporate") ||
-              catLower.includes("university")
-            )
-              catColor = "FFFFFF00";
+            if (catLower.includes("housing") || catLower.includes("college")) catColor = "FFF4C2C2";
+            else if (catLower.includes("corporate") || catLower.includes("university")) catColor = "FFFFFF00";
             else if (catLower.includes("book fair")) catColor = "FF00FF00";
             else if (catLower.includes("fair")) catColor = "FF90EE90";
             else catColor = "FFB0C4DE";
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: catColor },
-            };
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: catColor } };
           } else {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFD4AF37" },
-            };
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD4AF37" } };
           }
         });
 
@@ -6284,15 +6254,13 @@ const totalAuthorsBase = eventRegistrations.length;
         }
 
         const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
+        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         saveAs(blob, "participants_list.xlsx");
         toast.dismiss(toastId);
-        toast.success("Participants List generated successfully!");
+        toast.success("Participants List Excel downloaded!");
       } catch (err) {
         toast.dismiss(toastId);
-        toast.error("Failed to generate Participants List");
+        toast.error("Failed to generate Excel file");
         console.error(err);
       }
     };
@@ -6305,11 +6273,107 @@ const totalAuthorsBase = eventRegistrations.length;
           </h3>
           <div className="flex flex-wrap gap-3">
             <button
-              onClick={handleDownloadParticipantsList}
+              onClick={handleViewParticipantsList}
               className="dash-btn dash-btn-ghost flex items-center gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
             >
-              <Download className="w-4 h-4" /> Download Participants List
+              <Eye className="w-4 h-4" /> View Participants List
             </button>
+            {showParticipantsModal && (
+              <div className="fixed inset-0 md:left-64 z-[100] bg-white flex flex-col animate-in fade-in slide-in-from-right-4 duration-300 shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.1)]">
+                {/* Header */}
+                <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-[#0b1a2e] text-white shrink-0">
+                  <div>
+                    <h2 className="text-xl font-bold uppercase tracking-widest text-white">Participants List</h2>
+                    <p className="text-sm text-gray-300 mt-1">Detailed view of author participation across events</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={handleDownloadExcel}
+                      className="dash-btn dash-btn-primary flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white shadow-md border-none"
+                    >
+                      <Download className="w-4 h-4" /> Download Excel
+                    </button>
+                    <button 
+                      onClick={() => setShowParticipantsModal(false)} 
+                      className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
+                {/* Table */}
+                <div className="flex-1 p-6 bg-gray-50/50 flex flex-col min-h-0">
+                  <div className="flex-1 border border-gray-200 rounded-none bg-white shadow-sm overflow-auto relative">
+                    {isLoadingParticipants ? (
+                      <div className="p-4 space-y-4">
+                        <div className="h-10 bg-gray-200 animate-pulse w-full"></div>
+                        {[...Array(10)].map((_, i) => (
+                          <div key={i} className="h-12 bg-gray-100 animate-pulse w-full"></div>
+                        ))}
+                      </div>
+                    ) : participantsData ? (
+                      <table className="w-full text-sm text-left border-collapse min-w-max">
+                        <thead className="text-black sticky top-0 z-20 shadow-sm">
+                          <tr>
+                            {participantsData.headers.map((h: string, i: number) => {
+                              let bgColor = "#D4AF37";
+                              if (i > 1) {
+                                const evt = participantsData.sortedEvents[i - 2];
+                                const catLower = (evt.category || evt.eventType || evt.name || "").toLowerCase();
+                                if (catLower.includes("housing") || catLower.includes("college")) bgColor = "#F4C2C2";
+                                else if (catLower.includes("corporate") || catLower.includes("university")) bgColor = "#FFFF00";
+                                else if (catLower.includes("book fair")) bgColor = "#00FF00";
+                                else if (catLower.includes("fair")) bgColor = "#90EE90";
+                                else bgColor = "#B0C4DE";
+                              }
+                              return (
+                                <th key={i} style={{ backgroundColor: bgColor }} className="px-4 py-3 border-b border-r border-gray-400 font-bold whitespace-nowrap text-center text-xs uppercase tracking-wider">
+                                  {h}
+                                </th>
+                              );
+                            })}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {participantsData.rows.map((row: any[], i: number) => (
+                            <tr key={i} className="hover:bg-indigo-50/30 transition-colors">
+                              {row.map((cell: any, j: number) => (
+                                <td key={j} className={`px-4 py-2 border-b border-r border-gray-200 whitespace-nowrap ${j > 1 && cell === 'PARTICIPATED' ? 'bg-[#00FF00]/10 text-green-700 font-bold text-center' : j === 1 ? 'font-semibold text-[#0b1a2e]' : 'text-gray-600 text-center'}`}>
+                                  {cell}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="text-black sticky bottom-0 z-20 shadow-[0_-2px_4px_rgba(0,0,0,0.05)]">
+                          <tr>
+                            <td style={{ backgroundColor: "#D4AF37" }} className="px-4 py-3 border-t border-r border-gray-400 font-bold text-center">-</td>
+                            <td style={{ backgroundColor: "#D4AF37" }} className="px-4 py-3 border-t border-r border-gray-400 font-bold text-center uppercase tracking-wider">TOTAL PARTICIPANTS</td>
+                            {participantsData.sums.map((sum: number, i: number) => {
+                              let bgColor = "#D4AF37";
+                              const evt = participantsData.sortedEvents[i];
+                              const catLower = (evt.category || evt.eventType || evt.name || "").toLowerCase();
+                              if (catLower.includes("housing") || catLower.includes("college")) bgColor = "#F4C2C2";
+                              else if (catLower.includes("corporate") || catLower.includes("university")) bgColor = "#FFFF00";
+                              else if (catLower.includes("book fair")) bgColor = "#00FF00";
+                              else if (catLower.includes("fair")) bgColor = "#90EE90";
+                              else bgColor = "#B0C4DE";
+                              return (
+                                <td key={i} style={{ backgroundColor: bgColor }} className="px-4 py-3 border-t border-r border-gray-400 font-bold text-center text-lg">{sum}</td>
+                              );
+                            })}
+                          </tr>
+                        </tfoot>
+                      </table>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-500">
+                        No data available
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             <button
               onClick={handleExportEventsExcel}
               className="dash-btn dash-btn-ghost flex items-center gap-2 border-green-200 text-green-700 hover:bg-green-50"
