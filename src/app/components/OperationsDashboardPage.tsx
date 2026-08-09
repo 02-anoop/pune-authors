@@ -3515,7 +3515,7 @@ export function OperationsDashboardPage() {
         <div className="p-4 border-b border-paa-navy/5 flex flex-col gap-3 bg-white">
           <div className="flex items-center gap-2">
             <h3 className="text-2xl font-serif font-semibold text-paa-navy tracking-tight">
-              Book Catalogue
+              List of Books
             </h3>
           </div>
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
@@ -3567,12 +3567,11 @@ export function OperationsDashboardPage() {
                 {[
                   { label: 'S.No', cls: 'w-[40px] text-center' },
                   { label: 'Cover', cls: 'w-[100px]' },
-                  { label: 'Book Title', cls: '' },
-                  { label: 'Subtitle', cls: '' },
-                  { label: 'Author', cls: '' },
+                  { label: 'Book Title', cls: 'w-[200px]' },
+                  { label: 'Subtitle', cls: 'w-[150px]' },
+                  { label: 'Author Name', cls: 'w-[180px]' },
                   { label: 'Genre', cls: '' },
                   { label: 'Sub-Genre', cls: '' },
-                  { label: 'Synopsis', cls: '' },
                   { label: 'ISBN', cls: 'text-center' },
                   { label: 'MRP', cls: 'text-center' },
                   { label: 'Language', cls: 'text-center' },
@@ -3583,8 +3582,9 @@ export function OperationsDashboardPage() {
                   { label: 'Pub Date', cls: 'text-center' },
                   { label: 'Status', cls: 'text-center' },
                   { label: 'Stock', cls: 'text-center' },
+                  { label: 'Synopsis', cls: 'w-[250px]' },
                 ].map(({ label, cls }) => (
-                  <th key={label} className={`px-2 py-2 text-[11px] font-extrabold text-black border border-black/30 align-middle bg-[#FFE600] uppercase tracking-wider ${cls}`}>{label}</th>
+                  <th key={label} className={`sticky top-0 z-10 px-2 py-2 text-[11px] font-extrabold text-black border border-black/30 align-middle bg-[#FFE600] uppercase tracking-wider ${cls}`}>{label}</th>
                 ))}
               </tr>
             </thead>
@@ -3599,7 +3599,11 @@ export function OperationsDashboardPage() {
                     (b.authorName && b.authorName.toLowerCase().includes(term))
                   );
                 })
-                .sort((a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' }))
+                .sort((a, b) => {
+                  const authorCompare = (a.authorName || '').localeCompare(b.authorName || '', undefined, { sensitivity: 'base' });
+                  if (authorCompare !== 0) return authorCompare;
+                  return (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
+                })
                 .map((book, idx) => {
                   const even = idx % 2 === 0;
                   const cell = (bg0, bg1, extra = '') =>
@@ -3623,7 +3627,7 @@ export function OperationsDashboardPage() {
                       </td>
 
                       {/* Book Title */}
-                      <td className={cell('bg-[#EFF6FF]', 'bg-[#DBEAFE]', 'font-bold text-[#0b1a2e]')}>
+                      <td className={cell('bg-[#EFF6FF]', 'bg-[#DBEAFE]', 'font-bold text-[#0b1a2e] max-w-[200px] whitespace-normal break-words')}>
                         {book.title}
                         {(book.overpriced || book.isOverpriced) && (
                           <span className="ml-1 bg-yellow-100 text-yellow-800 text-[9px] px-1 py-0.5 rounded font-bold">⚠</span>
@@ -3631,7 +3635,7 @@ export function OperationsDashboardPage() {
                       </td>
 
                       {/* Subtitle */}
-                      <td className={cell('bg-[#F0F9FF]', 'bg-[#E0F2FE]', 'text-gray-500 italic')}>
+                      <td className={cell('bg-[#F0F9FF]', 'bg-[#E0F2FE]', 'text-gray-500 italic max-w-[150px] whitespace-normal break-words')}>
                         {(!book.subtitle || book.subtitle.trim().toUpperCase() === 'NA' || book.subtitle.trim().toUpperCase() === 'N/A') ? "" : book.subtitle}
                       </td>
 
@@ -3647,10 +3651,7 @@ export function OperationsDashboardPage() {
                         {(!book.subGenre || book.subGenre.trim().toUpperCase() === 'NA' || book.subGenre.trim().toUpperCase() === 'N/A') ? "" : book.subGenre}
                       </td>
 
-                      {/* Synopsis */}
-                      <td className={cell('bg-[#FDF4FF]', 'bg-[#FAE8FF]', 'text-[10px] italic leading-tight')} style={{ maxWidth: '200px', whiteSpace: 'normal', minWidth: '150px' }}>
-                        <div className="line-clamp-3" title={book.synopsis}>{book.synopsis || <span className="text-gray-300 not-italic">—</span>}</div>
-                      </td>
+
 
                       {/* ISBN */}
                       <td className={cell('bg-[#FAF5FF]', 'bg-[#F3E8FF]', 'text-center font-mono')} style={{ color: '#6B21A8' }}>
@@ -3702,6 +3703,11 @@ export function OperationsDashboardPage() {
                       {/* Stock */}
                       <td className={cell('bg-[#F0FDF4]', 'bg-[#DCFCE7]', 'text-center font-bold')} style={{ color: '#15803D' }}>
                         {book.stock ?? <span className="text-gray-300 font-normal">—</span>}
+                      </td>
+
+                      {/* Synopsis */}
+                      <td className={cell('bg-[#FDF4FF]', 'bg-[#FAE8FF]', 'text-[10px] italic leading-tight')} style={{ maxWidth: '250px', whiteSpace: 'normal', minWidth: '200px' }}>
+                        <div className="line-clamp-2" title={book.synopsis}>{book.synopsis || <span className="text-gray-300 not-italic">—</span>}</div>
                       </td>
                     </tr>
                   );
@@ -8645,7 +8651,7 @@ const totalAuthorsBase = eventRegistrations.length;
             },
             {
               id: "books",
-              label: "Books Catalog",
+              label: "List of Books",
               icon: BookOpen,
               hasAlert: pendingAlerts.books,
             },
