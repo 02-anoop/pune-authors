@@ -1297,9 +1297,11 @@ router.put('/api/admin/authors/:id/full-update-and-approve', verifyToken, isAdmi
       qualificationsArray.push({ qualification, institution, subject });
     }
 
-    let photoUrl = author.photoUrl, paymentScreenshotUrl = author.paymentScreenshot, qrCodeUrl = author.qrCodeUrl;
-    let covers = {};
-    let backCovers = {};
+    let photoUrl = req.body.photoUrl || author.photoUrl;
+    let paymentScreenshotUrl = req.body.paymentScreenshotUrl || author.paymentScreenshot;
+    let qrCodeUrl = req.body.qrCodeUrl || author.qrCodeUrl;
+    let covers = req.body.covers ? JSON.parse(req.body.covers) : {};
+    let backCovers = req.body.backCovers ? JSON.parse(req.body.backCovers) : {};
 
     // Copy existing certificates
     let existingQuals = [];
