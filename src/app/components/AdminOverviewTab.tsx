@@ -290,9 +290,9 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
       {/* ════ High Level KPIs ════ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
         {[
-          { label: 'Total Authors', value: stats?.totalAuthors || 0, icon: Users, colorClass: 'blue' },
-          { label: 'Books Listed', value: stats?.totalBooks || 0, icon: BookOpen, colorClass: 'green' },
-          { label: 'No of Events', value: stats?.totalEvents || 0, icon: CalendarIcon, colorClass: 'amber' },
+          { label: 'Total Authors', value: authors?.length || 0, icon: Users, colorClass: 'blue' },
+          { label: 'Books Listed', value: books?.length || 0, icon: BookOpen, colorClass: 'green' },
+          { label: 'No of Events', value: events?.length || 0, icon: CalendarIcon, colorClass: 'amber' },
           { label: 'No of Libraries', value: stats?.totalLibraries || 0, icon: Library, colorClass: 'purple' },
           { label: 'Total Revenue', value: `₹${(stats?.totalRevenue || 0).toLocaleString()}`, icon: TrendingUp, colorClass: 'red' },
         ].map((kpi, i) => (
