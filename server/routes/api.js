@@ -973,8 +973,8 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
     const authorWhere = includeArchived ? {} : { isArchived: false };
 
     const allSystemEvents = await prisma.event.findMany({
-      where: { broadcastStatus: { not: 'Draft' } },
-      select: { id: true, date: true, status: true, eventType: true }
+      where: { isArchived: false },
+      select: { id: true, date: true, status: true, eventType: true, category: true }
     });
 
     const [authors, total] = await Promise.all([
@@ -1030,13 +1030,18 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
             }
           },
           _count: {
-            select: { books: true, eventRegistrations: true, eventAuthors: true }
+            select: {
+              books: true,
+              eventRegistrations: true,
+              eventAuthors: true,
+              donationRegistrations: true
+            }
           },
           eventAuthors: {
             select: {
               eventId: true,
               optInStatus: true,
-              event: { select: { name: true, date: true, eventType: true } }
+              event: { select: { name: true, date: true, eventType: true, category: true } }
             }
           },
           eventRegistrations: {
@@ -1052,15 +1057,6 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
                   libraryId: true
                 }
               }
-            }
-          },
-          _count: {
-            select: {
-              books: true,
-              eventRegistrations: true,
-              eventAuthors: true,
-              donationRegistrations: true,
-              authorInvitations: true
             }
           }
         },
@@ -1103,13 +1099,13 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
       const joinDate = a.groupJoiningDate ? new Date(a.groupJoiningDate) : new Date(a.createdAt);
       joinDate.setHours(0, 0, 0, 0);
 
-      // Split eligible events into Events (Meet the Authors) and Fairs (Stall) since joining date
+      // Split eligible events: Fairs = category 'Book Fair', Events = everything else
       let eligibleEventsCount = 0;
       let eligibleFairsCount = 0;
       allSystemEvents.forEach(e => {
         const eTime = parseEvDate(e.date || e.startDate).getTime();
         if (eTime >= joinDate.getTime()) {
-          if (e.eventType === 'Stall') eligibleFairsCount++;
+          if (e.category === 'Book Fair') eligibleFairsCount++;
           else eligibleEventsCount++;
         }
       });
@@ -1122,7 +1118,7 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
       if (a.eventAuthors) {
         a.eventAuthors.forEach(ei => {
           if (VALID_STATUSES.includes(ei.optInStatus)) {
-            if (ei.event && ei.event.eventType === 'Stall') participatedFairsCount++;
+            if (ei.event && ei.event.category === 'Book Fair') participatedFairsCount++;
             else participatedEventsCount++;
           }
         });
@@ -2436,9 +2432,10 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
     } catch (e) { }
 
     try {
+      // ⚠️ This calculation MUST stay in sync with the admin Authors table logic in GET /api/admin/authors
       const allSystemEvents = await prisma.event.findMany({
-        where: { broadcastStatus: { not: 'Draft' } },
-        select: { id: true, date: true, status: true }
+        where: { isArchived: false },
+        select: { id: true, date: true, status: true, category: true }
       });
       const joinDate = authorProfile.groupJoiningDate ? new Date(authorProfile.groupJoiningDate) : new Date(authorProfile.createdAt);
       joinDate.setHours(0, 0, 0, 0);
@@ -2452,27 +2449,44 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
         } catch (e) { return new Date(0); }
       };
 
-      let eligibleCount = 0;
+      // Split eligible: Fairs = category 'Book Fair', Events = everything else
+      let eligibleEventsCount = 0;
+      let eligibleFairsCount = 0;
       allSystemEvents.forEach(e => {
         const eTime = parseEvDate(e.date || e.startDate).getTime();
-        if (eTime >= joinDate.getTime()) eligibleCount++;
+        if (eTime >= joinDate.getTime()) {
+          if (e.category === 'Book Fair') eligibleFairsCount++;
+          else eligibleEventsCount++;
+        }
       });
 
-      let participatedCount = 0;
+      // Split participated: Fairs = category 'Book Fair', Events = everything else
+      const VALID_STATUSES = ['Registered', 'Approved', 'Pending Approval'];
+      let participatedEventsCount = 0;
+      let participatedFairsCount = 0;
       if (eventInvites) {
-        participatedCount += eventInvites.filter(ei => ei.optInStatus === 'Registered' || ei.optInStatus === 'Approved' || ei.optInStatus === 'Pending Approval').length;
+        eventInvites.forEach(ei => {
+          if (VALID_STATUSES.includes(ei.optInStatus)) {
+            if (ei.event && ei.event.category === 'Book Fair') participatedFairsCount++;
+            else participatedEventsCount++;
+          }
+        });
       }
-
       if (authorProfile.eventRegistrations) {
         const inviteEventIds = new Set(eventInvites.map(ei => ei.eventId));
-        participatedCount += authorProfile.eventRegistrations.filter(er => {
-          if (er.activityId && inviteEventIds.has(er.activityId)) return false;
-          return er.status === 'Registered' || er.status === 'Approved' || er.status === 'Pending Approval';
-        }).length;
+        authorProfile.eventRegistrations.forEach(er => {
+          if (er.activityId && inviteEventIds.has(er.activityId)) return;
+          if (VALID_STATUSES.includes(er.status)) participatedEventsCount++;
+        });
       }
 
-      authorProfile.aggEligibleEvents = eligibleCount;
-      authorProfile.aggParticipatedEvents = participatedCount;
+      // Expose all fields — matching exact field names used by admin Authors table
+      authorProfile.aggEligibleEvents = eligibleEventsCount + eligibleFairsCount;
+      authorProfile.aggParticipatedEvents = participatedEventsCount + participatedFairsCount;
+      authorProfile.aggEligibleEventsMeet = eligibleEventsCount;
+      authorProfile.aggParticipatedEventsMeet = participatedEventsCount;
+      authorProfile.aggEligibleFairs = eligibleFairsCount;
+      authorProfile.aggParticipatedFairs = participatedFairsCount;
     } catch (e) {
       console.error('Error calculating participation:', e);
     }

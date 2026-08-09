@@ -3589,6 +3589,12 @@ export function OperationsDashboardPage() {
                   style={{ textAlign: "center" }}
                   className="!text-[14px] !text-indigo-800 !bg-transparent"
                 >
+                  ISBN
+                </th>
+                <th
+                  style={{ textAlign: "center" }}
+                  className="!text-[14px] !text-indigo-800 !bg-transparent"
+                >
                   Details
                 </th>
               </tr>
@@ -3709,6 +3715,12 @@ export function OperationsDashboardPage() {
                       >
                         ₹{book.mrp}
                       </td>
+                      <td
+                        style={{ textAlign: "center" }}
+                        className="text-gray-600 text-xs font-mono"
+                      >
+                        {book.isbn || <span className="text-gray-300">—</span>}
+                      </td>
                       <td style={{ textAlign: "center" }}>
                         <button
                           className="p-1.5 rounded-full hover:bg-gray-100 text-paa-navy transition-colors mx-auto flex items-center justify-center"
@@ -3726,7 +3738,7 @@ export function OperationsDashboardPage() {
                         className="bg-indigo-50/10 border-b border-indigo-100/50 shadow-inner cursor-default"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <td colSpan={6} className="p-0">
+                        <td colSpan={7} className="p-0">
                           <div className="p-6 md:p-8 animate-fade-in-up">
                             <div className="flex flex-col md:flex-row gap-6 md:gap-8">
                               {book.coverUrl && (
