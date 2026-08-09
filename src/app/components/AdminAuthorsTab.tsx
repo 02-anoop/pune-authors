@@ -635,13 +635,13 @@ const [showArchived, setShowArchived] = useState(false);
             {(() => {
               const parseEd = (extraData: any) => typeof extraData === 'string' ? (() => { try { return JSON.parse(extraData); } catch (e) { return {}; } })() : (extraData || {});
               const counts = {
-                'All': authors.length,
-                'Reapplied': authors.filter(a => parseEd(a.extraData)?.isReapplied && a.status === 'Pending').length,
-                'Pending': authors.filter(a => a.status === 'Pending' && !parseEd(a.extraData)?.isReapplied).length,
-                'Edited': authors.filter(a => a.status === 'Edited').length,
-                'Added New Book': authors.filter(a => a.status === 'Added New Book').length,
-                'Active': authors.filter(a => a.status === 'Active').length,
-                'Rejected': authors.filter(a => a.status === 'Rejected').length,
+                'All': authors.filter(a => !a.isArchived).length,
+                'Reapplied': authors.filter(a => !a.isArchived && parseEd(a.extraData)?.isReapplied && a.status === 'Pending').length,
+                'Pending': authors.filter(a => !a.isArchived && a.status === 'Pending' && !parseEd(a.extraData)?.isReapplied).length,
+                'Edited': authors.filter(a => !a.isArchived && a.status === 'Edited').length,
+                'Added New Book': authors.filter(a => !a.isArchived && a.status === 'Added New Book').length,
+                'Active': authors.filter(a => !a.isArchived && a.status === 'Active').length,
+                'Rejected': authors.filter(a => !a.isArchived && a.status === 'Rejected').length,
               };
               return ['All', 'Reapplied', 'Pending', 'Edited', 'Added New Book', 'Active', 'Rejected'].map(status => (
                 <button
@@ -738,7 +738,7 @@ const [showArchived, setShowArchived] = useState(false);
                   <td className="p-1 border-[1.5px] border-black align-middle">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-[#f0f4f8] border border-paa-navy/5 text-paa-navy flex items-center justify-center font-bold font-serif text-lg">
-                        {author.name.charAt(0)}
+                        {idx + 1}
                       </div>
                       <div>
                         <p className="font-bold text-paa-navy flex items-center">
