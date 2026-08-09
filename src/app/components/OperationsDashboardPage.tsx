@@ -3512,7 +3512,7 @@ export function OperationsDashboardPage() {
         </div>
       )}
       <div className="bg-white border border-paa-navy/5 shadow-premium hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-500 ease-out flex flex-col">
-        <div className="p-4 border-b border-paa-navy/5 flex flex-col gap-3 bg-[#e6f2eb]">
+        <div className="p-4 border-b border-paa-navy/5 flex flex-col gap-3 bg-white">
           <div className="flex items-center gap-2">
             <h3 className="text-2xl font-serif font-semibold text-paa-navy tracking-tight">
               Book Catalogue
@@ -3561,50 +3561,36 @@ export function OperationsDashboardPage() {
         </div>
 
         <div className="overflow-x-auto w-full">
-          <table className="dash-table w-full table-auto xl:table-fixed min-w-[900px] xl:min-w-0">
-            <thead className="bg-indigo-50 border-b-2 border-indigo-100">
+          <table className="w-full text-left text-[11px] border-collapse" style={{ minWidth: 2200 }}>
+            <thead>
               <tr>
-                <th className="w-[5%] !text-[14px] !text-indigo-800 !bg-transparent">
-                  S.No
-                </th>
-                <th className="!text-[14px] !text-indigo-800 !bg-transparent">
-                  Book Info
-                </th>
-                <th className="!text-[14px] !text-indigo-800 !bg-transparent">
-                  Author
-                </th>
-                <th
-                  style={{ textAlign: "center" }}
-                  className="!text-[14px] !text-indigo-800 !bg-transparent"
-                >
-                  Status
-                </th>
-                <th
-                  style={{ textAlign: "center" }}
-                  className="!text-[14px] !text-indigo-800 !bg-transparent"
-                >
-                  Price
-                </th>
-                <th
-                  style={{ textAlign: "center" }}
-                  className="!text-[14px] !text-indigo-800 !bg-transparent"
-                >
-                  ISBN
-                </th>
-                <th
-                  style={{ textAlign: "center" }}
-                  className="!text-[14px] !text-indigo-800 !bg-transparent"
-                >
-                  Details
-                </th>
+                {[
+                  { label: 'S.No', cls: 'w-[40px] text-center' },
+                  { label: 'Cover', cls: 'w-[100px]' },
+                  { label: 'Book Title', cls: '' },
+                  { label: 'Subtitle', cls: '' },
+                  { label: 'Author', cls: '' },
+                  { label: 'Genre', cls: '' },
+                  { label: 'Sub-Genre', cls: '' },
+                  { label: 'Synopsis', cls: '' },
+                  { label: 'ISBN', cls: 'text-center' },
+                  { label: 'MRP', cls: 'text-center' },
+                  { label: 'Language', cls: 'text-center' },
+                  { label: 'Format', cls: 'text-center' },
+                  { label: 'Pages', cls: 'text-center' },
+                  { label: 'Publisher', cls: '' },
+                  { label: 'Edition', cls: 'text-center' },
+                  { label: 'Pub Date', cls: 'text-center' },
+                  { label: 'Status', cls: 'text-center' },
+                  { label: 'Stock', cls: 'text-center' },
+                ].map(({ label, cls }) => (
+                  <th key={label} className={`px-2 py-2 text-[11px] font-extrabold text-black border border-black/30 align-middle bg-[#FFE600] uppercase tracking-wider ${cls}`}>{label}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {books
-                .filter(
-                  (b) =>
-                    bookStatusFilter === "All" || b.status === bookStatusFilter,
-                )
+                .filter((b) => bookStatusFilter === 'All' || b.status === bookStatusFilter)
                 .filter((b) => {
                   if (!bookSearchTerm) return true;
                   const term = bookSearchTerm.toLowerCase();
@@ -3613,297 +3599,122 @@ export function OperationsDashboardPage() {
                     (b.authorName && b.authorName.toLowerCase().includes(term))
                   );
                 })
-                .sort((a, b) =>
-                  (a.title || "").localeCompare(b.title || "", undefined, {
-                    sensitivity: "base",
-                  }),
-                )
-                .map((book, idx) => (
-                  <React.Fragment key={book.id}>
-                    <tr
-                      className={`${idx % 2 === 0 ? "bg-white" : "bg-[#ebd8c0]"} hover:bg-slate-200/60 transition-colors cursor-pointer`}
-                      onClick={() =>
-                        setExpandedBookId(
-                          expandedBookId === book.id ? null : book.id,
-                        )
-                      }
-                    >
-                      <td className="font-bold text-paa-gray-text pl-4">
-                        {idx + 1}
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          <div className="flex gap-1.5 flex-shrink-0">
-                            {/* Front Cover */}
-                            <div className="relative w-10 h-14 bg-gray-50 flex items-center justify-center rounded border border-gray-200 shadow-sm overflow-hidden select-none">
-                              <span className="text-[8px] text-gray-400 text-center font-bold uppercase leading-tight px-1">
-                                {book.coverUrl ? "Broken Front" : "No Front"}
-                              </span>
-                              {book.coverUrl && (
-                                <img
-                                  loading="lazy"
-                                  src={
-                                    book.coverUrl.startsWith("http")
-                                      ? book.coverUrl
-                                      : `${API}${book.coverUrl.startsWith("/") ? "" : "/"}${book.coverUrl}`
-                                  }
-                                  alt="Front Cover"
-                                  className="absolute inset-0 w-full h-full object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLElement).style.display =
-                                      "none";
-                                  }}
-                                />
-                              )}
-                            </div>
+                .sort((a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' }))
+                .map((book, idx) => {
+                  const even = idx % 2 === 0;
+                  const cell = (bg0, bg1, extra = '') =>
+                    `px-2 py-1.5 border border-black/15 align-middle ${extra}` + ' ' + (even ? bg0 : bg1);
+                  return (
+                    <tr key={book.id} className="hover:brightness-[0.96] transition-all">
+                      {/* S.No */}
+                      <td className={cell('bg-[#E2E8F0]', 'bg-[#CBD5E1]', 'text-center font-bold text-gray-500')}>{idx + 1}</td>
 
-                            {/* Back Cover */}
-                            <div className="relative w-10 h-14 bg-gray-50 flex items-center justify-center rounded border border-gray-200 shadow-sm overflow-hidden select-none">
-                              <span className="text-[8px] text-gray-400 text-center font-bold uppercase leading-tight px-1">
-                                {book.backCoverUrl ? "Broken Back" : "No Back"}
-                              </span>
-                              {book.backCoverUrl && (
-                                <img
-                                  loading="lazy"
-                                  src={
-                                    book.backCoverUrl.startsWith("http")
-                                      ? book.backCoverUrl
-                                      : `${API}${book.backCoverUrl.startsWith("/") ? "" : "/"}${book.backCoverUrl}`
-                                  }
-                                  alt="Back Cover"
-                                  className="absolute inset-0 w-full h-full object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLElement).style.display =
-                                      "none";
-                                  }}
-                                />
-                              )}
+                      {/* Cover: front + back thumbnails */}
+                      <td className={cell('bg-[#F8FAFC]', 'bg-[#F1F5F9]')}>
+                        <div className="flex gap-1 justify-center">
+                          {[book.coverUrl, book.backCoverUrl].map((url, ci) => (
+                            <div key={ci} className="relative w-11 h-16 bg-gray-100 rounded border border-gray-300 overflow-hidden shrink-0">
+                              {url
+                                ? <img loading="lazy" src={url.startsWith('http') ? url : `${API}${url.startsWith('/') ? '' : '/'}${url}`} alt={ci === 0 ? 'Front' : 'Back'} className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target).style.display = 'none'; }} />
+                                : <span className="text-[7px] text-gray-300 font-bold absolute inset-0 flex items-center justify-center">{ci === 0 ? 'F' : 'B'}</span>}
                             </div>
-                          </div>
-                          <div>
-                            <p className="font-bold text-paa-navy mb-1 flex items-center">
-                              {book.title}
-                              {(book.overpriced || book.isOverpriced) && (
-                                <span className="ml-2 bg-yellow-100 text-yellow-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                                  Overpriced (Warning)
-                                </span>
-                              )}
-                            </p>
-                            <div className="flex items-center gap-2 text-xs font-medium">
-                              <span className="text-[#5bc0de] font-bold uppercase">
-                                {book.genre}
-                              </span>
-                            </div>
-                          </div>
+                          ))}
                         </div>
                       </td>
-                      <td>
-                        <p className="text-paa-navy font-bold">
-                          {book.authorName}
-                        </p>
+
+                      {/* Book Title */}
+                      <td className={cell('bg-[#EFF6FF]', 'bg-[#DBEAFE]', 'font-bold text-[#0b1a2e]')}>
+                        {book.title}
+                        {(book.overpriced || book.isOverpriced) && (
+                          <span className="ml-1 bg-yellow-100 text-yellow-800 text-[9px] px-1 py-0.5 rounded font-bold">⚠</span>
+                        )}
                       </td>
-                      <td style={{ textAlign: "center" }}>
-                        <span
-                          className={`dash-badge ${book.status === "Approved" ? "approved" : book.status === "Rejected" ? "rejected" : "pending"}`}
-                        >
+
+                      {/* Subtitle */}
+                      <td className={cell('bg-[#F0F9FF]', 'bg-[#E0F2FE]', 'text-gray-500 italic')}>
+                        {(!book.subtitle || book.subtitle.trim().toUpperCase() === 'NA' || book.subtitle.trim().toUpperCase() === 'N/A') ? "" : book.subtitle}
+                      </td>
+
+                      {/* Author */}
+                      <td className={cell('bg-[#FFF7ED]', 'bg-[#FFEDD5]', 'font-bold text-[#0b1a2e]')}>{book.authorName}</td>
+                      {/* Genre */}
+                      <td className={cell('bg-[#F0FDF4]', 'bg-[#DCFCE7]', 'font-bold')} style={{ color: '#166534' }}>
+                        {book.genre || <span className="text-gray-300 font-normal">—</span>}
+                      </td>
+
+                      {/* Sub-Genre */}
+                      <td className={cell('bg-[#F7FEE7]', 'bg-[#ECFCCB]')} style={{ color: '#3F6212' }}>
+                        {(!book.subGenre || book.subGenre.trim().toUpperCase() === 'NA' || book.subGenre.trim().toUpperCase() === 'N/A') ? "" : book.subGenre}
+                      </td>
+
+                      {/* Synopsis */}
+                      <td className={cell('bg-[#FDF4FF]', 'bg-[#FAE8FF]', 'text-[10px] italic leading-tight')} style={{ maxWidth: '200px', whiteSpace: 'normal', minWidth: '150px' }}>
+                        <div className="line-clamp-3" title={book.synopsis}>{book.synopsis || <span className="text-gray-300 not-italic">—</span>}</div>
+                      </td>
+
+                      {/* ISBN */}
+                      <td className={cell('bg-[#FAF5FF]', 'bg-[#F3E8FF]', 'text-center font-mono')} style={{ color: '#6B21A8' }}>
+                        {book.isbn || <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* MRP */}
+                      <td className={cell('bg-[#F0FDF4]', 'bg-[#DCFCE7]', 'text-center font-bold')} style={{ color: '#15803D' }}>
+                        ₹{book.mrp}
+                      </td>
+
+                      {/* Language */}
+                      <td className={cell('bg-[#FEFCE8]', 'bg-[#FEF9C3]', 'text-center')} style={{ color: '#854D0E' }}>
+                        {book.language || <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* Format */}
+                      <td className={cell('bg-[#FFF1F2]', 'bg-[#FFE4E6]', 'text-center')} style={{ color: '#9F1239' }}>
+                        {book.format || <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* Pages */}
+                      <td className={cell('bg-[#F0F9FF]', 'bg-[#E0F2FE]', 'text-center font-bold')} style={{ color: '#075985' }}>
+                        {book.pages || <span className="text-gray-300 font-normal">—</span>}
+                      </td>
+
+                      {/* Publisher */}
+                      <td className={cell('bg-[#FDF2F8]', 'bg-[#FCE7F3]')} style={{ color: '#831843' }}>
+                        {book.publisher || <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* Edition */}
+                      <td className={cell('bg-[#ECFDF5]', 'bg-[#D1FAE5]', 'text-center')} style={{ color: '#065F46' }}>
+                        {book.edition || <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* Pub Date */}
+                      <td className={cell('bg-[#FFF7ED]', 'bg-[#FEF3C7]', 'text-center')} style={{ color: '#92400E' }}>
+                        {book.publicationDate || <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* Status */}
+                      <td className={cell('bg-[#F8FAFC]', 'bg-[#F1F5F9]', 'text-center')}>
+                        <span className={`dash-badge ${book.status === 'Approved' ? 'approved' : book.status === 'Rejected' ? 'rejected' : 'pending'}`}>
                           {book.status}
                         </span>
                       </td>
-                      <td
-                        style={{ textAlign: "center" }}
-                        className="font-bold text-paa-navy"
-                      >
-                        ₹{book.mrp}
-                      </td>
-                      <td
-                        style={{ textAlign: "center" }}
-                        className="text-gray-600 text-xs font-mono"
-                      >
-                        {book.isbn || <span className="text-gray-300">—</span>}
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        <button
-                          className="p-1.5 rounded-full hover:bg-gray-100 text-paa-navy transition-colors mx-auto flex items-center justify-center"
-                          title="Toggle Details"
-                        >
-                          <ChevronDown
-                            size={16}
-                            className={`transition-transform duration-300 ${expandedBookId === book.id ? "rotate-180" : ""}`}
-                          />
-                        </button>
+
+                      {/* Stock */}
+                      <td className={cell('bg-[#F0FDF4]', 'bg-[#DCFCE7]', 'text-center font-bold')} style={{ color: '#15803D' }}>
+                        {book.stock ?? <span className="text-gray-300 font-normal">—</span>}
                       </td>
                     </tr>
-                    {expandedBookId === book.id && (
-                      <tr
-                        className="bg-indigo-50/10 border-b border-indigo-100/50 shadow-inner cursor-default"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <td colSpan={7} className="p-0">
-                          <div className="p-6 md:p-8 animate-fade-in-up">
-                            <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-                              {book.coverUrl && (
-                                <img
-                                  loading="lazy"
-                                  src={
-                                    book.coverUrl.startsWith("http")
-                                      ? book.coverUrl
-                                      : `${API}${book.coverUrl}`
-                                  }
-                                  alt="Cover"
-                                  className="w-40 h-56 object-cover border border-paa-navy/20 shadow-md rounded"
-                                />
-                              )}
-                              <div className="flex-1">
-                                <h3 className="text-3xl font-serif font-bold text-paa-navy mb-1">
-                                  {book.title}
-                                </h3>
-                                {book.subtitle && (
-                                  <p className="text-lg font-medium text-paa-gray-text mb-2">
-                                    {book.subtitle}
-                                  </p>
-                                )}
-                                <p className="text-base font-medium mb-2">
-                                  Author:{" "}
-                                  <span className="font-bold text-paa-navy">
-                                    {book.authorName}
-                                  </span>
-                                </p>
-                                <p className="text-xs font-bold uppercase tracking-widest text-paa-navy mt-2 bg-[#eef2f6] inline-block px-3 py-1">
-                                  {book.genre}{" "}
-                                  {book.subGenre && `> ${book.subGenre}`}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 border-t border-paa-navy/5 pt-6 mt-6">
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text block mb-1">
-                                  MRP
-                                </span>
-                                <span className="text-lg font-black text-green-700">
-                                  ₹{book.mrp}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text block mb-1">
-                                  Language
-                                </span>
-                                <span className="text-base font-bold text-paa-navy">
-                                  {book.language || "-"}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text block mb-1">
-                                  Format
-                                </span>
-                                <span className="text-base font-bold text-paa-navy">
-                                  {book.format || "-"}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text block mb-1">
-                                  Print Format
-                                </span>
-                                <span className="text-base font-bold text-paa-navy">
-                                  {book.printFormat || "-"}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text block mb-1">
-                                  Pages
-                                </span>
-                                <span className="text-base font-bold text-paa-navy">
-                                  {book.pages || "-"}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text block mb-1">
-                                  Publisher
-                                </span>
-                                <span className="text-base font-bold text-paa-navy">
-                                  {book.publisher || "-"}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text block mb-1">
-                                  Edition
-                                </span>
-                                <span className="text-base font-bold text-paa-navy">
-                                  {book.edition || "-"}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text block mb-1">
-                                  Pub Date
-                                </span>
-                                <span className="text-base font-bold text-paa-navy">
-                                  {book.publicationDate || "-"}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text block mb-1">
-                                  ISBN
-                                </span>
-                                <span className="text-base font-bold text-paa-navy">
-                                  {book.isbn || "-"}
-                                </span>
-                              </div>
-
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text block mb-1">
-                                  Current Stock
-                                </span>
-                                <span className="text-lg font-black text-paa-navy">
-                                  {book.stock}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text block mb-1">
-                                  Total Sales
-                                </span>
-                                <span className="text-lg font-black text-paa-navy">
-                                  {book.sales || 0}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="border-t border-paa-navy/5 pt-6 mt-6 space-y-6">
-                              <div>
-                                <span className="text-sm font-bold uppercase tracking-widest text-paa-navy block mb-3">
-                                  Purpose of Writing
-                                </span>
-                                <p className="text-sm text-paa-gray-text leading-relaxed whitespace-pre-wrap">
-                                  {book.purpose || "Not provided."}
-                                </p>
-                              </div>
-                              <div>
-                                <span className="text-sm font-bold uppercase tracking-widest text-paa-navy block mb-3">
-                                  Synopsis
-                                </span>
-                                <p className="text-sm text-paa-gray-text leading-relaxed whitespace-pre-wrap">
-                                  {book.synopsis || "No synopsis provided."}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
+                  );
+                })}
               {books.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={7}
-                    className="text-center py-8 text-paa-gray-text bg-white"
-                  >
-                    No books found.
-                  </td>
+                  <td colSpan={17} className="text-center py-8 text-paa-gray-text bg-white">No books found.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
       </div>
       </>
     );
