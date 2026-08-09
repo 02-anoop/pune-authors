@@ -19,6 +19,26 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     return saved ? JSON.parse(saved) : {};
   });
 
+  const [dynamicRevenue, setDynamicRevenue] = useState<number | null>(null);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const fetchLifetimeRevenue = async () => {
+      try {
+        const res = await axios.get(`${API}/api/admin/sales-report?startDate=2000-01-01&endDate=2099-12-31&filterType=lifetime`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (isMounted && res.data?.kpis?.totalRevenue !== undefined) {
+          setDynamicRevenue(res.data.kpis.totalRevenue);
+        }
+      } catch (e) {
+        console.error("Failed to fetch dynamic lifetime revenue", e);
+      }
+    };
+    fetchLifetimeRevenue();
+    return () => { isMounted = false; };
+  }, [API, refreshTrigger]);
+
   const handleDismiss = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setLocalDismissed(prev => {
@@ -27,7 +47,6 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
       return next;
     });
   };
-
 
   // Memoize heavy calculations to prevent layout thrashing and high main-thread execution time
   const {
@@ -294,7 +313,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
           { label: 'Books Listed', value: books?.length || 0, icon: BookOpen, colorClass: 'green' },
           { label: 'No of Events', value: events?.length || 0, icon: CalendarIcon, colorClass: 'amber' },
           { label: 'No of Libraries', value: stats?.totalLibraries || 0, icon: Library, colorClass: 'purple' },
-          { label: 'Total Revenue', value: `₹${(stats?.totalRevenue || 0).toLocaleString()}`, icon: TrendingUp, colorClass: 'red' },
+          { label: 'Total Revenue', value: `₹${(dynamicRevenue !== null ? dynamicRevenue : (stats?.totalRevenue || 0)).toLocaleString()}`, icon: TrendingUp, colorClass: 'red' },
         ].map((kpi, i) => (
           <div key={i} className={`dash-kpi-card ${kpi.colorClass}`}>
             <div className="flex items-start justify-between mb-4">
