@@ -968,6 +968,9 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
+    const includeArchived = req.query.includeArchived === 'true';
+    // By default exclude archived (soft-deleted) authors; pass ?includeArchived=true to include them
+    const authorWhere = includeArchived ? {} : { isArchived: false };
 
     const allSystemEvents = await prisma.event.findMany({
       where: { broadcastStatus: { not: 'Draft' } },
@@ -978,6 +981,7 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
       prisma.author.findMany({
         skip,
         take: limit,
+        where: authorWhere,
         select: {
           id: true,
           name: true,
@@ -1044,7 +1048,7 @@ router.get('/api/admin/authors', verifyToken, isAdmin, async (req, res) => {
         },
         orderBy: { createdAt: 'desc' }
       }),
-      prisma.author.count()
+      prisma.author.count({ where: authorWhere })
     ]);
 
     // Get global totals for dashboard stats (lightweight counts)

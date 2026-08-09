@@ -13,6 +13,7 @@ export const AdminAuthorsTab = React.memo(({
   selectedPendingAuthor, setSelectedPendingAuthor, selectedAuthor, setSelectedAuthor
 }: any) => {
 const [showArchived, setShowArchived] = useState(false);
+  const [archivedAuthors, setArchivedAuthors] = useState<any[]>([]);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportScope, setExportScope] = useState<'all' | 'selected'>('all');
   const [isExporting, setIsExporting] = useState(false);
@@ -216,16 +217,18 @@ const [showArchived, setShowArchived] = useState(false);
       setIsExporting(true);
       let targetAuthors: any[] = [];
       if (exportScope === 'selected' && selectedAuthorIds && selectedAuthorIds.length > 0) {
-        targetAuthors = (authors || []).filter((a: any) => selectedAuthorIds.includes(a.id));
+        targetAuthors = (authors || []).filter((a: any) => selectedAuthorIds.includes(a.id) && !a.isArchived);
       } else {
         try {
           const res = await axios.get(`${API}/api/admin/authors?limit=5000`, {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
           });
           const fetchedList = res.data.data || res.data.authors || (Array.isArray(res.data) ? res.data : []);
-          targetAuthors = fetchedList.length > 0 ? fetchedList : (authors || []);
+          // Filter out archived authors as safety net (backend also filters, but double-check)
+          const nonArchived = fetchedList.filter((a: any) => !a.isArchived);
+          targetAuthors = nonArchived.length > 0 ? nonArchived : (authors || []).filter((a: any) => !a.isArchived);
         } catch (e) {
-          targetAuthors = authors || [];
+          targetAuthors = (authors || []).filter((a: any) => !a.isArchived);
         }
       }
 
@@ -580,8 +583,13 @@ const [showArchived, setShowArchived] = useState(false);
     }
 
     const filteredAuthors = useMemo(() => {
+      if (showArchived) {
+        // Show the archived authors fetched from the backend
+        return archivedAuthors
+          .filter(a => !searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()) || (a.email && a.email.toLowerCase().includes(searchTerm.toLowerCase())))
+          .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+      }
       return authors.filter(a => {
-        if (showArchived) return a.isArchived;
         if (a.isArchived) return false;
         const ed = typeof a.extraData === 'string' ? (() => { try { return JSON.parse(a.extraData); } catch (e) { return {}; } })() : (a.extraData || {});
         const isReapplied = ed?.isReapplied === true;
@@ -601,7 +609,7 @@ const [showArchived, setShowArchived] = useState(false);
         if (a.status !== 'Pending' && b.status === 'Pending') return 1;
         return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
       });
-    }, [authors, showArchived, searchTerm, authorStatusFilter]);
+    }, [authors, archivedAuthors, showArchived, searchTerm, authorStatusFilter]);
 
     return (
       <div className="bg-white border border-paa-navy/5 shadow-premium hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-500 ease-out flex flex-col">
@@ -647,7 +655,21 @@ const [showArchived, setShowArchived] = useState(false);
             })()}
             <div className="w-[1px] h-6 bg-gray-300 mx-1 hidden sm:block"></div>
             <div 
-              onClick={() => setShowArchived(!showArchived)}
+              onClick={async () => {
+                const next = !showArchived;
+                setShowArchived(next);
+                if (next && archivedAuthors.length === 0) {
+                  try {
+                    const res = await axios.get(`${API}/api/admin/authors?includeArchived=true&limit=5000`, {
+                      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    const all = res.data.data || res.data.authors || (Array.isArray(res.data) ? res.data : []);
+                    setArchivedAuthors(all.filter((a: any) => a.isArchived));
+                  } catch (e) {
+                    setArchivedAuthors(authors.filter((a: any) => a.isArchived));
+                  }
+                }
+              }}
               className="flex items-center gap-2 cursor-pointer shrink-0 ml-1"
             >
               <div className={`relative w-8 h-4 rounded-full transition-colors ${showArchived ? 'bg-red-500' : 'bg-gray-300'}`}>
