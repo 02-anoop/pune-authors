@@ -298,7 +298,7 @@ export function AdminInventoryTab() {
                             <div className="w-6"></div>
                           )}
                           {book.coverUrl && (
-                            <img src={book.coverUrl} alt="Cover" className="w-8 h-10 object-cover rounded shadow-sm border border-black/5" />
+                            <img src={book.coverUrl + (book.updatedAt ? `?t=${new Date(book.updatedAt).getTime()}` : '')} alt="Cover" className="w-8 h-10 object-cover rounded shadow-sm border border-black/5" />
                           )}
                           <div className="font-bold text-paa-navy flex-1 min-w-0 flex flex-col gap-1 items-start justify-center">
                             <span className="line-clamp-2 leading-tight" title={book.title}>{book.title}</span>

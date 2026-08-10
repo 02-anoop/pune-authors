@@ -2022,7 +2022,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
                 <tr key={row.id} className={`transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-[#ebd8c0]'} `}>
                   <td className="text-paa-gray-text text-xs text-center">{idx + 1}</td>
                   <td>{authorBooks.find((b: any) => b.id === row.id)?.coverUrl
-                    ? <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${authorBooks.find((b: any) => b.id === row.id)?.coverUrl}`} alt="cover" className="w-9 h-12 object-cover rounded-lg shadow-sm" />
+                    ? <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${authorBooks.find((b: any) => b.id === row.id)?.coverUrl}${authorBooks.find((b: any) => b.id === row.id)?.updatedAt ? `?t=${new Date(authorBooks.find((b: any) => b.id === row.id).updatedAt).getTime()}` : ''}`} alt="cover" className="w-9 h-12 object-cover rounded-lg shadow-sm" />
                     : <div className="w-9 h-12 bg-gray-100 rounded-lg border flex items-center justify-center text-[9px] text-gray-400">No cover</div>}
                   </td>
                   <td className="font-semibold text-paa-navy">

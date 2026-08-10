@@ -12052,10 +12052,9 @@ const totalAuthorsBase = eventRegistrations.length;
                                   <img
                                     loading="lazy"
                                     src={
-                                      import.meta.env.VITE_API_URL
-                                        ? import.meta.env.VITE_API_URL +
-                                          b.coverUrl
-                                        : "http://localhost:3001" + b.coverUrl
+                                      (import.meta.env.VITE_API_URL || "http://localhost:3001") + 
+                                      b.coverUrl + 
+                                      (b.updatedAt ? `?t=${new Date(b.updatedAt).getTime()}` : '')
                                     }
                                     className="w-16 h-24 object-cover border border-gray-200"
                                     alt="Cover"

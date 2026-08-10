@@ -450,8 +450,8 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
              ...b,
              subcategory: b.subGenre ? b.subGenre.split(' > ')[0] : '',
              subSubcategory: b.subGenre && b.subGenre.includes(' > ') ? b.subGenre.split(' > ')[1] : '',
-             coverFileUrl: b.coverUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${b.coverUrl}` : null,
-             backCoverFileUrl: b.backCoverUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${b.backCoverUrl}` : null
+             coverFileUrl: b.coverUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${b.coverUrl}${b.updatedAt ? `?t=${new Date(b.updatedAt).getTime()}` : ''}` : null,
+             backCoverFileUrl: b.backCoverUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${b.backCoverUrl}${b.updatedAt ? `?t=${new Date(b.updatedAt).getTime()}` : ''}` : null
           })));
        }
        
@@ -867,8 +867,8 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
     });
     setCoverBlob(bookToEdit.coverBlob || null);
     setBackCoverBlob(bookToEdit.backCoverBlob || null);
-    setCoverFileUrl(bookToEdit.coverFileUrl || (bookToEdit.coverUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${bookToEdit.coverUrl}` : null));
-    setBackCoverFileUrl(bookToEdit.backCoverFileUrl || (bookToEdit.backCoverUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${bookToEdit.backCoverUrl}` : null));
+    setCoverFileUrl(bookToEdit.coverFileUrl || (bookToEdit.coverUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${bookToEdit.coverUrl}${bookToEdit.updatedAt ? `?t=${new Date(bookToEdit.updatedAt).getTime()}` : ''}` : null));
+    setBackCoverFileUrl(bookToEdit.backCoverFileUrl || (bookToEdit.backCoverUrl ? `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${bookToEdit.backCoverUrl}${bookToEdit.updatedAt ? `?t=${new Date(bookToEdit.updatedAt).getTime()}` : ''}` : null));
     setShowAddBookForm(true);
     setTimeout(() => {
       document.getElementById('book-form-container')?.scrollIntoView({ behavior: 'smooth' });
@@ -1430,7 +1430,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                           </div>
                           <div className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text">{b.genre} {b.subcategory && `> ${b.subcategory}`}</div>
                         </div>
-                        {(b.coverFileUrl || b.coverUrl) && <img src={b.coverFileUrl || `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${b.coverUrl}`} alt="cover" className="h-12 w-9 object-cover rounded shadow-sm border border-paa-navy/10 flex-shrink-0" />}
+                        {(b.coverFileUrl || b.coverUrl) && <img src={b.coverFileUrl || `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${b.coverUrl}${b.updatedAt ? `?t=${new Date(b.updatedAt).getTime()}` : ''}`} alt="cover" className="h-12 w-9 object-cover rounded shadow-sm border border-paa-navy/10 flex-shrink-0" />}
                         <button type="button" onClick={() => handleEditAddedBook(idx)} className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-50 hover:bg-[#ebd8c0] text-blue-500 hover:text-blue-700 flex items-center justify-center transition-colors" title="Edit book">
                           <Edit className="w-3.5 h-3.5" />
                         </button>
