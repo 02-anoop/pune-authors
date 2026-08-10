@@ -808,6 +808,7 @@ export function OperationsDashboardPage() {
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
+  const [lastFetchedBooks, setLastFetchedBooks] = useState(Date.now());
   const [activeTab, setActiveTab] = useState<
     | "overview"
     | "orders"
@@ -1256,6 +1257,7 @@ export function OperationsDashboardPage() {
         setAuthors(sortedData);
         setAuthorsMeta(res.data.meta);
         sessionStorage.setItem("adminAuthors", JSON.stringify(sortedData));
+        setLastFetchedBooks(Date.now());
         const c = res.data.meta.totalPending || 0;
         if (c > prevCountsRef.current.authors)
           setPendingAlerts((prev) => ({ ...prev, authors: true }));
@@ -1268,6 +1270,7 @@ export function OperationsDashboardPage() {
         );
         setAuthors(sortedData);
         sessionStorage.setItem("adminAuthors", JSON.stringify(sortedData));
+        setLastFetchedBooks(Date.now());
         const c = res.data.filter((a: any) => a.status === "Pending").length;
         if (c > prevCountsRef.current.authors)
           setPendingAlerts((prev) => ({ ...prev, authors: true }));
@@ -1313,6 +1316,7 @@ export function OperationsDashboardPage() {
       );
       setBooks(sortedData);
       sessionStorage.setItem("adminBooks", JSON.stringify(sortedData));
+      setLastFetchedBooks(Date.now());
       const c = sortedData.filter((b: any) => b.status === "Pending").length;
       if (c > prevCountsRef.current.books)
         setPendingAlerts((prev) => ({ ...prev, books: true }));
@@ -3622,7 +3626,7 @@ export function OperationsDashboardPage() {
                           {[book.coverUrl, book.backCoverUrl].map((url, ci) => (
                             <div key={ci} className="relative w-11 h-16 bg-gray-100 rounded border border-gray-300 overflow-hidden shrink-0">
                               {url
-                                ? <img loading="lazy" src={url.startsWith('http') ? url : `${API}${url.startsWith('/') ? '' : '/'}${url}`} alt={ci === 0 ? 'Front' : 'Back'} className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target).style.display = 'none'; }} />
+                                ? <img loading="lazy" src={(url.startsWith('http') ? url : `${API}${url.startsWith('/') ? '' : '/'}${url}`) + `?t=${lastFetchedBooks}`} alt={ci === 0 ? 'Front' : 'Back'} className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                 : <span className="text-[7px] text-gray-300 font-bold absolute inset-0 flex items-center justify-center">{ci === 0 ? 'F' : 'B'}</span>}
                             </div>
                           ))}
@@ -9651,9 +9655,9 @@ const totalAuthorsBase = eventRegistrations.length;
                     <img
                       loading="lazy"
                       src={
-                        selectedBookDetails.coverUrl.startsWith("http")
+                        (selectedBookDetails.coverUrl.startsWith("http")
                           ? selectedBookDetails.coverUrl
-                          : `${API}${selectedBookDetails.coverUrl}`
+                          : `${API}${selectedBookDetails.coverUrl}`) + `?t=${lastFetchedBooks}`
                       }
                       alt="Cover"
                       className="w-28 h-40 object-cover border border-paa-navy/20 shadow-sm rounded"
@@ -9668,9 +9672,9 @@ const totalAuthorsBase = eventRegistrations.length;
                     <img
                       loading="lazy"
                       src={
-                        selectedBookDetails.backCoverUrl.startsWith("http")
+                        (selectedBookDetails.backCoverUrl.startsWith("http")
                           ? selectedBookDetails.backCoverUrl
-                          : `${API}${selectedBookDetails.backCoverUrl}`
+                          : `${API}${selectedBookDetails.backCoverUrl}`) + `?t=${lastFetchedBooks}`
                       }
                       alt="Back Cover"
                       className="w-28 h-40 object-cover border border-paa-navy/20 shadow-sm rounded"
@@ -11890,8 +11894,7 @@ const totalAuthorsBase = eventRegistrations.length;
                                   <span className="text-[10px] uppercase text-gray-500 font-bold block mb-1">
                                     Qualification
                                   </span>
-                                  <input
-                                    type="text"
+                                  <select
                                     value={q.qualification || ""}
                                     onChange={(e) => {
                                       const newQ = [...qArr];
@@ -11905,10 +11908,42 @@ const totalAuthorsBase = eventRegistrations.length;
                                       "qualification",
                                       "dash-input w-full text-xs",
                                     )}
-                                  />{" "}
+                                  >
+                                    <option value="">Select Degree Level</option>
+                                    <option value="Graduation">Graduation</option>
+                                    <option value="Post-Graduation">Post-Graduation</option>
+                                    <option value="Ph.D">Ph.D</option>
+                                    <option value="Diploma">Diploma</option>
+                                    <option value="Other">Other</option>
+                                  </select>
                                   {renderOriginalValue("qualification")}
                                 </div>
                                 <div>
+                                  <span className="text-[10px] uppercase text-gray-500 font-bold block mb-1">
+                                    Mode
+                                  </span>
+                                  <select
+                                    value={q.mode || ""}
+                                    onChange={(e) => {
+                                      const newQ = [...qArr];
+                                      newQ[i].mode = e.target.value;
+                                      setEditingAuthor({
+                                        ...editingAuthor,
+                                        qualification: JSON.stringify(newQ),
+                                      });
+                                    }}
+                                    className={getFieldClass(
+                                      "qualification",
+                                      "dash-input w-full text-xs",
+                                    )}
+                                  >
+                                    <option value="">Select Mode</option>
+                                    <option value="Full Time">Full Time</option>
+                                    <option value="Part Time">Part Time</option>
+                                    <option value="Correspondence">Correspondence</option>
+                                    <option value="Online">Online</option>
+                                    <option value="Distance">Distance</option>
+                                  </select>
                                   <span className="text-[10px] uppercase text-gray-500 font-bold block mb-1">
                                     Institution
                                   </span>
@@ -11970,6 +12005,7 @@ const totalAuthorsBase = eventRegistrations.length;
                                 qualification: "",
                                 institution: "",
                                 subject: "",
+                                mode: "",
                               });
                               setEditingAuthor({
                                 ...editingAuthor,
@@ -12053,8 +12089,7 @@ const totalAuthorsBase = eventRegistrations.length;
                                     loading="lazy"
                                     src={
                                       (import.meta.env.VITE_API_URL || "http://localhost:3001") + 
-                                      b.coverUrl + 
-                                      (b.updatedAt ? `?t=${new Date(b.updatedAt).getTime()}` : '')
+                                      b.coverUrl + `?t=${lastFetchedBooks}`
                                     }
                                     className="w-16 h-24 object-cover border border-gray-200"
                                     alt="Cover"

@@ -250,8 +250,10 @@ export function AuthorPublicProfilePage() {
                     const degreeText = q.qualification || q.degree || "";
                     const subjectText = q.subject || "";
                     const instText = q.institution || "";
+                    const modeText = q.mode ? ` (${q.mode})` : "";
                     let displayStr = degreeText;
                     if (subjectText) displayStr += (displayStr ? ` in ${subjectText}` : subjectText);
+                    displayStr += modeText;
                     return (
                       <div key={i}>
                         <div style={{ fontSize: 15, fontWeight: 600, color: C.dark }}>{displayStr || "Degree"}</div>

@@ -1139,7 +1139,14 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                           <div>
                             <label className="dash-label">Qualification *</label>
-                            <input type="text" value={q.qualification} onChange={(e) => { const n = [...qualifications]; n[idx].qualification = e.target.value; setQualifications(n); }} className={`dash-input w-full ${!q.qualification ? '!border-red-500' : ''}`} placeholder="e.g. BE, MA" />
+                            <select value={q.qualification} onChange={(e) => { const n = [...qualifications]; n[idx].qualification = e.target.value; setQualifications(n); }} className={`dash-input w-full ${!q.qualification ? '!border-red-500' : ''}`}>
+                              <option value="">Select Degree Level</option>
+                              <option value="Graduation">Graduation</option>
+                              <option value="Post-Graduation">Post-Graduation</option>
+                              <option value="Ph.D">Ph.D</option>
+                              <option value="Diploma">Diploma</option>
+                              <option value="Other">Other</option>
+                            </select>
                           </div>
                           <div>
                             <label className="dash-label">Institution *</label>
@@ -1153,13 +1160,13 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div>
                             <label className="dash-label">Mode of Degree *</label>
-                            <select value={q.mode || ''} onChange={(e) => { const n = [...qualifications]; n[idx].mode = e.target.value; setQualifications(n); }} className="dash-input w-full">
+                            <select value={q.mode || ''} onChange={(e) => { const n = [...qualifications]; n[idx].mode = e.target.value; setQualifications(n); }} className={`dash-input w-full ${!q.mode ? '!border-red-500' : ''}`}>
                               <option value="">Select Mode</option>
                               <option value="Full Time">Full Time</option>
                               <option value="Part Time">Part Time</option>
+                              <option value="Correspondence">Correspondence</option>
                               <option value="Online">Online</option>
                               <option value="Distance">Distance</option>
-                              <option value="Correspondence">Correspondence</option>
                             </select>
                           </div>
                           <div>
@@ -2161,7 +2168,12 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
 
                       const finalBooks = [...books];
                       if (form.title && form.genre && form.mrp) {
-                        finalBooks.push({ ...form, coverBlob, backCoverBlob });
+                        const newBookData = { ...form, coverBlob, backCoverBlob, coverFileUrl, backCoverFileUrl };
+                        if (editingBookIndexRef.current !== null) {
+                          finalBooks[editingBookIndexRef.current] = { ...finalBooks[editingBookIndexRef.current], ...newBookData };
+                        } else {
+                          finalBooks.push(newBookData);
+                        }
                       }
 
                       formData.append("books", JSON.stringify(finalBooks.map(b => {

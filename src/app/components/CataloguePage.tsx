@@ -852,6 +852,7 @@ export function CataloguePage() {
     if (sortBy === "price_asc") list.sort((a, b) => (a.mrp ?? 0) - (b.mrp ?? 0));
     else if (sortBy === "price_desc") list.sort((a, b) => (b.mrp ?? 0) - (a.mrp ?? 0));
     else if (sortBy === "title") list.sort((a, b) => a.title.localeCompare(b.title));
+    else list.sort((a, b) => a.authorName.localeCompare(b.authorName) || a.title.localeCompare(b.title));
 
     return list;
   }, [activeCategory, activeSubcategory, activeSubSubcategory, searchQuery, sortBy, allBooks, minPrice, maxPrice, formatFilter, ratingFilter]);
@@ -1403,7 +1404,7 @@ export function CataloguePage() {
                   value={sortBy}
                   onChange={(val) => setSortBy(val as any)}
                   options={[
-                    { label: "Sort: Recommended", value: "default" },
+                    { label: "Sort: Author (A-Z)", value: "default" },
                     { label: "A → Z", value: "title" },
                     { label: "Price: Low → High", value: "price_asc" },
                     { label: "Price: High → Low", value: "price_desc" }
@@ -1488,7 +1489,7 @@ export function CataloguePage() {
                   </button>
                 </div>
               ) : (
-                <div className="book-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "2rem", padding: "2rem 0 6rem", alignItems: "stretch" }}>
+                <div className="book-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: "1.5rem", padding: "1.5rem 0 6rem", alignItems: "stretch" }}>
                   {filteredBooks.map((book) => {
                     const inCart = cart.includes(book.id);
                     const isSelected = selectedBooksForCatalogue.includes(book.id);
@@ -1529,7 +1530,7 @@ export function CataloguePage() {
                         )}
 
                         <Link to={`/book/${book.id}`} style={{ textDecoration: "none", flex: 1, display: "flex", flexDirection: "column" }}>
-                          <div className="book-cover-container" style={{ width: "100%", height: "260px", borderRadius: "12px", background: "#f8f9fa", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem", overflow: "hidden" }}>
+                          <div className="book-cover-container" style={{ width: "100%", height: "200px", borderRadius: "12px", background: "#f8f9fa", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem", overflow: "hidden" }}>
                             <img 
                                src={book.coverUrl || getCatImg(activeCategory === "All" ? book.genre : activeCategory)} 
                                alt={book.title} 
@@ -1546,8 +1547,8 @@ export function CataloguePage() {
                              </div>
                           </div>
                           
-                          <h3 style={{ fontSize: 18, fontWeight: 800, color: "#111", margin: "0 0 0.2rem 0", lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontFamily: "'Playfair Display', serif" }}>{book.title}</h3>
-                          <div className="book-author-block" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.8rem" }}>
+                          <h3 style={{ fontSize: 16, fontWeight: 800, color: "#111", margin: "0 0 0.2rem 0", lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontFamily: "'Playfair Display', serif" }}>{book.title}</h3>
+                          <div className="book-author-block" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.6rem" }}>
                             {book.authorPhotoUrl ? (
                               <img src={book.authorPhotoUrl.startsWith('http') ? book.authorPhotoUrl : `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${book.authorPhotoUrl.startsWith('/') ? book.authorPhotoUrl : '/' + book.authorPhotoUrl}`} alt={book.authorName} style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} />
                             ) : (

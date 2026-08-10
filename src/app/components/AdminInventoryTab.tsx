@@ -23,6 +23,7 @@ export function AdminInventoryTab() {
   const [exporting, setExporting] = useState(false);
   const [pinging, setPinging] = useState<Record<number, boolean>>({});
   const [pinged, setPinged] = useState<Record<number, boolean>>({});
+  const [lastFetched, setLastFetched] = useState<number>(Date.now());
 
   // Filters & Pagination
   const [search, setSearch] = useState('');
@@ -62,6 +63,7 @@ export function AdminInventoryTab() {
       setData(res.data.data);
       setTotalRecords(res.data.meta.total);
       setGlobalStats(res.data.meta.globalStats);
+      setLastFetched(Date.now());
     } catch (err) {
       console.error(err);
       toast.error('Failed to load inventory data');
@@ -298,7 +300,7 @@ export function AdminInventoryTab() {
                             <div className="w-6"></div>
                           )}
                           {book.coverUrl && (
-                            <img src={book.coverUrl + (book.updatedAt ? `?t=${new Date(book.updatedAt).getTime()}` : '')} alt="Cover" className="w-8 h-10 object-cover rounded shadow-sm border border-black/5" />
+                            <img src={book.coverUrl + `?t=${lastFetched}`} alt="Cover" className="w-8 h-10 object-cover rounded shadow-sm border border-black/5" />
                           )}
                           <div className="font-bold text-paa-navy flex-1 min-w-0 flex flex-col gap-1 items-start justify-center">
                             <span className="line-clamp-2 leading-tight" title={book.title}>{book.title}</span>
