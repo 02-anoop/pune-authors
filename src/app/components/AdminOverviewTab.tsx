@@ -247,9 +247,8 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     } catch (e) { }
   };
   const insights = [
-    { label: 'Event Participation', value: `${avgParticipation}%`, desc: 'Avg author participation rate', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    { label: '% Orders Delayed', value: `${delayedOrdersRate}%`, desc: 'Of all web orders', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Web Orders Received', value: totalBooksSoldWeb, desc: 'Total web orders received online', icon: ShoppingCart, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: '% Orders Delayed', value: `${delayedOrdersRate}%`, desc: 'Of all web orders', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', tabId: 'web_orders' },
+    { label: 'Web Orders Received', value: totalBooksSoldWeb, desc: 'Total web orders received online', icon: ShoppingCart, color: 'text-purple-600', bg: 'bg-purple-50', tabId: 'web_orders' },
   ];
 
   const pendingActionItems = [
@@ -307,202 +306,119 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
       </div>
 
       {/* ════ High Level KPIs ════ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         {[
-          { label: 'Total Authors', value: authors?.length || 0, icon: Users, colorClass: 'blue' },
-          { label: 'Books Listed', value: books?.length || 0, icon: BookOpen, colorClass: 'green' },
-          { label: 'No of Events', value: events?.length || 0, icon: CalendarIcon, colorClass: 'amber' },
-          { label: 'No of Libraries', value: stats?.totalLibraries || 0, icon: Library, colorClass: 'purple' },
-          { label: 'Total Revenue', value: `₹${(dynamicRevenue !== null ? dynamicRevenue : (stats?.totalRevenue || 0)).toLocaleString()}`, icon: TrendingUp, colorClass: 'red' },
+          { label: 'Total Authors', value: authors?.length || 0, icon: Users, colorClass: 'blue', tabId: 'authors' },
+          { label: 'Books Listed', value: books?.length || 0, icon: BookOpen, colorClass: 'green', tabId: 'books' },
+          { label: 'No of Events', value: events?.length || 0, icon: CalendarIcon, colorClass: 'amber', tabId: 'events' },
+          { label: 'No of Libraries', value: stats?.totalLibraries || 0, icon: Library, colorClass: 'purple', tabId: 'library_donations' },
+          { label: 'Total Revenue', value: `₹${(dynamicRevenue !== null ? dynamicRevenue : (stats?.totalRevenue || 0)).toLocaleString()}`, icon: TrendingUp, colorClass: 'red', tabId: 'sales_report' },
         ].map((kpi, i) => (
-          <div key={i} className={`dash-kpi-card ${kpi.colorClass}`}>
-            <div className="flex items-start justify-between mb-4">
-              <div className={`dash-kpi-icon ${kpi.colorClass}`}><kpi.icon className="w-5 h-5" /></div>
+          <div key={i} onClick={() => kpi.tabId && setActiveTab(kpi.tabId)} className={`dash-kpi-card ${kpi.colorClass} !p-4 !rounded-xl cursor-pointer hover:scale-[1.02] transition-transform`}>
+            <div className="flex items-start justify-between mb-2">
+              <div className={`dash-kpi-icon ${kpi.colorClass} !w-9 !h-9 !rounded-lg`}><kpi.icon className="w-4 h-4" /></div>
             </div>
-            <p className="text-xs font-semibold tracking-wide uppercase text-paa-gray-text mb-1">{kpi.label}</p>
-            <h3 className="text-3xl font-bold text-paa-navy tracking-tight">{kpi.value}</h3>
+            <p className="text-[10px] font-bold tracking-wide uppercase text-paa-gray-text mb-0.5">{kpi.label}</p>
+            <h3 className="text-xl font-black text-paa-navy tracking-tight">{kpi.value}</h3>
           </div>
         ))}
       </div>
 
-      {/* ════ Operational Insights Row — 4 Symmetrical Mini Cards ════ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        {insights.map((insight, idx) => (
-          <div key={idx} className="p-4 rounded-2xl border border-paa-navy/5 bg-white shadow-sm hover:shadow-md transition-all relative group flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${insight.bg} ${insight.color}`}>
-                  <insight.icon size={18} aria-hidden="true" />
+      {/* ════ Combined Insights & Participation Graph Row ════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+        {/* Left Column: Stacked Mini Cards */}
+        <div className="lg:col-span-1 flex flex-col gap-4 sm:gap-5">
+          {insights.map((insight, idx) => (
+            <div key={idx} onClick={() => insight.tabId && setActiveTab(insight.tabId)} className="p-4 rounded-2xl border border-paa-navy/5 bg-white shadow-sm hover:shadow-md transition-all relative group flex flex-col justify-between flex-1 cursor-pointer hover:scale-[1.02]">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${insight.bg} ${insight.color}`}>
+                    <insight.icon size={18} aria-hidden="true" />
+                  </div>
+                  {(insight as any).hoverData && <Eye size={14} className="cursor-pointer text-indigo-400 hover:text-indigo-600" />}
                 </div>
-                {(insight as any).hoverData && <Eye size={14} className="cursor-pointer text-indigo-400 hover:text-indigo-600" />}
+                <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{insight.value}</h4>
+                <p className="text-xs font-bold text-gray-800 mb-0.5">{insight.label}</p>
+                <p className="text-[11px] text-paa-gray-text">{insight.desc}</p>
               </div>
-              <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{insight.value}</h4>
-              <p className="text-xs font-bold text-gray-800 mb-0.5">{insight.label}</p>
-              <p className="text-[11px] text-paa-gray-text">{insight.desc}</p>
-            </div>
 
-            {(insight as any).hoverData && (
-              <div className="absolute z-10 bottom-full left-0 mb-2 w-52 bg-white border border-gray-100 shadow-xl rounded-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text mb-2 border-b pb-1">Last 3 Events</p>
-                <div className="space-y-2">
-                  {(insight as any).hoverData.map((ev: any, i: number) => (
-                    <div key={i} className="flex justify-between items-center text-xs">
-                      <span className="text-gray-600 truncate mr-2">{ev.name}</span>
-                      <span className="font-bold text-paa-navy">{ev.rate}%</span>
-                    </div>
-                  ))}
+              {(insight as any).hoverData && (
+                <div className="absolute z-10 bottom-full left-0 mb-2 w-52 bg-white border border-gray-100 shadow-xl rounded-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text mb-2 border-b pb-1">Last 3 Events</p>
+                  <div className="space-y-2">
+                    {(insight as any).hoverData.map((ev: any, i: number) => (
+                      <div key={i} className="flex justify-between items-center text-xs">
+                        <span className="text-gray-600 truncate mr-2">{ev.name}</span>
+                        <span className="font-bold text-paa-navy">{ev.rate}%</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
-
-        {/* Low Stock Alert Mini Card */}
-        <div className="p-4 rounded-2xl border border-red-100 bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-                <Package size={18} aria-hidden="true" />
-              </div>
-              {lowStockBooks.length > 0 && (
-                <button
-                  aria-label="Notify All Authors About Low Stock"
-                  onClick={handleNotifyAllLowStock}
-                  className="text-[10px] flex items-center gap-1 font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 px-2 py-0.5 rounded-full transition-colors uppercase tracking-wider"
-                >
-                  <Bell size={10} className="text-amber-600" /> Notify All
-                </button>
               )}
             </div>
-            <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{lowStockBooks.length}</h4>
-            <p className="text-xs font-bold text-gray-800 mb-0.5">Low Stock Titles</p>
-            <p className="text-[11px] text-paa-gray-text">Titles requiring restocking</p>
-          </div>
+          ))}
 
-          <button
-            onClick={() => setActiveTab('inventory')}
-            className="mt-3 w-full text-xs font-bold text-white bg-paa-navy hover:bg-[#0c1e30] rounded-xl py-2 transition-all flex items-center justify-center gap-1.5 shadow-xs hover:shadow-sm"
-          >
-            <Package size={13} /> View Inventory
-          </button>
+          {/* Low Stock Alert Mini Card */}
+          <div onClick={() => setActiveTab('inventory')} className="p-4 rounded-2xl border border-red-100 bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between flex-1 cursor-pointer hover:scale-[1.02]">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                  <Package size={18} aria-hidden="true" />
+                </div>
+                {lowStockBooks.length > 0 && (
+                  <button
+                    aria-label="Notify All Authors About Low Stock"
+                    onClick={handleNotifyAllLowStock}
+                    className="text-[10px] flex items-center gap-1 font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 px-2 py-0.5 rounded-full transition-colors uppercase tracking-wider"
+                  >
+                    <Bell size={10} className="text-amber-600" /> Notify All
+                  </button>
+                )}
+              </div>
+              <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{lowStockBooks.length}</h4>
+              <p className="text-xs font-bold text-gray-800 mb-0.5">Low Stock Titles</p>
+              <p className="text-[11px] text-paa-gray-text">Titles requiring restocking</p>
+            </div>
+
+            <button
+              onClick={() => setActiveTab('inventory')}
+              className="mt-3 w-full text-xs font-bold text-white bg-paa-navy hover:bg-[#0c1e30] rounded-xl py-2 transition-all flex items-center justify-center gap-1.5 shadow-xs hover:shadow-sm"
+            >
+              <Package size={13} /> View Inventory
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* ════ Analytics Row — 2 Equal Balanced Columns ════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Revenue Trend Chart */}
-        <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-serif font-semibold text-paa-navy flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-500" aria-hidden="true" /> Recent Revenue Trend
-            </h3>
-            <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">Last 7 Active Dates</span>
-          </div>
-          <div className="h-60 w-full">
-            {revenueTrendData.length > 0 ? (
+        {/* Right Column: Participation Graph */}
+        <div className="lg:col-span-3 bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all flex flex-col">
+          <h3 className="text-base font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2 shrink-0">
+            <Users className="w-5 h-5 text-purple-500" aria-hidden="true" /> Top 20 Authors by Participation
+          </h3>
+          <div className="flex-1 w-full min-h-[320px]">
+            {topParticipatingAuthors && topParticipatingAuthors.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={revenueTrendData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <BarChart data={topParticipatingAuthors} margin={{ top: 15, right: 10, left: 0, bottom: 45 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis dataKey="date" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                  <YAxis fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                  <RechartsTooltip cursor={{ stroke: '#10b981', strokeWidth: 1, strokeDasharray: '3 3' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                  <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4, fill: '#fff', stroke: '#10b981', strokeWidth: 2 }} activeDot={{ r: 7 }} name="Revenue (₹)" />
-                </LineChart>
+                  <XAxis dataKey="name" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} angle={-45} textAnchor="end" interval={0} height={60} />
+                  <YAxis fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
+                  <RechartsTooltip
+                    cursor={{ fill: '#f3f4f6' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                    formatter={(value: any, name: any, props: any) => {
+                      return [`${value}% (${props.payload.participated}/${props.payload.total} events)`, 'Participation'];
+                    }}
+                  />
+                  <Bar dataKey="percentage" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Participation">
+                    {topParticipatingAuthors.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-xs">No revenue data available.</div>
+              <div className="h-full flex items-center justify-center text-gray-400 text-xs">No participation data available.</div>
             )}
           </div>
-        </div>
-
-        {/* Order Status Distribution Chart */}
-        <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-serif font-semibold text-paa-navy flex items-center gap-2">
-              <PieChart className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Order Status Distribution
-            </h3>
-            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
-              {orderStatusData.reduce((s, i) => s + i.value, 0)} Total Orders
-            </span>
-          </div>
-
-          {orderStatusData.length > 0 ? (
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              {/* Donut Chart with Center Label */}
-              <div className="relative w-44 h-44 shrink-0 flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                    <Pie
-                      data={orderStatusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={52}
-                      outerRadius={75}
-                      paddingAngle={3}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {orderStatusData.map((entry, index) => {
-                        const statusColors: Record<string, string> = {
-                          'Completed': '#10b981',
-                          'Delivered': '#059669',
-                          'Dispatched': '#3b82f6',
-                          'Pending': '#f59e0b',
-                          'Pending Verification': '#f97316',
-                          'Cancelled': '#ef4444',
-                          'Bulk Request Pending': '#8b5cf6',
-                          'Approved - Pending Payment': '#ec4899',
-                        };
-                        return (
-                          <Cell key={`cell-${index}`} fill={statusColors[entry.name] || COLORS[index % COLORS.length]} />
-                        );
-                      })}
-                    </Pie>
-                    <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 600 }} />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-2xl font-black text-paa-navy leading-none">
-                    {orderStatusData.reduce((s, i) => s + i.value, 0)}
-                  </span>
-                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-gray-400 mt-1">Orders</span>
-                </div>
-              </div>
-
-              {/* Symmetrical Grid Legend — Clear Visibility, No Clipping */}
-              <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {orderStatusData.map((entry, idx) => {
-                  const totalCount = orderStatusData.reduce((s, i) => s + i.value, 0);
-                  const pct = totalCount ? Math.round((entry.value / totalCount) * 100) : 0;
-                  const statusColors: Record<string, string> = {
-                    'Completed': '#10b981',
-                    'Delivered': '#059669',
-                    'Dispatched': '#3b82f6',
-                    'Pending': '#f59e0b',
-                    'Pending Verification': '#f97316',
-                    'Cancelled': '#ef4444',
-                    'Bulk Request Pending': '#8b5cf6',
-                    'Approved - Pending Payment': '#ec4899',
-                  };
-                  const color = statusColors[entry.name] || COLORS[idx % COLORS.length];
-                  return (
-                    <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/80 border border-gray-100/80 hover:bg-gray-100/80 transition-colors">
-                      <div className="flex items-center gap-2 min-w-0 pr-2">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: color }}></span>
-                        <span className="text-xs font-bold text-paa-navy truncate">{entry.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <span className="text-xs font-black text-paa-navy">{entry.value}</span>
-                        <span className="text-[10px] font-semibold text-gray-400">({pct}%)</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="h-48 flex items-center justify-center text-gray-400 text-xs w-full">No order status data available.</div>
-          )}
         </div>
       </div>
 
@@ -573,40 +489,6 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
                 </div>
               </div>
             )) : <p className="text-xs text-gray-400 py-4 text-center">No completed sales yet.</p>}
-          </div>
-        </div>
-      </div>
-
-      {/* ════ Participation Graph Row ════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
-          <h3 className="text-base font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-            <Users className="w-5 h-5 text-purple-500" aria-hidden="true" /> Top 20 Authors by Participation
-          </h3>
-          <div className="h-80 w-full">
-            {topParticipatingAuthors && topParticipatingAuthors.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topParticipatingAuthors} margin={{ top: 15, right: 10, left: 0, bottom: 45 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis dataKey="name" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} angle={-45} textAnchor="end" interval={0} height={60} />
-                  <YAxis fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
-                  <RechartsTooltip
-                    cursor={{ fill: '#f3f4f6' }}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                    formatter={(value: any, name: any, props: any) => {
-                      return [`${value}% (${props.payload.participated}/${props.payload.total} events)`, 'Participation'];
-                    }}
-                  />
-                  <Bar dataKey="percentage" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Participation">
-                    {topParticipatingAuthors.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-xs">No participation data available.</div>
-            )}
           </div>
         </div>
       </div>
