@@ -305,12 +305,14 @@ export function BrowseAuthorsPage() {
                                   const subjectText = q.subject || "";
                                   let displayStr = degreeText;
                                   if (subjectText) displayStr += (displayStr ? ` in ${subjectText}` : subjectText);
-                                  if (q.mode) displayStr = `${q.mode} ${displayStr}`;
                                   return (
-                                    <div key={i} style={{ fontSize: 13, color: C.muted, lineHeight: 1.4 }}>
-                                      • <span style={{ fontWeight: 600, color: C.text }}>{displayStr}</span> 
-                                      {q.institution || q.college ? ` from ${q.institution || q.college}` : ""}
-                                      {q.year ? ` (${q.year})` : ""}
+                                    <div key={i} style={{ fontSize: 13, color: C.muted, lineHeight: 1.4, marginBottom: "0.4rem" }}>
+                                      <div>• <span style={{ fontWeight: 600, color: C.text }}>{displayStr}</span>{q.institution || q.college ? ` from ${q.institution || q.college}` : ""}{q.year ? ` (${q.year})` : ""}</div>
+                                      {q.mode && (
+                                        <div style={{ marginLeft: "0.6rem", fontSize: 11, fontWeight: 800, color: C.primary, marginTop: "0.1rem", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                                          {q.mode}
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })}
