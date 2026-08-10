@@ -11938,8 +11938,8 @@ const totalAuthorsBase = eventRegistrations.length;
                                     )}
                                   >
                                     <option value="">Select Mode</option>
-                                    <option value="Full Time">Full Time</option>
-                                    <option value="Part Time">Part Time</option>
+                                    <option value="Full-time">Full-time</option>
+                                    <option value="Part-time">Part-time</option>
                                     <option value="Correspondence">Correspondence</option>
                                     <option value="Online">Online</option>
                                     <option value="Distance">Distance</option>

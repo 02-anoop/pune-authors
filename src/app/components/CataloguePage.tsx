@@ -641,6 +641,8 @@ export function CataloguePage() {
     return w.__apiCache?.publicStats || {};
   });
 
+
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const cat = params.get("category");
@@ -857,6 +859,8 @@ export function CataloguePage() {
     return list;
   }, [activeCategory, activeSubcategory, activeSubSubcategory, searchQuery, sortBy, allBooks, minPrice, maxPrice, formatFilter, ratingFilter]);
 
+
+
   const addToCart = (id: string) => {
     setCart((prev) => {
       const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
@@ -974,6 +978,7 @@ export function CataloguePage() {
           }
           .book-cover-img {
             height: 100% !important;
+            object-fit: contain !important;
           }
           .book-genre-block {
              margin-bottom: 0.4rem !important;
@@ -1489,13 +1494,14 @@ export function CataloguePage() {
                   </button>
                 </div>
               ) : (
-                <div className="book-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: "1.5rem", padding: "1.5rem 0 6rem", alignItems: "stretch" }}>
-                  {filteredBooks.map((book) => {
-                    const inCart = cart.includes(book.id);
+                <div style={{ paddingBottom: "4rem" }}>
+                  <div className="book-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 py-4 items-stretch">
+                    {filteredBooks.map((book) => {
+                      const inCart = cart.includes(book.id);
                     const isSelected = selectedBooksForCatalogue.includes(book.id);
                     const isBulkSelected = !!selectedBooksForBulk.find(b => b.id === book.id);
                     return (
-                      <div key={book.id} style={{ height: "100%", background: "#fff", borderRadius: "24px", padding: "1.2rem", border: "1px solid", borderColor: (selectionMode && isSelected) || (bulkSelectionMode && isBulkSelected) ? getCategoryColor(activeCategory).color : "#eaeaea", display: "flex", flexDirection: "column", transition: "all 0.2s ease", position: "relative" }} className="book-card-premium" onMouseEnter={e => { if(!selectionMode && !bulkSelectionMode) { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "0 15px 30px rgba(0,0,0,0.08)"; e.currentTarget.style.borderColor = getCategoryColor(activeCategory).color; } }} onMouseLeave={e => { if(!selectionMode && !bulkSelectionMode) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#eaeaea"; } }}>
+                      <div key={book.id} style={{ height: "100%", background: "transparent", display: "flex", flexDirection: "column", transition: "all 0.2s ease", position: "relative", borderRadius: "12px", padding: "0.5rem" }} className="book-card-minimal" onMouseEnter={e => { if(!selectionMode && !bulkSelectionMode) { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 24px rgba(0,0,0,0.08)"; e.currentTarget.style.background = "#fff"; } }} onMouseLeave={e => { if(!selectionMode && !bulkSelectionMode) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.background = "transparent"; } }}>
                         
                         {(selectionMode || bulkSelectionMode) && (
                           <div 
@@ -1515,76 +1521,72 @@ export function CataloguePage() {
                               }
                             }}
                             style={{
-                              position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10, cursor: "pointer",
-                              background: (isSelected || isBulkSelected) ? "rgba(2, 132, 199, 0.05)" : "transparent",
-                              borderRadius: "24px", transition: "all 0.2s",
-                              display: "flex", alignItems: "flex-start", justifyContent: "flex-end", padding: "1rem"
+                              position: "absolute", top: 10, right: 10, zIndex: 10, cursor: "pointer",
+                              background: (isSelected || isBulkSelected) ? "#fff" : "rgba(255,255,255,0.8)",
+                              borderRadius: "50%", transition: "all 0.2s",
+                              display: "flex", alignItems: "center", justifyContent: "center", padding: "0.2rem",
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
                             }}
                           >
                             {(isSelected || isBulkSelected) ? (
-                              <CheckCircle2 size={28} color={getCategoryColor(activeCategory).color} fill="#fff" style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1))" }} />
+                              <CheckCircle2 size={24} color={getCategoryColor(activeCategory).color} fill="#fff" />
                             ) : (
-                              <Circle size={28} color="#cbd5e1" fill="#fff" style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1))", opacity: 0.8 }} />
+                              <Circle size={24} color="#94a3b8" fill="transparent" />
                             )}
                           </div>
                         )}
 
                         <Link to={`/book/${book.id}`} style={{ textDecoration: "none", flex: 1, display: "flex", flexDirection: "column" }}>
-                          <div className="book-cover-container" style={{ width: "100%", height: "200px", borderRadius: "12px", background: "#f8f9fa", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem", overflow: "hidden" }}>
+                          <div className="book-cover-container" style={{ width: "100%", height: "240px", background: "#f8f9fa", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "0.8rem", overflow: "hidden", borderRadius: "8px" }}>
                             <img 
                                src={book.coverUrl || getCatImg(activeCategory === "All" ? book.genre : activeCategory)} 
                                alt={book.title} 
                                onError={(e) => { e.currentTarget.src = getCatImg(activeCategory === "All" ? book.genre : activeCategory); }}
-                               style={{ height: "100%", width: "100%", aspectRatio: "3/4", objectFit: "contain", borderRadius: "8px", boxShadow: "0 10px 20px rgba(0,0,0,0.08)", transition: "transform 0.5s" }} 
+                               style={{ width: "100%", height: "100%", objectFit: "contain", mixBlendMode: "multiply", padding: "0.5rem" }} 
                                className="book-cover-img" 
                             />
                           </div>
                           
-                          <div className="book-genre-block" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
-                             <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: getCategoryColor(activeCategory).color, background: `${getCategoryColor(activeCategory).color}15`, padding: "0.3rem 0.6rem", borderRadius: "4px" }}>{book.subGenre ? book.subGenre.split(" > ")[0] : book.genre}</div>
-                             <div style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: 12, fontWeight: 700, color: "#FFD400" }}>
-                                <Star size={12} fill="#FFD400" /> {book.rating > 0 ? book.rating.toFixed(1) : "New"}
-                             </div>
+                          <div className="book-genre-block" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.4rem" }}>
+                             <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#64748b" }}>{book.subGenre ? book.subGenre.split(" > ")[0] : book.genre}</div>
+                             {book.rating > 0 && (
+                               <div style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: 12, fontWeight: 600, color: "#475569" }}>
+                                  <Star size={12} fill="#fbbf24" color="#fbbf24" /> {book.rating.toFixed(1)}
+                               </div>
+                             )}
                           </div>
                           
-                          <h3 style={{ fontSize: 16, fontWeight: 800, color: "#111", margin: "0 0 0.2rem 0", lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontFamily: "'Playfair Display', serif" }}>{book.title}</h3>
-                          <div className="book-author-block" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.6rem" }}>
-                            {book.authorPhotoUrl ? (
-                              <img src={book.authorPhotoUrl.startsWith('http') ? book.authorPhotoUrl : `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${book.authorPhotoUrl.startsWith('/') ? book.authorPhotoUrl : '/' + book.authorPhotoUrl}`} alt={book.authorName} style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }} />
-                            ) : (
-                              <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#64748b" }}>
-                                {book.authorName.charAt(0)}
-                              </div>
-                            )}
-                            <span style={{ fontSize: 13, color: "#475569", fontWeight: 600 }}>{book.authorName}</span>
-                          </div>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", margin: "0 0 0.3rem 0", lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontFamily: "'Google Sans', sans-serif" }}>{book.title}</h3>
                           
-                          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
-                            {book.bundleRule && book.bundleRule.enabled && (
-                              <div style={{ background: "#fffbeb", color: "#d97706", padding: "0.4rem 0.6rem", borderRadius: "6px", fontSize: 10, fontWeight: 800, textTransform: "uppercase", alignSelf: "flex-start", border: "1px solid #fef3c7" }}>
-                                🔥 Buy {book.bundleRule.buyCount} Get {book.bundleRule.discount}% Off
-                              </div>
+                          <div className="book-author-block" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                            <span style={{ fontSize: 13, color: "#64748b", fontWeight: 500 }}>by {book.authorName}</span>
+                          </div>
+
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", marginBottom: "0.5rem" }}>
+                            {book.language && (
+                               <span style={{ fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                                 Language: <strong style={{color:"#475569"}}>{book.language}</strong>
+                               </span>
                             )}
                             {book.bundleRules && book.bundleRules.length > 0 && book.bundleRules.some(r => r.enabled) && !book.bundleRule && (
-                              <div style={{ background: "#fffbeb", color: "#d97706", padding: "0.4rem 0.6rem", borderRadius: "6px", fontSize: 10, fontWeight: 800, textTransform: "uppercase", alignSelf: "flex-start", border: "1px solid #fef3c7" }}>
-                                🔥 Bundle Offer Available
+                              <div style={{ color: "#d97706", fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>
+                                Bundle Offer Available
                               </div>
                             )}
                           </div>
                         </Link>
                         
-                        <div className="bottom-row" style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "0.5rem", borderTop: "1px solid #f1f5f9" }}>
+                        <div className="bottom-row" style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "0.8rem", borderTop: "1px solid #f1f5f9" }}>
                            <div>
-                             <div className="price-label" style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#aaa", letterSpacing: "0.1em", marginBottom: "0.1rem" }}>Price</div>
-                             <div className="price-val" style={{ fontSize: 22, fontWeight: 900, color: "#111", lineHeight: 1 }}>{book.mrp != null ? `₹${book.mrp}` : book.mrpRaw || "TBD"}</div>
+                             <div className="price-val" style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", lineHeight: 1 }}>{book.mrp != null ? `₹${book.mrp}` : book.mrpRaw || "TBD"}</div>
                            </div>
                            
                            {!selectionMode && !bulkSelectionMode && (
                              <div>
                                {inCart ? (
-                                 <button onClick={(e) => { e.preventDefault(); addToCart(book.id); }} style={{ padding: "0.8rem 1.2rem", background: "#f5f5f5", color: "#111", border: "2px solid #eaeaea", borderRadius: "12px", fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}><ShoppingCart size={16} fill="#111" /> Added</button>
+                                 <button onClick={(e) => { e.preventDefault(); addToCart(book.id); }} style={{ padding: "0.6rem 1rem", background: "#f1f5f9", color: "#0f172a", border: "none", borderRadius: "6px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}><ShoppingCart size={14} fill="#0f172a" /> Added</button>
                                ) : (
-                                 <button onClick={(e) => { e.preventDefault(); addToCart(book.id); }} style={{ padding: "0.8rem 1.2rem", background: getCategoryColor(activeCategory).color, color: "#fff", border: "none", borderRadius: "12px", fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", transition: "filter 0.2s" }} onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.1)"} onMouseLeave={e => e.currentTarget.style.filter = "brightness(1)"}><ShoppingCart size={16} /> Add</button>
+                                 <button onClick={(e) => { e.preventDefault(); addToCart(book.id); }} style={{ padding: "0.6rem 1rem", background: "#0f172a", color: "#fff", border: "none", borderRadius: "6px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.background = getCategoryColor(activeCategory).color || "#3b82f6"; e.currentTarget.style.transform = "scale(1.05)"; }} onMouseLeave={e => { e.currentTarget.style.background = "#0f172a"; e.currentTarget.style.transform = "scale(1)"; }}><ShoppingCart size={14} /> Add</button>
                                )}
                              </div>
                            )}
@@ -1592,6 +1594,8 @@ export function CataloguePage() {
                       </div>
                     );
                   })}
+                </div>
+
                 </div>
               )}
             </>

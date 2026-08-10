@@ -303,10 +303,9 @@ export function BrowseAuthorsPage() {
                                 {parsedQuals.map((q: any, i) => {
                                   const degreeText = q.qualification || q.degree || "";
                                   const subjectText = q.subject || "";
-                                  const modeText = q.mode ? ` (${q.mode})` : "";
                                   let displayStr = degreeText;
                                   if (subjectText) displayStr += (displayStr ? ` in ${subjectText}` : subjectText);
-                                  displayStr += modeText;
+                                  if (q.mode) displayStr = `${q.mode} ${displayStr}`;
                                   return (
                                     <div key={i} style={{ fontSize: 13, color: C.muted, lineHeight: 1.4 }}>
                                       • <span style={{ fontWeight: 600, color: C.text }}>{displayStr}</span> 

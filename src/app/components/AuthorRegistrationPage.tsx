@@ -1162,8 +1162,8 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                             <label className="dash-label">Mode of Degree *</label>
                             <select value={q.mode || ''} onChange={(e) => { const n = [...qualifications]; n[idx].mode = e.target.value; setQualifications(n); }} className={`dash-input w-full ${!q.mode ? '!border-red-500' : ''}`}>
                               <option value="">Select Mode</option>
-                              <option value="Full Time">Full Time</option>
-                              <option value="Part Time">Part Time</option>
+                              <option value="Full-time">Full-time</option>
+                              <option value="Part-time">Part-time</option>
                               <option value="Correspondence">Correspondence</option>
                               <option value="Online">Online</option>
                               <option value="Distance">Distance</option>
