@@ -11892,13 +11892,13 @@ const totalAuthorsBase = eventRegistrations.length;
                                 </button>
                                 <div>
                                   <span className="text-[10px] uppercase text-gray-500 font-bold block mb-1">
-                                    Qualification
+                                    Degree Level
                                   </span>
                                   <select
-                                    value={q.qualification || ""}
+                                    value={q.level || ""}
                                     onChange={(e) => {
                                       const newQ = [...qArr];
-                                      newQ[i].qualification = e.target.value;
+                                      newQ[i].level = e.target.value;
                                       setEditingAuthor({
                                         ...editingAuthor,
                                         qualification: JSON.stringify(newQ),
@@ -11916,6 +11916,25 @@ const totalAuthorsBase = eventRegistrations.length;
                                     <option value="Diploma">Diploma</option>
                                     <option value="Other">Other</option>
                                   </select>
+                                  <span className="text-[10px] uppercase text-gray-500 font-bold block mt-2 mb-1">
+                                    Degree
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={q.qualification || ""}
+                                    onChange={(e) => {
+                                      const newQ = [...qArr];
+                                      newQ[i].qualification = e.target.value;
+                                      setEditingAuthor({
+                                        ...editingAuthor,
+                                        qualification: JSON.stringify(newQ),
+                                      });
+                                    }}
+                                    className={getFieldClass(
+                                      "qualification",
+                                      "dash-input w-full text-xs",
+                                    )}
+                                  />
                                   {renderOriginalValue("qualification")}
                                 </div>
                                 <div>

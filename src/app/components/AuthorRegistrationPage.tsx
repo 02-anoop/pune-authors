@@ -260,7 +260,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
   const [paymentBlob, setPaymentBlob] = useState<File | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrCodeBlob, setQrCodeBlob] = useState<File | null>(null);
-  const [qualifications, setQualifications] = useState<any[]>([{ id: Date.now(), qualification: "", institution: "", subject: "", mode: "", certificateUrl: "", certificateBlob: null }]);
+  const [qualifications, setQualifications] = useState<any[]>([{ id: Date.now(), level: "", qualification: "", institution: "", subject: "", mode: "", certificateUrl: "", certificateBlob: null }]);
   const [dynamicFields, setDynamicFields] = useState<any[]>([]);
   const [extraDataState, setExtraDataState] = useState<any>({});
   const [books, setBooks] = useState<any[]>([]);
@@ -421,8 +421,20 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
     if ((isReapply || isAdminEdit || isAuthorEdit) && initialData && !hasInitialized.current) {
        hasInitialized.current = true;
        let parsedQuals = [];
-       try { parsedQuals = JSON.parse(initialData.qualification); } catch(e) {}
-       if (!Array.isArray(parsedQuals) || parsedQuals.length === 0) parsedQuals = [{ id: Date.now(), qualification: "", institution: "", subject: "", certificateUrl: "", certificateBlob: null }];
+       try { 
+         parsedQuals = JSON.parse(initialData.qualification); 
+         if (Array.isArray(parsedQuals)) {
+           parsedQuals = parsedQuals.map((q: any) => {
+             if (!q.level && q.qualification) {
+               const knownLevels = ["Graduation", "Post-Graduation", "Ph.D", "Diploma", "Other"];
+               const newLevel = knownLevels.includes(q.qualification) ? q.qualification : "Other";
+               return { ...q, level: newLevel, qualification: q.qualification };
+             }
+             return q;
+           });
+         }
+       } catch(e) {}
+       if (!Array.isArray(parsedQuals) || parsedQuals.length === 0) parsedQuals = [{ id: Date.now(), level: "", qualification: "", institution: "", subject: "", certificateUrl: "", certificateBlob: null }];
        setQualifications(parsedQuals);
        
        const parseArray = (jsonVal: any, strVal: any) => {
@@ -1127,7 +1139,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <label className="dash-label mb-0 text-sm opacity-0">Qualifications</label>
-                      <button type="button" onClick={() => setQualifications([...qualifications, { id: Date.now(), qualification: "", institution: "", subject: "", mode: "", certificateUrl: "", certificateBlob: null }])} className="text-xs font-bold uppercase tracking-widest text-paa-navy hover:text-paa-gold flex items-center gap-1"><Plus size={14}/> Add Another</button>
+                      <button type="button" onClick={() => setQualifications([...qualifications, { id: Date.now(), level: "", qualification: "", institution: "", subject: "", mode: "", certificateUrl: "", certificateBlob: null }])} className="text-xs font-bold uppercase tracking-widest text-paa-navy hover:text-paa-gold flex items-center gap-1"><Plus size={14}/> Add Another</button>
                     </div>
                     {qualifications.map((q, idx) => (
                       <div key={q.id} className="p-5 border border-paa-navy/10 rounded-2xl bg-white shadow-sm space-y-4 relative">
@@ -1136,11 +1148,11 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                             <span className="text-[10px] font-bold">REMOVE</span>
                           </button>
                         )}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                           <div>
-                            <label className="dash-label">Qualification *</label>
-                            <select value={q.qualification} onChange={(e) => { const n = [...qualifications]; n[idx].qualification = e.target.value; setQualifications(n); }} className={`dash-input w-full ${!q.qualification ? '!border-red-500' : ''}`}>
-                              <option value="">Select Degree Level</option>
+                            <label className="dash-label">Degree Level *</label>
+                            <select value={q.level || ''} onChange={(e) => { const n = [...qualifications]; n[idx].level = e.target.value; n[idx].qualification = ''; setQualifications(n); }} className={`dash-input w-full ${!q.level ? '!border-red-500' : ''}`}>
+                              <option value="">Select Level</option>
                               <option value="Graduation">Graduation</option>
                               <option value="Post-Graduation">Post-Graduation</option>
                               <option value="Ph.D">Ph.D</option>
@@ -1149,15 +1161,74 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                             </select>
                           </div>
                           <div>
+                            <label className="dash-label">Degree *</label>
+                            {(q.level === 'Other' || q.qualification === 'Other') ? (
+                              <input type="text" value={q.qualification || ''} onChange={(e) => { const n = [...qualifications]; n[idx].qualification = e.target.value; setQualifications(n); }} className={`dash-input w-full ${!q.qualification ? '!border-red-500' : ''}`} placeholder="e.g. Certifications" />
+                            ) : (
+                              <select value={q.qualification || ''} onChange={(e) => { const n = [...qualifications]; n[idx].qualification = e.target.value; setQualifications(n); }} className={`dash-input w-full ${!q.qualification ? '!border-red-500' : ''}`} disabled={!q.level}>
+                                <option value="">Select Degree</option>
+                                {q.qualification && !["B.Tech/B.E.", "B.Sc", "B.A.", "B.Com", "BBA", "BCA", "MBBS", "B.Arch", "B.Pharm", "LL.B", "M.Tech/M.E.", "M.Sc", "M.A.", "M.Com", "MBA", "MCA", "MD/MS", "M.Arch", "M.Pharm", "LL.M", "PG Diploma", "Ph.D", "D.Phil", "Diploma in Engineering", "Diploma in Management", "Diploma in Arts/Science", "Other"].includes(q.qualification) && (
+                                  <option value={q.qualification}>{q.qualification}</option>
+                                )}
+                                {q.level === 'Graduation' && (
+                                  <>
+                                    <option value="B.Tech/B.E.">B.Tech/B.E.</option>
+                                    <option value="B.Sc">B.Sc</option>
+                                    <option value="B.A.">B.A.</option>
+                                    <option value="B.Com">B.Com</option>
+                                    <option value="BBA">BBA</option>
+                                    <option value="BCA">BCA</option>
+                                    <option value="MBBS">MBBS</option>
+                                    <option value="B.Arch">B.Arch</option>
+                                    <option value="B.Pharm">B.Pharm</option>
+                                    <option value="LL.B">LL.B</option>
+                                    <option value="Other">Other</option>
+                                  </>
+                                )}
+                                {q.level === 'Post-Graduation' && (
+                                  <>
+                                    <option value="M.Tech/M.E.">M.Tech/M.E.</option>
+                                    <option value="M.Sc">M.Sc</option>
+                                    <option value="M.A.">M.A.</option>
+                                    <option value="M.Com">M.Com</option>
+                                    <option value="MBA">MBA</option>
+                                    <option value="MCA">MCA</option>
+                                    <option value="MD/MS">MD/MS</option>
+                                    <option value="M.Arch">M.Arch</option>
+                                    <option value="M.Pharm">M.Pharm</option>
+                                    <option value="LL.M">LL.M</option>
+                                    <option value="PG Diploma">PG Diploma</option>
+                                    <option value="Other">Other</option>
+                                  </>
+                                )}
+                                {q.level === 'Ph.D' && (
+                                  <>
+                                    <option value="Ph.D">Ph.D</option>
+                                    <option value="D.Phil">D.Phil</option>
+                                    <option value="Other">Other</option>
+                                  </>
+                                )}
+                                {q.level === 'Diploma' && (
+                                  <>
+                                    <option value="Diploma in Engineering">Diploma in Engineering</option>
+                                    <option value="Diploma in Management">Diploma in Management</option>
+                                    <option value="Diploma in Arts/Science">Diploma in Arts/Science</option>
+                                    <option value="Other">Other</option>
+                                  </>
+                                )}
+                              </select>
+                            )}
+                          </div>
+                          <div>
                             <label className="dash-label">Institution *</label>
-                            <input type="text" value={q.institution} onChange={(e) => { const n = [...qualifications]; n[idx].institution = e.target.value; setQualifications(n); }} className={`dash-input w-full ${!q.institution ? '!border-red-500' : ''}`} placeholder="e.g. Pune University" />
+                            <input type="text" value={q.institution || ''} onChange={(e) => { const n = [...qualifications]; n[idx].institution = e.target.value; setQualifications(n); }} className={`dash-input w-full ${!q.institution ? '!border-red-500' : ''}`} placeholder="e.g. Pune University" />
                           </div>
                           <div>
                             <label className="dash-label">Subject *</label>
-                            <input type="text" value={q.subject} onChange={(e) => { const n = [...qualifications]; n[idx].subject = e.target.value; setQualifications(n); }} className={`dash-input w-full ${!q.subject ? '!border-red-500' : ''}`} placeholder="e.g. Computer Science" />
+                            <input type="text" value={q.subject || ''} onChange={(e) => { const n = [...qualifications]; n[idx].subject = e.target.value; setQualifications(n); }} className={`dash-input w-full ${!q.subject ? '!border-red-500' : ''}`} placeholder="e.g. Computer Science" />
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                           <div>
                             <label className="dash-label">Mode of Degree *</label>
                             <select value={q.mode || ''} onChange={(e) => { const n = [...qualifications]; n[idx].mode = e.target.value; setQualifications(n); }} className={`dash-input w-full ${!q.mode ? '!border-red-500' : ''}`}>
@@ -2050,9 +2121,9 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       alert(`Author Profile: Please fix these fields — ${missingProfileFields.join(', ')}`); return;
                     }
                     for (const q of qualifications) {
-                      if (!q.qualification || !q.institution || !q.subject || !q.mode) {
+                      if (!q.level || !q.qualification || !q.institution || !q.subject || !q.mode) {
                         setStep(isOnboardingMode ? 3 : 0);
-                        alert("Please fill all qualification fields (Qualification, Institution, Subject, Mode of Degree) correctly."); return;
+                        alert("Please fill all qualification fields (Degree Level, Degree, Institution, Subject, Mode of Degree) correctly."); return;
                       }
                       if (!q.certificateBlob && !q.certificateUrl) {
                         setStep(isOnboardingMode ? 3 : 0);
@@ -2245,6 +2316,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       
                       formData.append("qualifications", JSON.stringify(qualifications.map(q => ({
                         id: q.id,
+                        level: q.level,
                         qualification: q.qualification,
                         institution: q.institution,
                         subject: q.subject,
