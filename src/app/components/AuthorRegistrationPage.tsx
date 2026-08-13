@@ -81,11 +81,16 @@ function WizardAboutStep() {
 
 function WizardEventsStep() {
   const [currentPastEventIndex, setCurrentPastEventIndex] = useState(0);
+  const [liveEvents, setLiveEvents] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
     axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/impact-stats`)
       .then(res => setStats(res.data))
+      .catch(console.error);
+      
+    axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/public/events`)
+      .then(res => setLiveEvents(res.data))
       .catch(console.error);
   }, []);
 
@@ -151,48 +156,135 @@ function WizardEventsStep() {
             </div>
           </div>
 
-          <h3 className="font-serif text-xl text-paa-navy mb-6 border-b border-gray-100 pb-2">Event Highlights</h3>
-          <div className="relative min-h-[420px] md:min-h-[450px] flex justify-center perspective-[1000px]">
-              {pastEvents.map((event, index) => {
-                const diff = (index - currentPastEventIndex + pastEvents.length) % pastEvents.length;
-                if (diff > 2 && diff < pastEvents.length - 1) return null;
-                let style: React.CSSProperties = { position: "absolute", top: 0, width: "100%", maxWidth: "380px", transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)" };
-                if (diff === 0) { style = { ...style, transform: "translateY(0) scale(1)", zIndex: 30, opacity: 1, pointerEvents: "auto" }; }
-                else if (diff === 1) { style = { ...style, transform: "translateY(25px) scale(0.92)", zIndex: 20, opacity: 0.8, pointerEvents: "none" }; }
-                else if (diff === 2) { style = { ...style, transform: "translateY(50px) scale(0.84)", zIndex: 10, opacity: 0.4, pointerEvents: "none" }; }
-                else if (diff === pastEvents.length - 1) { style = { ...style, transform: "translateY(-40px) scale(1.05)", zIndex: 40, opacity: 0, pointerEvents: "none" }; }
+          <h3 className="font-serif text-xl text-paa-navy mb-6 border-b border-gray-100 pb-2">Event Statistics</h3>
+          <div className="mt-2 border border-black overflow-hidden shadow-sm animate-in fade-in duration-500">
+            <div className="w-full overflow-x-auto pb-2">
+              <table className="w-full text-left text-[11px] border-collapse border-[1.5px] border-black min-w-[700px]">
+                <thead className="bg-indigo-50 border-b-2 border-indigo-100">
+                  <tr>
+                    <th className="w-12 p-2 text-center text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">
+                      S.No
+                    </th>
+                    <th className="p-2 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">
+                      Event Name
+                    </th>
+                    <th className="p-2 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                      Format
+                    </th>
+                    <th className="p-2 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                      Category
+                    </th>
+                    <th className="p-2 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                      Address
+                    </th>
+                    <th className="p-2 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                      Month
+                    </th>
+                    <th className="p-2 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                      Year
+                    </th>
+                    <th className="p-2 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                      Duration
+                    </th>
+                    <th className="p-2 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                      No. of Authors
+                    </th>
+                    <th className="p-2 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle">
+                      Books Sold
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white text-[11px]">
+                  {liveEvents.map((evt: any, i: number) => {
+                    const evtAuthors =
+                      evt.aggAuthors != null
+                        ? evt.aggAuthors
+                        : evt.isLegacy
+                          ? "NA"
+                          : evt._count?.eventAuthors || 0;
 
-                return (
-                  <div key={index} style={style} className="bg-white rounded-2xl border border-paa-navy/10 shadow-lg overflow-hidden flex flex-col">
-                    <div className="h-40 bg-gray-100 relative">
-                      {(event as any).photoUrl ? (
-                        <img src={(event as any).photoUrl.startsWith('http') ? (event as any).photoUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${(event as any).photoUrl}`} alt={event.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center p-4 text-center bg-paa-navy/5">
-                           <h3 className="font-serif text-lg text-gray-400 leading-tight">{event.name}</h3>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-5 flex-1 flex flex-col bg-white">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-[9px] font-bold text-paa-navy uppercase tracking-widest bg-paa-navy/5 px-2 py-1 rounded">{event.date}</span>
-                        <span className="text-[10px] text-gray-500 flex items-center gap-1"><Clock size={10} /> {event.duration}</span>
-                      </div>
-                      <h4 className="font-serif text-lg text-gray-900 font-medium mb-1 line-clamp-1">{event.name}</h4>
-                      <p className="text-xs text-gray-500 flex items-center gap-1.5 mb-4 line-clamp-1"><MapPin size={12} className="shrink-0" /> {event.address}</p>
-                      
-                      <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-3 mt-auto">
-                        <div><div className="text-[9px] text-gray-400 uppercase tracking-widest mb-0.5">Authors</div><div className="font-serif text-lg text-paa-navy">{event.authorsParticipated}</div></div>
-                        <div><div className="text-[9px] text-gray-400 uppercase tracking-widest mb-0.5">Books Sold</div><div className="font-serif text-lg text-paa-navy">{event.booksSold !== null ? event.booksSold : "TBA"}</div></div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              <div className="absolute -bottom-2 md:bottom-2 z-50 flex gap-3">
-                 <button onClick={prevPastEvent} className="p-3 bg-white rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 shadow-md transition-all active:scale-95"><ChevronLeft size={20} /></button>
-                 <button onClick={nextPastEvent} className="p-3 bg-paa-navy rounded-full text-white hover:bg-paa-navy/90 shadow-md transition-all active:scale-95"><ChevronRight size={20} /></button>
-              </div>
+                    const books =
+                      evt.aggSold != null
+                        ? evt.aggSold
+                        : evt.isLegacy
+                          ? "NA"
+                          : (evt.eventBooks?.reduce(
+                              (s: number, eb: any) => s + (eb.soldStock || 0),
+                              0,
+                            ) || 0);
+
+                    const catRowColor = i % 2 === 0 ? "bg-[#FFFFFF]" : "bg-[#FCFCFC]";
+
+                    let cleanDuration = evt.duration || (evt.durationDays ? `${evt.durationDays} Days` : "-");
+                    if (cleanDuration) {
+                      cleanDuration = cleanDuration.replace(/0(\d)/g, '$1');
+                      cleanDuration = cleanDuration.replace(/\b0 Hours\b/gi, '').trim();
+                      cleanDuration = cleanDuration.replace(/Days/gi, 'days').replace(/Hrs?/gi, 'hrs').replace(/Mins?/gi, 'mins');
+                    }
+
+                    const startDate = new Date(evt.date || evt.startDate);
+                    const month = !isNaN(startDate.getTime()) ? startDate.toLocaleString('default', { month: 'short' }) : "-";
+                    const year = !isNaN(startDate.getTime()) ? startDate.getFullYear() : "-";
+                    const addressStr = evt.location || evt.address || "-";
+
+                    const formatColor = evt.eventType === "Meet the Authors" 
+                                      ? "bg-[#AFC6E9] text-black" 
+                                      : evt.eventType === "Stall" 
+                                        ? "bg-[#8EE88C] text-black" 
+                                        : "bg-gray-100 text-black";
+
+                    const categoryColor = evt.category === "Housing Society" ? "bg-[#F3C29E] text-black"
+                                        : evt.category === "Corporate Office" ? "bg-[#FFE066] text-black"
+                                        : evt.category === "Book Fair" ? "bg-[#6FEF59] text-black"
+                                        : evt.category === "College" ? "bg-[#F6C6C6] text-black"
+                                        : evt.category === "University" ? "bg-[#FFF176] text-black"
+                                        : "bg-gray-100 text-black";
+
+                    return (
+                      <tr key={i} className={`text-[13px] font-medium text-black border-[1.5px] border-black ${catRowColor}`}>
+                        <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                          {i + 1}
+                        </td>
+                        <td className="p-2 text-left align-middle border-[1.5px] border-black font-medium">
+                          {evt.name}
+                        </td>
+                        <td className={`p-2 text-center align-middle border-[1.5px] border-black capitalize ${formatColor}`}>
+                          {evt.eventType || "-"}
+                        </td>
+                        <td className={`p-2 text-center align-middle border-[1.5px] border-black capitalize ${categoryColor}`}>
+                          {evt.category || "-"}
+                        </td>
+                        <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                          {addressStr}
+                        </td>
+                        <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                          {month}
+                        </td>
+                        <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                          {year}
+                        </td>
+                        <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                          {cleanDuration || "-"}
+                        </td>
+                        <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                          {evtAuthors}
+                        </td>
+                        <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                          {books}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {liveEvents.length === 0 && (
+                    <tr>
+                      <td colSpan={10} className="p-4 text-center text-gray-500 font-medium">
+                        Loading events...
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
