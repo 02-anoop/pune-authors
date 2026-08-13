@@ -5624,11 +5624,9 @@ router.get('/api/public/events', async (req, res) => {
     const events = await prisma.event.findMany({
       include: {
         galleryEvent: { include: { images: true } },
-        eventBooks: {
-          select: { soldStock: true }
-        },
         _count: {
           select: {
+            eventBooks: true,
             eventAuthors: { where: { optInStatus: 'Registered' } }
           }
         }
