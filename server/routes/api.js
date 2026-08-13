@@ -5629,7 +5629,6 @@ router.get('/api/public/events', async (req, res) => {
         },
         _count: {
           select: {
-            eventBooks: true,
             eventAuthors: { where: { optInStatus: 'Registered' } }
           }
         }
