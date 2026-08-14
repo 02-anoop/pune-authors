@@ -897,6 +897,8 @@ export function OperationsDashboardPage() {
           totalBooks: 0,
           totalEvents: 0,
           totalLibraries: 0,
+          totalAirportLibraries: 0,
+          totalOtherLibraries: 0,
           totalRevenue: 0,
           revenueData: [],
           recentActivities: [],

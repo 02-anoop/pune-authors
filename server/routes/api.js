@@ -1763,11 +1763,13 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
     const totalAuthors = await prisma.author.count();
     const totalBooks = await prisma.book.count();
 
-    const [eventParticipations, pendingEventRegistrations, totalEvents, totalLibraries] = await Promise.all([
+    const [eventParticipations, pendingEventRegistrations, totalEvents, totalLibraries, totalAirportLibraries, totalOtherLibraries] = await Promise.all([
       prisma.eventAuthor.count({ where: { optInStatus: 'Registered' } }),
       prisma.eventAuthor.count({ where: { optInStatus: 'Pending Approval' } }),
-      prisma.event.count(),
-      prisma.library.count()
+      prisma.event.count({ where: { isArchived: false } }),
+      prisma.library.count({ where: { isArchived: false } }),
+      prisma.library.count({ where: { isArchived: false, OR: [{ type: 'Airport Library' }, { type: 'airport' }] } }),
+      prisma.library.count({ where: { isArchived: false, NOT: [{ type: 'Airport Library' }, { type: 'airport' }] } })
     ]);
 
     // 1. Total Revenue (Aligned with Sales Report logic)
@@ -2081,7 +2083,7 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       totalAuthors, totalBooks, eventParticipations, totalRevenue, revenueData, recentActivities,
       salesByAuthor, salesByGenre, topSellingBooks, topCustomers, lowStockAlerts, eventSalesData, pendingEventRegistrations,
       globalSuccessfulOrders, globalPendingOrders, globalDispatchedOrders, globalTotalCustomers,
-      totalEvents, totalLibraries
+      totalEvents, totalLibraries, totalAirportLibraries, totalOtherLibraries
     };
 
     setCache('admin:dashboard-stats', result, 45 * 1000);

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Users, Activity, Clock, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit, CheckCircle } from 'lucide-react';
+import { Users, Activity, Clock, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit, CheckCircle, Plane } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, LabelList, ScatterChart, Scatter, ZAxis } from 'recharts';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -306,20 +306,21 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
       </div>
 
       {/* ════ High Level KPIs ════ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {[
           { label: 'Total Authors', value: authors?.length || 0, icon: Users, colorClass: 'blue', tabId: 'authors' },
           { label: 'Books Listed', value: books?.length || 0, icon: BookOpen, colorClass: 'green', tabId: 'books' },
           { label: 'No of Events', value: events?.length || 0, icon: CalendarIcon, colorClass: 'amber', tabId: 'events' },
-          { label: 'No of Libraries', value: stats?.totalLibraries || 0, icon: Library, colorClass: 'purple', tabId: 'library_donations' },
+          { label: 'Airport Libraries', value: stats?.totalAirportLibraries ?? 0, icon: Plane, colorClass: 'cyan', tabId: 'library_donations' },
+          { label: 'Other Libraries', value: stats?.totalOtherLibraries ?? 0, icon: Library, colorClass: 'purple', tabId: 'library_donations' },
           { label: 'Total Revenue', value: `₹${(dynamicRevenue !== null ? dynamicRevenue : (stats?.totalRevenue || 0)).toLocaleString()}`, icon: TrendingUp, colorClass: 'red', tabId: 'sales_report' },
         ].map((kpi, i) => (
-          <div key={i} onClick={() => kpi.tabId && setActiveTab(kpi.tabId)} className={`dash-kpi-card ${kpi.colorClass} !p-4 !rounded-xl cursor-pointer hover:scale-[1.02] transition-transform`}>
+          <div key={i} onClick={() => kpi.tabId && setActiveTab(kpi.tabId)} className={`dash-kpi-card ${kpi.colorClass} !p-3.5 sm:!p-4 !rounded-xl cursor-pointer hover:scale-[1.02] transition-transform`}>
             <div className="flex items-start justify-between mb-2">
-              <div className={`dash-kpi-icon ${kpi.colorClass} !w-9 !h-9 !rounded-lg`}><kpi.icon className="w-4 h-4" /></div>
+              <div className={`dash-kpi-icon ${kpi.colorClass} !w-8 sm:!w-9 !h-8 sm:!h-9 !rounded-lg`}><kpi.icon className="w-4 h-4" /></div>
             </div>
-            <p className="text-[10px] font-bold tracking-wide uppercase text-paa-gray-text mb-0.5">{kpi.label}</p>
-            <h3 className="text-xl font-black text-paa-navy tracking-tight">{kpi.value}</h3>
+            <p className="text-[10px] font-bold tracking-wide uppercase text-paa-gray-text mb-0.5 truncate" title={kpi.label}>{kpi.label}</p>
+            <h3 className="text-lg sm:text-xl font-black text-paa-navy tracking-tight truncate">{kpi.value}</h3>
           </div>
         ))}
       </div>
