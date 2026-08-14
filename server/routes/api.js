@@ -1768,8 +1768,8 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       prisma.eventAuthor.count({ where: { optInStatus: 'Pending Approval' } }),
       prisma.event.count({ where: { isArchived: false } }),
       prisma.library.count({ where: { isArchived: false } }),
-      prisma.library.count({ where: { isArchived: false, OR: [{ type: 'Airport Library' }, { type: 'airport' }] } }),
-      prisma.library.count({ where: { isArchived: false, NOT: [{ type: 'Airport Library' }, { type: 'airport' }] } })
+      prisma.library.count({ where: { isArchived: false, type: { in: ['Airport Library', 'airport', 'Airport'] } } }),
+      prisma.library.count({ where: { isArchived: false, type: { notIn: ['Airport Library', 'airport', 'Airport'] } } })
     ]);
 
     // 1. Total Revenue (Aligned with Sales Report logic)

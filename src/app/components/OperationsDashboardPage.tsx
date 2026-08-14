@@ -9270,6 +9270,7 @@ const totalAuthorsBase = eventRegistrations.length;
                   orders={orders}
                   events={events}
                   stats={stats}
+                  libraries={libraries}
                   lastAdminVisit={lastAdminVisit}
                   prevQueries={pendingQueriesCount}
                   API={API}

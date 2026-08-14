@@ -8,7 +8,7 @@ import { getAuthorParticipationStats } from './OperationsDashboardPage';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, orders, events, stats, prevQueries, lastAdminVisit, setActiveTab, setAuthorStatusFilter, API }: any) => {
+export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, orders, events, stats, prevQueries, lastAdminVisit, setActiveTab, setAuthorStatusFilter, API, libraries }: any) => {
 
   const [localDismissed, setLocalDismissed] = useState<string[]>(() => {
     const saved = localStorage.getItem('paa_dismissed_actions');
@@ -311,8 +311,24 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
           { label: 'Total Authors', value: authors?.length || 0, icon: Users, colorClass: 'blue', tabId: 'authors' },
           { label: 'Books Listed', value: books?.length || 0, icon: BookOpen, colorClass: 'green', tabId: 'books' },
           { label: 'No of Events', value: events?.length || 0, icon: CalendarIcon, colorClass: 'amber', tabId: 'events' },
-          { label: 'Airport Libraries', value: stats?.totalAirportLibraries ?? 0, icon: Plane, colorClass: 'cyan', tabId: 'library_donations' },
-          { label: 'Other Libraries', value: stats?.totalOtherLibraries ?? 0, icon: Library, colorClass: 'purple', tabId: 'library_donations' },
+          { 
+            label: 'Airport Libraries', 
+            value: (stats?.totalAirportLibraries !== undefined && stats?.totalAirportLibraries > 0) 
+              ? stats.totalAirportLibraries 
+              : (libraries?.filter((l: any) => (l.type === 'Airport Library' || l.type === 'airport') && !l.isArchived).length || 0), 
+            icon: Plane, 
+            colorClass: 'cyan', 
+            tabId: 'library_donations' 
+          },
+          { 
+            label: 'Other Libraries', 
+            value: (stats?.totalOtherLibraries !== undefined && stats?.totalOtherLibraries > 0) 
+              ? stats.totalOtherLibraries 
+              : (libraries?.filter((l: any) => l.type !== 'Airport Library' && l.type !== 'airport' && !l.isArchived).length || 0), 
+            icon: Library, 
+            colorClass: 'purple', 
+            tabId: 'library_donations' 
+          },
           { label: 'Total Revenue', value: `₹${(dynamicRevenue !== null ? dynamicRevenue : (stats?.totalRevenue || 0)).toLocaleString()}`, icon: TrendingUp, colorClass: 'red', tabId: 'sales_report' },
         ].map((kpi, i) => (
           <div key={i} onClick={() => kpi.tabId && setActiveTab(kpi.tabId)} className={`dash-kpi-card ${kpi.colorClass} !p-3.5 sm:!p-4 !rounded-xl cursor-pointer hover:scale-[1.02] transition-transform`}>
