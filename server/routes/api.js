@@ -4905,14 +4905,14 @@ router.post('/api/admin/events/:eventId/author/:authorId/approve', verifyToken, 
     if (existingRegistration) {
       await prisma.eventAuthor.update({
         where: { id: existingRegistration.id },
-        data: { optInStatus: 'Registered' }
+        data: { optInStatus: 'Approved' }
       });
     } else {
       await prisma.eventAuthor.create({
         data: {
           eventId,
           authorId,
-          optInStatus: 'Registered'
+          optInStatus: 'Approved'
         }
       });
     }
@@ -4922,11 +4922,12 @@ router.post('/api/admin/events/:eventId/author/:authorId/approve', verifyToken, 
     if (author && event) {
       sendNotificationEmail(
         author.email,
-        `Event Registration Approved: ${event.name}`,
+        `Action Required: Event Registration Approved - ${event.name}`,
         emailWrap(
           `Your Registration is Approved`,
           `<p>Great news! Your registration for the event <strong>${event.name}</strong> has been approved by the administrators.</p>
-           <p>You can now see the event details and manage your participation from your Author Dashboard.</p>`
+           <p><strong>Next Step:</strong> Please log in to your Author Dashboard and navigate to the Events section to complete your payment and secure your slot.</p>
+           <p>Your slot is not confirmed until the payment has been processed.</p>`
         )
       ).catch(e => console.error('Failed to send approve email:', e));
 
@@ -4955,6 +4956,102 @@ router.put('/api/admin/events/:eventId/author/:authorId/transaction', verifyToke
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update transaction ID' });
+  }
+});
+
+router.post('/api/admin/events/:eventId/author/:authorId/verify-payment', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const eventId = parseInt(req.params.eventId);
+    const authorId = parseInt(req.params.authorId);
+
+    const existingRegistration = await prisma.eventAuthor.findFirst({
+      where: { eventId, authorId },
+      include: { event: true, author: true }
+    });
+
+    if (existingRegistration) {
+      let calcPaid = existingRegistration.amountPaid || 0;
+      if (!calcPaid && existingRegistration.event) {
+        if (existingRegistration.event.feeType === 'Per Title') {
+           const eventBooksCount = await prisma.eventBook.count({ where: { eventId, authorId } });
+           calcPaid = (existingRegistration.event.registrationFee || 0) * eventBooksCount;
+        } else {
+           calcPaid = (existingRegistration.event.registrationFee || 0);
+        }
+      }
+
+      await prisma.eventAuthor.update({
+        where: { id: existingRegistration.id },
+        data: { 
+          optInStatus: 'Registered',
+          paymentStatus: 'Paid',
+          amountPaid: calcPaid
+        }
+      });
+      
+      if (existingRegistration.author) {
+        invalidateCache(`author:dashboard:${existingRegistration.author.email}`);
+        invalidateCache(`author:events:${existingRegistration.author.email}`);
+        
+        sendNotificationEmail(
+          existingRegistration.author.email,
+          `Payment Verified: Event Registration Confirmed - ${existingRegistration.event?.name}`,
+          emailWrap(
+            `Registration Confirmed!`,
+            `<p>Great news! Your payment for the event <strong>${existingRegistration.event?.name}</strong> has been successfully verified.</p>
+             <p>Your slot is now confirmed. We look forward to seeing you at the event.</p>`
+          )
+        ).catch(e => console.error('Failed to send verify email:', e));
+      }
+      invalidateCache('admin:dashboard-stats');
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to verify payment' });
+  }
+});
+
+router.post('/api/admin/events/:eventId/author/:authorId/reject-payment', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const eventId = parseInt(req.params.eventId);
+    const authorId = parseInt(req.params.authorId);
+
+    const existingRegistration = await prisma.eventAuthor.findFirst({
+      where: { eventId, authorId },
+      include: { event: true, author: true }
+    });
+
+    if (existingRegistration) {
+      await prisma.eventAuthor.update({
+        where: { id: existingRegistration.id },
+        data: { 
+          paymentScreenshot: null,
+          transactionId: null,
+          paymentStatus: 'Rejected'
+        }
+      });
+      
+      if (existingRegistration.author) {
+        invalidateCache(`author:dashboard:${existingRegistration.author.email}`);
+        invalidateCache(`author:events:${existingRegistration.author.email}`);
+        
+        sendNotificationEmail(
+          existingRegistration.author.email,
+          `Action Required: Payment Verification Failed - ${existingRegistration.event?.name}`,
+          emailWrap(
+            `Payment Verification Failed`,
+            `<p>Unfortunately, we could not verify your payment for the event <strong>${existingRegistration.event?.name}</strong>.</p>
+             <p><strong>Next Step:</strong> Please log back into your Author Dashboard, double-check your Transaction ID and re-upload a clear screenshot of your payment.</p>
+             <p>If you believe this was a mistake, please reach out to the support team.</p>`
+          )
+        ).catch(e => console.error('Failed to send reject payment email:', e));
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to reject payment' });
   }
 });
 
@@ -5373,21 +5470,8 @@ router.post('/api/author/events/:eventId/opt-in', verifyToken, upload.single('pa
     const event = await prisma.event.findUnique({ where: { id: eventId } });
     if (!event) return res.status(404).json({ error: 'Event not found' });
 
-    // Validate payment screenshot requirement
-    if (event.registrationFee > 0 && !paymentScreenshot) {
-      // Allow if they already have an existing screenshot attached to their EventAuthor profile
-      const existingOptIn = await prisma.eventAuthor.findFirst({ where: { eventId, authorId: author.id } });
-      if (!existingOptIn || !existingOptIn.paymentScreenshot) {
-        // Wait, if totalFee could be 0 because they selected 0 books? But they are required to select > 0 books to opt in.
-        return res.status(400).json({ error: 'Payment screenshot is required for this event.' });
-      }
-    }
-    if (event.registrationFee > 0 && !transactionId) {
-      const existingOptIn = await prisma.eventAuthor.findFirst({ where: { eventId, authorId: author.id } });
-      if (!existingOptIn || !existingOptIn.transactionId) {
-        return res.status(400).json({ error: 'Transaction ID is required for this event.' });
-      }
-    }
+    // Payment screenshot is no longer required at the time of registration/opt-in
+    // It will be requested after admin approval.
 
     // Wrap the entire process in a transaction to prevent partial updates and stock generation exploits
     await prisma.$transaction(async (tx) => {
@@ -5663,8 +5747,63 @@ router.get('/api/events/:eventId/catalogue', async (req, res) => {
   }
 });
 
-// --- EVENTS MANAGEMENT (PHASE 1) ---
+// Payment endpoints for post-approval
+router.post('/api/author/events/:eventId/pay', verifyToken, upload.single('paymentScreenshot'), async (req, res) => {
+  try {
+    const eventId = parseInt(req.params.eventId);
+    const author = await prisma.author.findUnique({ where: { email: req.user.email } });
+    if (!req.file) return res.status(400).json({ error: 'Payment screenshot is required.' });
 
+    const paymentScreenshot = `/uploads/${req.file.filename}`;
+    const transactionId = req.body.transactionId || null;
+    
+    const existingRecord = await prisma.eventAuthor.findFirst({ where: { eventId, authorId: author.id } });
+    if (!existingRecord) return res.status(404).json({ error: 'Registration not found' });
+
+    await prisma.eventAuthor.update({
+      where: { id: existingRecord.id },
+      data: { 
+        paymentScreenshot,
+        ...(transactionId && { transactionId }),
+        paymentStatus: 'Pending Verification' 
+      }
+    });
+
+    res.json({ message: 'Payment submitted successfully.' });
+  } catch (err) {
+    console.error('Error submitting event payment:', err);
+    res.status(500).json({ error: 'Failed to submit payment.' });
+  }
+});
+
+router.post('/api/author/activities/:activityId/pay', verifyToken, upload.single('paymentScreenshot'), async (req, res) => {
+  try {
+    const activityId = parseInt(req.params.activityId);
+    const author = await prisma.author.findUnique({ where: { email: req.user.email } });
+    if (!req.file) return res.status(400).json({ error: 'Payment screenshot is required.' });
+
+    const paymentScreenshot = `/uploads/${req.file.filename}`;
+    const transactionId = req.body.transactionId || null;
+
+    const existingRecord = await prisma.eventRegistration.findFirst({ where: { activityId, authorId: author.id } });
+    if (!existingRecord) return res.status(404).json({ error: 'Registration not found' });
+
+    await prisma.eventRegistration.update({
+      where: { id: existingRecord.id },
+      data: { 
+        paymentScreenshot,
+        ...(transactionId && { transactionId })
+      }
+    });
+
+    res.json({ message: 'Payment submitted successfully.' });
+  } catch (err) {
+    console.error('Error submitting activity payment:', err);
+    res.status(500).json({ error: 'Failed to submit payment.' });
+  }
+});
+
+// --- EVENTS MANAGEMENT (PHASE 1) ---
 router.post('/api/admin/events', verifyToken, isAdmin, upload.single('banner'), validate(eventSchema), async (req, res) => {
   try {
     const { name, location, date, dateType, tentativeDate, duration, startTime, endTime, eventType, category, registrationFee, feeType, description, livePosEnabled, notifyAllAuthors } = req.body;
@@ -8668,3 +8807,5 @@ router.put('/api/author/invitations/:id/respond', verifyToken, async (req, res) 
 
 module.exports = router;
 
+
+// Cache invalidation tick

@@ -6925,17 +6925,13 @@ const totalAuthorsBase = eventRegistrations.length;
                                 className="py-1.5 px-2.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white border border-indigo-200 rounded-lg shadow-sm transition-colors relative flex items-center justify-center"
                               >
                                 <span className="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">MANAGE PARTICIPANTS</span>
-                                {evt.registrations?.filter(
-                                  (r: any) =>
-                                    r.optInStatus === "Pending" ||
-                                    r.optInStatus === "Pending Approval",
+                                {(evt.eventAuthors || evt.registrations || [])?.filter(
+                                  (r: any) => r.optInStatus === "Pending Approval",
                                 ).length > 0 && (
-                                  <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-pulse shadow-sm">
+                                  <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-pulse shadow-sm" title="Pending Approvals">
                                     {
-                                      evt.registrations.filter(
-                                        (r: any) =>
-                                          r.optInStatus === "Pending" ||
-                                          r.optInStatus === "Pending Approval",
+                                      (evt.eventAuthors || evt.registrations || []).filter(
+                                        (r: any) => r.optInStatus === "Pending Approval",
                                       ).length
                                     }
                                   </span>

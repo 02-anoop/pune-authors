@@ -990,10 +990,52 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
     actionItems.push({ id: `act-events-${maxInviteId}`, text: `You have been invited to ${unreadEventInvites.length} new event${unreadEventInvites.length > 1 ? 's' : ''}. Register now!`, icon: CalendarIcon, color: 'text-purple-600', bg: 'bg-purple-100', link: '/dashboard/events' });
   }
 
-  const unsettledEvents = data.eventInvites?.filter((inv: any) => inv.optInStatus === 'Registered' && inv.event.status === 'Past' && data.listedBooks?.some((lb: any) => lb.eventId === inv.eventId && lb.listedStock !== (lb.soldStock || 0) + (lb.returnedStock || 0))) || [];
-  const maxSettleId = unsettledEvents.length > 0 ? Math.max(...unsettledEvents.map((inv: any) => inv.eventId)) : 0;
-  if (unsettledEvents.length > 0 && !dismissedActions.includes(`act-settle-${maxSettleId}`)) {
-    actionItems.push({ id: `act-settle-${maxSettleId}`, text: `Settle your inventory for ${unsettledEvents.length} past event${unsettledEvents.length > 1 ? 's' : ''}`, icon: AlertCircle, color: 'text-orange-600', bg: 'bg-orange-100', link: '/dashboard/events' });
+  const pendingPaymentEvents = data.eventInvites?.filter((inv: any) => {
+    const evt = inv.event;
+    if (!evt) return false;
+    return inv.optInStatus === 'Approved' && (evt.registrationFee > 0 || evt.charges > 0) && !inv.paymentScreenshot && inv.paymentStatus !== 'Paid' && inv.paymentStatus !== 'Pending Verification' && evt.status !== 'Past' && evt.status !== 'Legacy Archive';
+  }) || [];
+  const pendingPaymentActivities = data.authorProfile?.eventRegistrations?.filter((reg: any) => {
+    const act = reg.activity;
+    if (!act) return false;
+    return reg.status === 'Approved' && (act.registrationFee > 0 || act.charges > 0) && !reg.paymentScreenshot && reg.paymentStatus !== 'Paid' && reg.paymentStatus !== 'Pending Verification' && act.status !== 'Past' && act.status !== 'Legacy Archive';
+  }) || [];
+  const totalPendingPayments = pendingPaymentEvents.length + pendingPaymentActivities.length;
+  const maxPaymentId = totalPendingPayments > 0 ? Math.max(
+    ...pendingPaymentEvents.map((inv: any) => inv.id), 
+    ...pendingPaymentActivities.map((reg: any) => reg.id), 
+    0
+  ) : 0;
+  if (totalPendingPayments > 0 && !dismissedActions.includes(`act-payment-${maxPaymentId}`)) {
+    actionItems.push({ id: `act-payment-${maxPaymentId}`, text: `You have ${totalPendingPayments} approved event(s) waiting for payment. Pay now to secure your slot!`, icon: DollarSign, color: 'text-yellow-700', bg: 'bg-yellow-200', link: '/dashboard/events' });
+  }
+
+  const rejectedPaymentEvents = data.eventInvites?.filter((inv: any) => inv.optInStatus === 'Approved' && inv.paymentStatus === 'Rejected' && !inv.paymentScreenshot && inv.event?.status !== 'Past' && inv.event?.status !== 'Legacy Archive') || [];
+  const rejectedPaymentActivities = data.authorProfile?.eventRegistrations?.filter((reg: any) => reg.status === 'Approved' && reg.paymentStatus === 'Rejected' && !reg.paymentScreenshot && reg.activity?.status !== 'Past' && reg.activity?.status !== 'Legacy Archive') || [];
+  const totalRejectedPayments = rejectedPaymentEvents.length + rejectedPaymentActivities.length;
+  if (totalRejectedPayments > 0) {
+    const maxRejPayId = Math.max(...rejectedPaymentEvents.map((inv: any) => inv.id), ...rejectedPaymentActivities.map((reg: any) => reg.id), 0);
+    if (!dismissedActions.includes(`act-rejpay-${maxRejPayId}`)) {
+      actionItems.push({ id: `act-rejpay-${maxRejPayId}`, text: `Payment rejected for ${totalRejectedPayments} event(s). Please remake payment.`, icon: DollarSign, color: 'text-red-700', bg: 'bg-red-200', link: '/dashboard/events' });
+    }
+  }
+
+  const rejectedEvents = data.eventInvites?.filter((inv: any) => inv.optInStatus === 'Rejected' && inv.event?.status !== 'Past' && inv.event?.status !== 'Legacy Archive') || [];
+  if (rejectedEvents.length > 0) {
+    const maxRejId = Math.max(...rejectedEvents.map((inv: any) => inv.id), 0);
+    if (!dismissedActions.includes(`act-rejev-${maxRejId}`)) {
+      actionItems.push({ id: `act-rejev-${maxRejId}`, text: `Registration declined for ${rejectedEvents.length} event(s). You may reapply.`, icon: CalendarIcon, color: 'text-red-700', bg: 'bg-red-100', link: '/dashboard/events' });
+    }
+  }
+
+  const newlyRegisteredEvents = data.eventInvites?.filter((inv: any) => inv.optInStatus === 'Registered' && inv.event?.status !== 'Past' && inv.event?.status !== 'Legacy Archive') || [];
+  const newlyRegisteredActivities = data.authorProfile?.eventRegistrations?.filter((reg: any) => reg.status === 'Registered' && reg.activity?.status !== 'Past' && reg.activity?.status !== 'Legacy Archive') || [];
+  const totalNewlyRegistered = newlyRegisteredEvents.length + newlyRegisteredActivities.length;
+  if (totalNewlyRegistered > 0) {
+    const maxRegId = Math.max(...newlyRegisteredEvents.map((inv: any) => inv.id), ...newlyRegisteredActivities.map((reg: any) => reg.id), 0);
+    if (!dismissedActions.includes(`act-registered-${maxRegId}`)) {
+      actionItems.push({ id: `act-registered-${maxRegId}`, text: `Success! You are fully registered for ${totalNewlyRegistered} event(s).`, icon: CheckCircle2, color: 'text-emerald-700', bg: 'bg-emerald-100', link: '/dashboard/events' });
+    }
   }
 
   const lowStockAlerts = authorProfile.extraData?.lowStockAlerts || [];
@@ -2959,10 +3001,6 @@ function ActivityRegistration({ activities, books, onRefresh, registrations }: {
       toast.error('Please select at least one book');
       return;
     }
-    if (!screenshot && selectedAct.charges > 0) {
-      toast.error('Please upload payment screenshot');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -2970,13 +3008,12 @@ function ActivityRegistration({ activities, books, onRefresh, registrations }: {
       formData.append('activityId', selectedAct.id);
       formData.append('booksIds', JSON.stringify(selectedBooks));
       formData.append('amount', selectedAct.charges);
-      if (screenshot) formData.append('paymentScreenshot', screenshot);
 
       const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/author/activities/register`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Registration submitted! Pending verification.');
+      toast.success('Registration submitted! Awaiting admin approval.');
       setShowDialog(false);
       setSelectedAct(null);
       setScreenshot(null);
@@ -3038,16 +3075,9 @@ function ActivityRegistration({ activities, books, onRefresh, registrations }: {
               <div className="mb-6">
                 <p className="text-sm font-bold text-paa-navy mb-2">2. Payment (₹{selectedAct?.charges})</p>
                 {selectedAct?.charges > 0 ? (
-                  <div className="border border-paa-navy/20 p-4 bg-gray-50 text-center">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=puneauthors@upi&pn=PuneAuthors&am=10" alt="QR Code" className="mx-auto mb-2 w-32 h-32" />
-                    <p className="text-xs text-gray-500 mb-4">Scan QR to pay ₹{selectedAct.charges}</p>
-                    <label className="flex flex-col items-center justify-center w-full h-16 border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-100">
-                      <div className="flex flex-col items-center justify-center">
-                        <Upload className="w-5 h-5 text-gray-400" />
-                        <p className="text-xs text-gray-500">{screenshot ? screenshot.name : 'Upload Screenshot'}</p>
-                      </div>
-                      <input type="file" className="hidden" accept="image/*" onChange={e => setScreenshot(e.target.files?.[0] || null)} />
-                    </label>
+                  <div className="border border-paa-navy/20 p-4 bg-yellow-50 rounded text-center">
+                    <p className="text-sm font-bold text-yellow-800">Payment will be requested upon approval.</p>
+                    <p className="text-xs text-yellow-700 mt-2">You do not need to pay the ₹{selectedAct.charges} fee until the administrator approves your registration.</p>
                   </div>
                 ) : (
                   <p className="text-sm text-green-600 font-bold">This event is free.</p>
@@ -3057,7 +3087,7 @@ function ActivityRegistration({ activities, books, onRefresh, registrations }: {
               <div className="flex justify-end gap-4">
                 <button onClick={() => setShowDialog(false)} className="text-sm font-bold text-gray-500 hover:text-paa-navy">Cancel</button>
                 <button onClick={confirmParticipation} disabled={isSubmitting} className="bg-paa-gold text-paa-navy px-6 py-2 rounded-3xl-2xl text-sm font-bold disabled:opacity-50 rounded-full active:scale-95 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 ease-out">
-                  {isSubmitting ? 'Submitting...' : 'Register & Pay'}
+                  {isSubmitting ? 'Submitting...' : 'Submit for Approval'}
                 </button>
               </div>
             </div>
@@ -4507,6 +4537,29 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
     }
   };
 
+  const handleSubmitEventPayment = async (eventId: number | string, file: File, isEventAuthor: boolean, transactionId?: string) => {
+    try {
+      const fd = new FormData();
+      fd.append('paymentScreenshot', file);
+      if (transactionId) {
+        fd.append('transactionId', transactionId);
+      }
+      
+      const parsedId = typeof eventId === 'string' && eventId.startsWith('act_') ? eventId.replace('act_', '') : eventId;
+      const url = isEventAuthor
+        ? `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/author/events/${parsedId}/pay`
+        : `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/author/activities/${parsedId}/pay`;
+      
+      await axios.post(url, fd, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      toast.success('Payment submitted successfully!');
+      fetchAuthorEvents();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to submit payment');
+    }
+  };
+
   // Combine invites and past events for the events list
   const allEvents = [
     ...(registrations || []).map((r: any) => ({
@@ -4516,8 +4569,10 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
       location: r.activity?.city,
       type: r.activity?.type || 'Activity',
       registration: r.status,
-      paymentStatus: r.amount > 0 ? 'Paid' : 'Unpaid',
+      paymentStatus: r.paymentStatus || (r.amount > 0 ? 'Paid' : 'Unpaid'),
       amountPaid: r.amount || 0,
+      paymentProofUrl: r.paymentScreenshot,
+      transactionId: r.transactionId,
       isActivity: true
     })),
     ...invites.filter((inv: any) => !inv.optInStatus?.includes('-Draft')).map((inv: any) => {
@@ -4537,7 +4592,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
         registration: inv.optInStatus,
         paymentStatus: inv.paymentStatus,
         transactionId: inv.transactionId,
-        paymentProofUrl: inv.paymentProofUrl || inv.paymentScreenshotUrl || inv.paymentProof,
+        paymentProofUrl: inv.paymentScreenshot || inv.paymentProofUrl || inv.paymentScreenshotUrl || inv.paymentProof,
         manualTotalSold: inv.manualTotalSold,
         manualTotalRevenue: inv.manualTotalRevenue,
         isPast: inv.event?.status === 'Past' || inv.event?.status === 'Legacy Archive' || (inv.event?.date && new Date(inv.event.date) < new Date()),
@@ -5358,7 +5413,16 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                               let statusText = evt.registration;
                               let statusColors = 'bg-gray-100 text-gray-700';
                               
-                              if (evt.registration === 'Registered' || evt.registration === 'Approved') {
+                              if (evt.registration === 'Approved' && evt.paymentStatus === 'Rejected' && !evt.paymentProofUrl && !evt.isPast) {
+                                  statusText = 'REMAKE PAYMENT';
+                                  statusColors = 'bg-red-500 text-white border-red-600 shadow-sm animate-pulse';
+                              } else if (evt.registration === 'Approved' && (evt.registrationFee > 0 || evt.charges > 0) && evt.paymentStatus !== 'Paid' && evt.paymentStatus !== 'Pending Verification' && !evt.paymentProofUrl && !evt.isPast) {
+                                  statusText = 'MAKE PAYMENT';
+                                  statusColors = 'bg-yellow-400 text-yellow-900 border-yellow-500 shadow-sm animate-pulse';
+                              } else if (evt.registration === 'Approved' && (evt.paymentProofUrl || evt.paymentStatus === 'Pending Verification')) {
+                                  statusText = 'VERIFYING PAYMENT';
+                                  statusColors = 'bg-blue-500 text-white border-blue-600 shadow-sm';
+                              } else if (evt.registration === 'Registered' || evt.registration === 'Approved') {
                                   statusText = evt.isPast ? 'Participated' : 'Registered';
                                   statusColors = 'bg-emerald-500/85 text-white border-emerald-600 shadow-sm';
                               } else if (evt.registration === 'Rejected' || evt.registration === 'Declined') {
@@ -5512,21 +5576,8 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                                             {evt.feeType === 'Per Title' && <div className="text-xs text-yellow-700 mb-3">(₹{evt.registrationFee} per title × {selectedBooksCount} selected)</div>}
                                             
                                             {totalFee > 0 && (
-                                              <div className="flex flex-col sm:flex-row gap-4 mt-4 border-t border-yellow-200 pt-4">
-                                                <div>
-                                                   <div className="text-[10px] font-bold mb-2 uppercase tracking-widest text-yellow-900">Scan to Pay</div>
-                                                   <img src={qrCode} alt="Payment QR" className="w-24 h-24 object-contain bg-white p-1 border border-yellow-300 rounded shadow-sm" />
-                                                </div>
-                                                <div className="flex-1 flex flex-col justify-center gap-2">
-                                                   <div>
-                                                     <label className="block text-[10px] font-bold mb-1 uppercase tracking-widest text-yellow-900">Transaction ID</label>
-                                                     <input type="text" placeholder="Enter Reference/Txn ID" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} className="text-xs bg-white p-2 rounded border border-yellow-300 w-full focus:outline-none focus:ring-1 focus:ring-yellow-500" />
-                                                   </div>
-                                                   <div>
-                                                     <label className="block text-[10px] font-bold mb-1 uppercase tracking-widest text-yellow-900">Payment Screenshot</label>
-                                                     <input type="file" accept="image/*" onChange={(e) => setPaymentScreenshot(e.target.files?.[0] || null)} className="text-xs bg-white p-1.5 rounded border border-yellow-300 w-full" />
-                                                   </div>
-                                                </div>
+                                              <div className="mt-2 text-xs font-bold text-yellow-900 bg-yellow-100 p-2 rounded">
+                                                Payment will be requested upon approval. You do not need to pay now.
                                               </div>
                                             )}
                                           </div>
@@ -5541,6 +5592,47 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                                     </div>
                                 ) : (
                                 <div className="flex-1 min-w-[300px] flex flex-col animate-fade-in-up">
+                                   {evt.registration === 'Approved' && (evt.registrationFee > 0 || evt.charges > 0) && evt.paymentStatus !== 'Paid' && evt.paymentStatus !== 'Pending Verification' && !evt.paymentProofUrl && !evt.isPast && (
+                                     <div className={`mb-4 p-4 rounded text-sm shadow-sm ${evt.paymentStatus === 'Rejected' ? 'bg-red-50 border border-red-200 text-red-800' : 'bg-yellow-50 border border-yellow-200 text-yellow-800'}`}>
+                                       <h5 className="font-bold mb-2">{evt.paymentStatus === 'Rejected' ? 'Payment Rejected - Remake Payment' : 'Registration Approved - Pending Payment'}</h5>
+                                       <p className="text-xs mb-3">{evt.paymentStatus === 'Rejected' ? 'Your previous payment was rejected. Please re-check the amount or transaction ID and remake the payment.' : `Please pay the fee of ₹${evt.registrationFee || evt.charges} to confirm participation.`}</p>
+                                       <div className="flex flex-col sm:flex-row gap-4 border-t border-yellow-200 pt-3">
+                                          <div>
+                                             <div className="text-[10px] font-bold mb-2 uppercase tracking-widest text-yellow-900">Scan to Pay</div>
+                                             <img src={qrCode} alt="Payment QR" className="w-20 h-20 object-contain bg-white p-1 border border-yellow-300 rounded shadow-sm" />
+                                          </div>
+                                          <div className="flex-1 flex flex-col justify-center gap-2">
+                                            <input type="file" accept="image/*" id={`pay-proof-${evt.id}`} className="text-xs bg-white p-1 rounded border border-yellow-300 w-full" />
+                                            <input type="text" id={`pay-txn-${evt.id}`} placeholder="Transaction ID / UTR" className="text-xs bg-white p-1.5 rounded border border-yellow-300 w-full placeholder-gray-400" />
+                                            <button 
+                                              onClick={(e) => {
+                                                const fileInput = document.getElementById(`pay-proof-${evt.id}`) as HTMLInputElement;
+                                                const txnInput = document.getElementById(`pay-txn-${evt.id}`) as HTMLInputElement;
+                                                const file = fileInput?.files?.[0];
+                                                const txn = txnInput?.value?.trim();
+                                                if (!file) {
+                                                  toast.error('Please upload payment screenshot');
+                                                  return;
+                                                }
+                                                if (!txn) {
+                                                  toast.error('Please enter the Transaction ID / UTR');
+                                                  return;
+                                                }
+                                                handleSubmitEventPayment(evt.id, file, evt.isActivity !== true, txn);
+                                              }}
+                                              className="bg-paa-navy text-white text-xs font-bold py-1.5 rounded hover:bg-paa-gold hover:text-paa-navy transition-colors"
+                                            >Submit Payment</button>
+                                          </div>
+                                       </div>
+                                     </div>
+                                   )}
+                                   {evt.registration === 'Approved' && (evt.paymentStatus === 'Pending Verification' || evt.paymentProofUrl) && (
+                                     <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 shadow-sm flex items-center gap-2">
+                                       <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                                       <span className="font-bold">Payment Under Verification</span>
+                                       <span className="text-xs ml-auto">Your payment is being reviewed by the admin.</span>
+                                     </div>
+                                   )}
                                    <h4 className="font-bold text-sm text-gray-700 mb-4 flex items-center gap-2 border-b pb-2">
                                       {evt.isPast ? <><Package className="w-4 h-4" /> Sales Breakdown</> : <><BookOpen className="w-4 h-4" /> Book Inventory</>}
                                    </h4>
@@ -6242,9 +6334,8 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
           {selectedInvite.registrationFee > 0 && (
             <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 font-medium">
               Registration Fee: ₹{selectedInvite.registrationFee}
-              <div className="mt-2">
-                <label className="block text-xs font-bold mb-1">Upload Payment Screenshot</label>
-                <input type="file" accept="image/*" onChange={(e) => setPaymentScreenshot(e.target.files?.[0] || null)} className="text-xs" />
+              <div className="mt-2 text-xs">
+                Payment will be requested upon approval. You do not need to pay now.
               </div>
             </div>
           )}

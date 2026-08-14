@@ -225,7 +225,7 @@ export default function EventExcelManager({
           ...b,
           returnedStock: Math.max(0, (b.actualSent || 0) - (b.soldStock || 0))
         })),
-        optInStatus: author.optInStatus || "Registered",
+        optInStatus: author.optInStatus || "Pending",
         amountPaid: author.amountPaid || null,
         manualTotalSold: null,
         manualTotalRevenue: null
@@ -274,6 +274,33 @@ export default function EventExcelManager({
     }
   };
 
+  const handleVerifyPayment = async (authorId: string) => {
+    try {
+      await axios.post(`${API}/api/admin/events/${eventBreakdown.id}/author/${authorId}/verify-payment`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      alert("Payment verified successfully. Status updated to Registered.");
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to verify payment.");
+    }
+  };
+
+  const handleRejectPayment = async (authorId: string) => {
+    if (!window.confirm("Are you sure you want to reject this payment? The author will be notified to re-upload.")) return;
+    try {
+      await axios.post(`${API}/api/admin/events/${eventBreakdown.id}/author/${authorId}/reject-payment`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      alert("Payment rejected. The author has been notified.");
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to reject payment.");
+    }
+  };
+
   const saveAllAuthorsData = async () => {
     setIsSaving(true);
     try {
@@ -285,7 +312,7 @@ export default function EventExcelManager({
             ...b,
             returnedStock: Math.max(0, (b.actualSent || 0) - (b.soldStock || 0))
           })),
-          optInStatus: author.optInStatus || "Registered",
+          optInStatus: author.optInStatus || "Pending",
           amountPaid: author.amountPaid !== undefined ? author.amountPaid : null,
           manualTotalSold: null,
           manualTotalRevenue: null
@@ -403,6 +430,8 @@ export default function EventExcelManager({
             ) : (
               authors.map((author, aIdx) => {
                 const isEditing = editingAuthorId === author.authorId;
+                const expectedFee = eventBreakdown?.registrationFee ? (eventBreakdown.feeType === 'Per Title' ? eventBreakdown.registrationFee * (author.books?.length || 0) : eventBreakdown.registrationFee) : null;
+                const expectedFeeStr = expectedFee !== null ? `₹${expectedFee}` : "NA";
                 
                 if (!author.books || author.books.length === 0) {
                   return (
@@ -421,7 +450,7 @@ export default function EventExcelManager({
                               placeholder="0"
                             />
                           ) : (
-                            author.amountPaid ? `₹${author.amountPaid}` : "NA"
+                            author.amountPaid ? `₹${author.amountPaid}` : expectedFeeStr
                           )}
                       </td>
                       <td className="border-[1.5px] border-black text-gray-400 italic p-1 px-2 text-center">
@@ -432,8 +461,8 @@ export default function EventExcelManager({
                       </td>
                       <td className="border-[1.5px] border-black text-gray-400 p-1" colSpan={4 + dayColumns.length}></td>
                       <td className="border-[1.5px] border-black bg-white text-center p-1 font-bold">
-                        <span className={`px-2 py-0.5 text-[9px] rounded-full text-black whitespace-nowrap ${author.optInStatus === 'Pending Approval' ? 'bg-yellow-300' : author.optInStatus === 'Rejected' ? 'bg-red-300' : 'bg-green-300'}`}>
-                          {author.optInStatus || "Registered"}
+                        <span className={`px-2 py-0.5 text-[9px] rounded-full text-black whitespace-nowrap ${author.optInStatus === 'Pending Approval' || (author.optInStatus === 'Approved' && eventBreakdown?.registrationFee > 0) ? 'bg-yellow-300 animate-pulse' : author.optInStatus === 'Rejected' ? 'bg-red-300' : 'bg-green-300'}`}>
+                          {author.paymentScreenshot && author.optInStatus === 'Approved' ? "Verify Payment" : (!author.paymentScreenshot && author.optInStatus === 'Approved' && eventBreakdown?.registrationFee > 0 ? "Pending Payment" : author.optInStatus || "Registered")}
                         </span>
                       </td>
                       <td className="border-[1.5px] border-black bg-white p-1 text-center">
@@ -488,6 +517,12 @@ export default function EventExcelManager({
                                     <button onClick={() => handleReject(author.authorId)} className="bg-red-600 text-white w-full py-1 text-[9px] font-bold rounded hover:bg-red-700">✗ Reject</button>
                                   </div>
                                 )}
+                                {author.paymentScreenshot && author.optInStatus === 'Approved' && (
+                                  <div className="flex gap-1 mt-1 w-full">
+                                    <button onClick={() => handleVerifyPayment(author.authorId)} className="bg-green-600 hover:bg-green-700 text-white w-full py-1 text-[9px] font-bold rounded shadow transition-colors">✓ Verify</button>
+                                    <button onClick={() => handleRejectPayment(author.authorId)} className="bg-red-600 hover:bg-red-700 text-white w-full py-1 text-[9px] font-bold rounded shadow transition-colors">✗ Reject</button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
@@ -524,7 +559,7 @@ export default function EventExcelManager({
                               placeholder="0"
                             />
                           ) : (
-                            author.amountPaid ? `₹${author.amountPaid}` : "NA"
+                            author.amountPaid ? `₹${author.amountPaid}` : expectedFeeStr
                           )}
                         </td>
                       )}
@@ -589,7 +624,13 @@ export default function EventExcelManager({
 
                       {isFirstBook && (
                         <td rowSpan={rowSpan} className="border-[1.5px] border-black bg-white p-1 text-center font-bold">
-                          {author.optInStatus || "Registered"}
+                          {author.paymentScreenshot && author.optInStatus === 'Approved' ? (
+                            <span className="text-yellow-600 animate-pulse uppercase tracking-widest text-[9px]">Verify Payment</span>
+                          ) : (!author.paymentScreenshot && author.optInStatus === 'Approved' && eventBreakdown?.registrationFee > 0) ? (
+                            <span className="text-yellow-600 animate-pulse uppercase tracking-widest text-[9px]">Pending Payment</span>
+                          ) : (
+                            author.optInStatus || "Pending"
+                          )}
                         </td>
                       )}
                       
@@ -628,6 +669,23 @@ export default function EventExcelManager({
                                 <div className="flex gap-1 mt-1 w-full">
                                   <button onClick={() => handleApprove(author.authorId)} className="bg-green-600 text-white w-full py-1 text-[9px] font-bold rounded hover:bg-green-700">✓</button>
                                   <button onClick={() => handleReject(author.authorId)} className="bg-red-600 text-white w-full py-1 text-[9px] font-bold rounded hover:bg-red-700">✗</button>
+                                </div>
+                              )}
+                              {author.paymentScreenshot && author.optInStatus === 'Approved' && (
+                                <div className="flex gap-1 mt-1 w-full">
+                                  <button onClick={() => handleVerifyPayment(author.authorId)} className="bg-green-600 hover:bg-green-700 text-white w-full py-1 text-[9px] font-bold rounded shadow transition-colors">✓ Verify</button>
+                                  <button onClick={() => handleRejectPayment(author.authorId)} className="bg-red-600 hover:bg-red-700 text-white w-full py-1 text-[9px] font-bold rounded shadow transition-colors">✗ Reject</button>
+                                </div>
+                              )}
+                              
+                              {author.paymentScreenshot && (
+                                <a href={`${import.meta.env.VITE_API_URL || "http://localhost:3001"}${author.paymentScreenshot}`} target="_blank" rel="noopener noreferrer" className="text-[9px] text-blue-600 underline font-semibold text-center block mt-1 hover:text-blue-800">
+                                  View Payment Proof
+                                </a>
+                              )}
+                              {author.transactionId && (
+                                <div className="text-[9px] text-gray-500 font-medium text-center truncate mt-0.5">
+                                  Txn ID: {author.transactionId}
                                 </div>
                               )}
                             </div>
