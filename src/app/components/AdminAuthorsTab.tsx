@@ -691,8 +691,8 @@ const [showArchived, setShowArchived] = useState(false);
           </div>
         </div>
 
-        <div className="w-full relative" style={{ contentVisibility: "auto", containIntrinsicSize: "800px" }}>
-          <table className="w-full text-left text-[11px] border-collapse border-[1.5px] border-black">
+        <div className="w-full relative overflow-x-auto" style={{ contentVisibility: "auto", containIntrinsicSize: "800px" }}>
+          <table className="w-full min-w-[1200px] text-left text-[11px] border-collapse border-[1.5px] border-black">
             <thead className="bg-indigo-50 border-b-2 border-indigo-100 sticky top-0 z-10 shadow-sm">
               <tr>
                 <th className="w-10 text-center p-1 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">

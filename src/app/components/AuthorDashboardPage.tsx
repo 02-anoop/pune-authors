@@ -93,7 +93,7 @@ export function AuthorDashboardPage() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        navigate('/login');
+        navigate('/login?role=AUTHOR');
         return;
       }
       // Append timestamp to bust server-side cache on explicit refresh
