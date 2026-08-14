@@ -78,10 +78,17 @@ export function EventsPage() {
         
         const past = res.data.filter((e: any) => {
           if (e.eventType === 'Flybraries') return false;
-          const d = new Date(e.date);
+          const d = new Date(e.date || e.startDate);
           if (isNaN(d.getTime())) return e.status !== 'Upcoming' && e.status !== 'Live';
           return d < now;
-        }).sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
+        }).sort((a: any, b: any) => {
+          const dA = new Date(a.date || a.startDate).getTime();
+          const dB = new Date(b.date || b.startDate).getTime();
+          if (isNaN(dA) && isNaN(dB)) return (b.id || 0) - (a.id || 0);
+          if (isNaN(dA)) return 1;
+          if (isNaN(dB)) return -1;
+          return dB - dA;
+        });
         
         setUpcomingEvents(up);
         setPastEventsData(past);
@@ -95,7 +102,7 @@ export function EventsPage() {
   }, []);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = activeTab === 'past' ? 15 : 6;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -272,67 +279,134 @@ export function EventsPage() {
             </div>
           )
         ) : (
-          <div>
+          <FadeIn>
             {filteredPastEvents.length === 0 ? (
-              <FadeIn>
-                <div style={{ padding: "4rem", textAlign: "center", border: `2px solid ${C.dark}`, borderRadius: 24, background: C.white, boxShadow: "6px 6px 0px #000" }}>
-                  <Search size={48} color={C.dark} style={{ margin: "0 auto 1.5rem" }} />
-                  <h2 style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 900, color: C.dark, marginBottom: "1rem" }}>No Events Found</h2>
-                  <p style={{ fontSize: 16, color: "#4b5563", fontWeight: 500, maxWidth: 500, margin: "0 auto" }}>Try adjusting your search criteria.</p>
-                </div>
-              </FadeIn>
+              <div style={{ padding: "4rem", textAlign: "center", border: `2px solid ${C.dark}`, borderRadius: 24, background: C.white, boxShadow: "6px 6px 0px #000" }}>
+                <Search size={48} color={C.dark} style={{ margin: "0 auto 1.5rem" }} />
+                <h2 style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 900, color: C.dark, marginBottom: "1rem" }}>No Events Found</h2>
+                <p style={{ fontSize: 16, color: "#4b5563", fontWeight: 500, maxWidth: 500, margin: "0 auto" }}>Try adjusting your search criteria.</p>
+              </div>
             ) : (
-              <div className="events-grid">
-                {displayedPast.map((event, i) => {
-                  return (
-                  <FadeIn key={event.id} delay={i * 50}>
-                    <div className="event-card" style={{ display: "flex", flexDirection: "column", height: "100%", border: `2px solid ${C.dark}`, background: C.white, borderRadius: 24, padding: "1.5rem", boxShadow: "4px 4px 0px #000", transition: "transform 0.2s ease, box-shadow 0.2s ease", cursor: "pointer" }}
-                         onMouseEnter={e => { e.currentTarget.style.transform = "translate(-2px, -2px)"; e.currentTarget.style.boxShadow = "6px 6px 0px #000"; }}
-                         onMouseLeave={e => { e.currentTarget.style.transform = "translate(0px, 0px)"; e.currentTarget.style.boxShadow = "4px 4px 0px #000"; }}>
-                      <div style={{ height: 200, overflow: "hidden", marginBottom: "1.5rem", border: `2px solid ${C.dark}`, borderRadius: 16, background: C.light }}>
-                        {getEventBanner(event) ? (
-                           <img src={getEventBanner(event)} alt={event.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        ) : (
-                           <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem", textAlign: "center" }}>
-                              <h3 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 900, color: "#9ca3af", margin: 0, lineHeight: 1.2 }}>{event.name}</h3>
-                           </div>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
-                        <span style={{ fontSize: 12, fontWeight: 800, background: C.blue, padding: "0.2rem 0.8rem", borderRadius: 50, border: `2px solid ${C.dark}`, color: C.white }}>
-                          {event.date}
-                        </span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: C.text, display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                          <Clock size={14} /> {event.duration}
-                        </span>
-                      </div>
-                      <h3 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 900, color: C.dark, marginBottom: "1rem", flexGrow: 1, lineHeight: 1.2 }}>{event.name}</h3>
-                      <p style={{ fontSize: 14, color: "#4b5563", fontWeight: 600, display: "flex", alignItems: "flex-start", gap: "0.5rem", marginBottom: "1.5rem" }}>
-                        <MapPin size={16} color={C.red} style={{ marginTop: "0.1rem", flexShrink: 0 }} /> {event.location}
-                      </p>
-                      
-                      {((event._count?.eventAuthors > 0) || (event._count?.eventBooks > 0)) && (
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", borderTop: `2px dashed ${C.dark}`, paddingTop: "1.5rem" }}>
-                          {event._count?.eventAuthors > 0 ? (
-                            <div style={{ background: C.light, border: `2px solid ${C.dark}`, borderRadius: 12, padding: "0.5rem 1rem", textAlign: "center" }}>
-                              <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", marginBottom: "0.2rem", color: C.dark }}>Authors</div>
-                              <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 900, color: C.dark }}>{event._count.eventAuthors}</div>
-                            </div>
-                          ) : <div />}
-                          {event._count?.eventBooks > 0 ? (
-                            <div style={{ background: C.light, border: `2px solid ${C.dark}`, borderRadius: 12, padding: "0.5rem 1rem", textAlign: "center" }}>
-                              <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", marginBottom: "0.2rem", color: C.dark }}>Books</div>
-                              <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 900, color: C.dark }}>{event._count.eventBooks}</div>
-                            </div>
-                          ) : <div />}
-                        </div>
-                      )}
-                    </div>
-                  </FadeIn>
-                )})}
+              <div className="mt-2 border border-black overflow-hidden shadow-sm rounded-xl">
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-left text-[11px] border-collapse border-[1.5px] border-black">
+                    <thead className="bg-[#FFE600] border-b-2 border-black">
+                      <tr>
+                        <th className="w-12 p-2.5 text-center text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">
+                          S.No
+                        </th>
+                        <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle min-w-[180px]">
+                          Event Name
+                        </th>
+                        <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                          Format
+                        </th>
+                        <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                          Category
+                        </th>
+                        <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle min-w-[160px]">
+                          Address
+                        </th>
+                        <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                          Month
+                        </th>
+                        <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                          Year
+                        </th>
+                        <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                          Duration
+                        </th>
+                        <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                          No. Of Authors
+                        </th>
+                        <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                          Books Sold
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white text-[11px]">
+                      {displayedPast.map((evt: any, i: number) => {
+                        const sNo = (currentPage - 1) * itemsPerPage + i + 1;
+                        const rowBg = i % 2 === 0 ? "bg-[#FFFFFF]" : "bg-[#FCFCFC]";
+
+                        let cleanDuration = evt.duration || (evt.durationDays ? `${evt.durationDays} Days` : "-");
+                        if (cleanDuration) {
+                          cleanDuration = cleanDuration.replace(/0(\d)/g, '$1');
+                          cleanDuration = cleanDuration.replace(/\b0 Hours\b/gi, '').trim();
+                          cleanDuration = cleanDuration.replace(/Days/gi, 'days').replace(/Hrs?/gi, 'hrs').replace(/Mins?/gi, 'mins');
+                        }
+
+                        const startDate = new Date(evt.date || evt.startDate);
+                        const month = !isNaN(startDate.getTime()) ? startDate.toLocaleString('default', { month: 'short' }) : "-";
+                        const year = !isNaN(startDate.getTime()) ? startDate.getFullYear() : "-";
+                        const addressStr = evt.location || evt.address || "-";
+
+                        const formatColor = (evt.eventType === "Meet the Authors" || evt.eventType === "Meet The Authors")
+                          ? "bg-[#AFC6E9] text-black"
+                          : evt.eventType === "Stall"
+                            ? "bg-[#8EE88C] text-black"
+                            : "bg-gray-100 text-black";
+
+                        const categoryColor = evt.category === "Housing Society" ? "bg-[#F3C29E] text-black"
+                          : evt.category === "Corporate Office" ? "bg-[#FFE066] text-black"
+                          : evt.category === "Book Fair" ? "bg-[#6FEF59] text-black"
+                          : evt.category === "College" ? "bg-[#F6C6C6] text-black"
+                          : evt.category === "University" ? "bg-[#FFF176] text-black"
+                          : "bg-gray-100 text-black";
+
+                        const evtAuthors = evt.aggAuthors != null
+                          ? evt.aggAuthors
+                          : evt.isLegacy
+                            ? "NA"
+                            : (evt._count?.eventAuthors || 0);
+
+                        const books = evt.aggSold != null
+                          ? evt.aggSold
+                          : evt.isLegacy
+                            ? "NA"
+                            : (evt.eventBooks?.reduce((s: number, eb: any) => s + (eb.soldStock || 0), 0) || 0);
+
+                        return (
+                          <tr key={evt.id || i} className={`text-[13px] font-medium text-black border-[1.5px] border-black ${rowBg} hover:bg-yellow-50/50 transition-colors`}>
+                            <td className="p-2 text-center align-middle border-[1.5px] border-black font-semibold">
+                              {sNo}
+                            </td>
+                            <td className="p-2 text-left align-middle border-[1.5px] border-black font-semibold">
+                              {evt.name}
+                            </td>
+                            <td className={`p-2 text-center align-middle border-[1.5px] border-black capitalize ${formatColor}`}>
+                              {evt.eventType || "-"}
+                            </td>
+                            <td className={`p-2 text-center align-middle border-[1.5px] border-black capitalize ${categoryColor}`}>
+                              {evt.category || "-"}
+                            </td>
+                            <td className="p-2 text-center align-middle border-[1.5px] border-black capitalize">
+                              {addressStr}
+                            </td>
+                            <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                              {month}
+                            </td>
+                            <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                              {year}
+                            </td>
+                            <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                              {cleanDuration}
+                            </td>
+                            <td className="p-2 text-center font-bold align-middle border-[1.5px] border-black">
+                              {evtAuthors}
+                            </td>
+                            <td className="p-2 text-center font-bold align-middle border-[1.5px] border-black">
+                              {books}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
-          </div>
+          </FadeIn>
         )}
 
         {/* Pagination Controls */}
