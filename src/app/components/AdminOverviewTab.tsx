@@ -308,35 +308,51 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
       {/* ════ High Level KPIs ════ */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {[
-          { label: 'Total Authors', value: authors?.length || 0, icon: Users, colorClass: 'blue', tabId: 'authors' },
-          { label: 'Books Listed', value: books?.length || 0, icon: BookOpen, colorClass: 'green', tabId: 'books' },
-          { label: 'No of Events', value: events?.length || 0, icon: CalendarIcon, colorClass: 'amber', tabId: 'events' },
-          { 
-            label: 'Airport Libraries', 
-            value: (stats?.totalAirportLibraries !== undefined && stats?.totalAirportLibraries > 0) 
-              ? stats.totalAirportLibraries 
-              : (libraries?.filter((l: any) => (l.type === 'Airport Library' || l.type === 'airport') && !l.isArchived).length || 0), 
-            icon: Plane, 
-            colorClass: 'cyan', 
-            tabId: 'library_donations' 
+          { label: 'Total Authors', value: authors ? authors.length : null, icon: Users, colorClass: 'blue', tabId: 'authors' },
+          { label: 'Books Listed', value: books ? books.length : null, icon: BookOpen, colorClass: 'green', tabId: 'books' },
+          { label: 'No of Events', value: events ? events.length : null, icon: CalendarIcon, colorClass: 'amber', tabId: 'events' },
+          {
+            label: 'Airport Libraries',
+            value: (stats?.totalAirportLibraries !== undefined && stats?.totalAirportLibraries > 0)
+              ? stats.totalAirportLibraries
+              : (libraries && libraries.length > 0)
+                ? libraries.filter((l: any) => (l.type === 'Airport Library' || l.type === 'airport') && !l.isArchived).length
+                : null,
+            icon: Plane,
+            colorClass: 'cyan',
+            tabId: 'library_donations'
+          },
+          {
+            label: 'Other Libraries',
+            value: (stats?.totalOtherLibraries !== undefined && stats?.totalOtherLibraries > 0)
+              ? stats.totalOtherLibraries
+              : (libraries && libraries.length > 0)
+                ? libraries.filter((l: any) => l.type !== 'Airport Library' && l.type !== 'airport' && !l.isArchived).length
+                : null,
+            icon: Library,
+            colorClass: 'purple',
+            tabId: 'library_donations'
           },
           { 
-            label: 'Other Libraries', 
-            value: (stats?.totalOtherLibraries !== undefined && stats?.totalOtherLibraries > 0) 
-              ? stats.totalOtherLibraries 
-              : (libraries?.filter((l: any) => l.type !== 'Airport Library' && l.type !== 'airport' && !l.isArchived).length || 0), 
-            icon: Library, 
-            colorClass: 'purple', 
-            tabId: 'library_donations' 
+            label: 'Total Revenue', 
+            value: (dynamicRevenue !== null || stats?.totalRevenue !== undefined) 
+              ? `₹${(dynamicRevenue !== null ? dynamicRevenue : (stats?.totalRevenue || 0)).toLocaleString()}` 
+              : null, 
+            icon: TrendingUp, 
+            colorClass: 'red', 
+            tabId: 'sales_report' 
           },
-          { label: 'Total Revenue', value: `₹${(dynamicRevenue !== null ? dynamicRevenue : (stats?.totalRevenue || 0)).toLocaleString()}`, icon: TrendingUp, colorClass: 'red', tabId: 'sales_report' },
         ].map((kpi, i) => (
           <div key={i} onClick={() => kpi.tabId && setActiveTab(kpi.tabId)} className={`dash-kpi-card ${kpi.colorClass} !p-3.5 sm:!p-4 !rounded-xl cursor-pointer hover:scale-[1.02] transition-transform`}>
             <div className="flex items-start justify-between mb-2">
               <div className={`dash-kpi-icon ${kpi.colorClass} !w-8 sm:!w-9 !h-8 sm:!h-9 !rounded-lg`}><kpi.icon className="w-4 h-4" /></div>
             </div>
             <p className="text-[10px] font-bold tracking-wide uppercase text-paa-gray-text mb-0.5 truncate" title={kpi.label}>{kpi.label}</p>
-            <h3 className="text-lg sm:text-xl font-black text-paa-navy tracking-tight truncate">{kpi.value}</h3>
+            {kpi.value !== null && kpi.value !== undefined ? (
+              <h3 className="text-lg sm:text-xl font-black text-paa-navy tracking-tight truncate">{kpi.value}</h3>
+            ) : (
+              <div className="h-6 sm:h-7 w-16 bg-gray-200/80 animate-pulse rounded-md my-0.5" />
+            )}
           </div>
         ))}
       </div>

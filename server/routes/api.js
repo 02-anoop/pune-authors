@@ -1760,10 +1760,18 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
   const cached = getCache('admin:dashboard-stats');
   if (cached) return res.json(cached);
   try {
-    const totalAuthors = await prisma.author.count();
-    const totalBooks = await prisma.book.count();
-
-    const [eventParticipations, pendingEventRegistrations, totalEvents, totalLibraries, totalAirportLibraries, totalOtherLibraries] = await Promise.all([
+    const [
+      totalAuthors,
+      totalBooks,
+      eventParticipations,
+      pendingEventRegistrations,
+      totalEvents,
+      totalLibraries,
+      totalAirportLibraries,
+      totalOtherLibraries
+    ] = await Promise.all([
+      prisma.author.count(),
+      prisma.book.count(),
       prisma.eventAuthor.count({ where: { optInStatus: 'Registered' } }),
       prisma.eventAuthor.count({ where: { optInStatus: 'Pending Approval' } }),
       prisma.event.count({ where: { isArchived: false } }),
@@ -1772,31 +1780,23 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       prisma.library.count({ where: { isArchived: false, type: { notIn: ['Airport Library', 'airport', 'Airport'] } } })
     ]);
 
-    // 1. Total Revenue (Aligned with Sales Report logic)
-    const webOrdersAll = await prisma.order.findMany({
-      where: { status: { in: ['Completed', 'Delivered', 'Shipped', 'Dispatched'] } },
-      include: { items: { include: { book: true } } }
-    });
-    let webRevenue = 0;
-    webOrdersAll.forEach(o => {
-      o.items.forEach(i => {
-        webRevenue += i.quantity * (i.book?.mrp || 0);
-      });
-    });
+    // 1. Total Revenue (Fast Database Aggregation)
+    const [webAgg, posAgg, legacyEventsAll] = await Promise.all([
+      prisma.order.aggregate({
+        _sum: { amount: true },
+        where: { status: { in: ['Completed', 'Delivered', 'Shipped', 'Dispatched'] } }
+      }),
+      prisma.posOrder.aggregate({
+        _sum: { totalAmount: true }
+      }),
+      prisma.event.findMany({
+        where: { status: 'Legacy Archive' },
+        select: { aggRevenue: true, aggSold: true }
+      })
+    ]);
 
-    const posOrdersAll = await prisma.posOrder.findMany({
-      include: { items: true }
-    });
-    let posRevenue = 0;
-    posOrdersAll.forEach(po => {
-      po.items.forEach(i => {
-        posRevenue += i.quantity * (i.price || 0);
-      });
-    });
-
-    const legacyEventsAll = await prisma.event.findMany({
-      where: { status: 'Legacy Archive' }
-    });
+    let webRevenue = webAgg._sum.amount || 0;
+    let posRevenue = posAgg._sum.totalAmount || 0;
     let legacyRevenue = 0;
     legacyEventsAll.forEach(evt => {
       const qty = evt.aggSold || 0;
