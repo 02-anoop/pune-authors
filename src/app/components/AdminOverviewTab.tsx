@@ -313,10 +313,10 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
           { label: 'No of Events', value: events ? events.length : null, icon: CalendarIcon, colorClass: 'amber', tabId: 'events' },
           {
             label: 'Airport Libraries',
-            value: (stats?.totalAirportLibraries !== undefined && stats?.totalAirportLibraries > 0)
-              ? stats.totalAirportLibraries
-              : (libraries && libraries.length > 0)
-                ? libraries.filter((l: any) => (l.type === 'Airport Library' || l.type === 'airport') && !l.isArchived).length
+            value: (libraries && libraries.length > 0)
+              ? libraries.filter((l: any) => (l.type === 'Airport Library' || l.type === 'airport') && !l.isArchived).length
+              : (stats?.totalAirportLibraries !== undefined && stats?.totalAirportLibraries > 0)
+                ? stats.totalAirportLibraries
                 : null,
             icon: Plane,
             colorClass: 'cyan',
@@ -324,10 +324,10 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
           },
           {
             label: 'Other Libraries',
-            value: (stats?.totalOtherLibraries !== undefined && stats?.totalOtherLibraries > 0)
-              ? stats.totalOtherLibraries
-              : (libraries && libraries.length > 0)
-                ? libraries.filter((l: any) => l.type !== 'Airport Library' && l.type !== 'airport' && !l.isArchived).length
+            value: (libraries && libraries.length > 0)
+              ? libraries.filter((l: any) => l.type !== 'Airport Library' && l.type !== 'airport' && !l.isArchived).length
+              : (stats?.totalOtherLibraries !== undefined && stats?.totalOtherLibraries > 0)
+                ? stats.totalOtherLibraries
                 : null,
             icon: Library,
             colorClass: 'purple',

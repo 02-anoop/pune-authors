@@ -1712,6 +1712,7 @@ export function OperationsDashboardPage() {
           promises.push(fetchOrders(true));
           promises.push(fetchAuthors(isBackground));
           promises.push(fetchBooks(isBackground));
+          promises.push(fetchLibraries(isBackground));
           promises.push(fetchNotifications());
           promises.push(fetchServerFiles());
         } else if (activeTab === "authors") {
