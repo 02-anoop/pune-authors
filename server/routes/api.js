@@ -1693,6 +1693,7 @@ router.get('/api/impact-stats', async (req, res) => {
 
   try {
     const events = await prisma.event.findMany({
+      where: { isArchived: false, status: { not: 'Upcoming' } },
       include: {
         eventAuthors: true,
         posOrders: {
@@ -1727,7 +1728,7 @@ router.get('/api/impact-stats', async (req, res) => {
       }
 
       const matchStr = ((evt.name || '') + ' ' + (evt.eventType || '')).toLowerCase();
-      if (matchStr.includes('fair') || matchStr.includes('mela')) {
+      if (matchStr.includes('fair') || matchStr.includes('mela') || matchStr.includes('stall')) {
         totalFairs++;
         totalFairsBooks += booksSold;
       } else {
@@ -1736,19 +1737,22 @@ router.get('/api/impact-stats', async (req, res) => {
       }
     });
 
-    const totalLibraries = await prisma.library.count();
-    const totalLibraryBooks = totalLibraries * 112;
+    const totalAirportLibraries = await prisma.library.count({
+      where: { isArchived: false, type: { in: ['Airport Library', 'airport', 'Airport'] } }
+    });
+    const totalLibraryBooks = totalAirportLibraries * 130;
 
     const result = {
       totalFairs,
       totalFairsBooks,
       totalLiteraryEvents,
       totalLiteraryBooks,
-      totalLibraries,
+      totalLibraries: totalAirportLibraries,
+      totalAirportLibraries,
       totalLibraryBooks
     };
 
-    setCache('impact:stats', result, 1000 * 60 * 15); // cache for 15 mins
+    setCache('impact:stats', result, 1000 * 60 * 5); // cache for 5 mins
     res.json(result);
   } catch (e) {
     console.error(e);

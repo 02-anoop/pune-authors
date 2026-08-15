@@ -92,8 +92,8 @@ function WizardEventsStep() {
   const nextPastEvent = () => setCurrentPastEventIndex((prev) => (prev + 1) % pastEvents.length);
   const prevPastEvent = () => setCurrentPastEventIndex((prev) => (prev - 1 + pastEvents.length) % pastEvents.length);
 
-  const fairs = pastEvents.filter(e => e.name.toLowerCase().includes("fair"));
-  const literaryEvents = pastEvents.filter(e => !e.name.toLowerCase().includes("fair"));
+  const fairs = pastEvents.filter(e => e.name.toLowerCase().includes("fair") || e.name.toLowerCase().includes("stall") || e.name.toLowerCase().includes("mela"));
+  const literaryEvents = pastEvents.filter(e => !e.name.toLowerCase().includes("fair") && !e.name.toLowerCase().includes("stall") && !e.name.toLowerCase().includes("mela"));
 
   const totalFairs = stats ? stats.totalFairs : fairs.length;
   const totalFairsBooks = stats ? stats.totalFairsBooks : fairs.reduce((sum, e) => sum + (e.booksSold || 0), 0);
@@ -101,8 +101,8 @@ function WizardEventsStep() {
   const totalLiteraryEvents = stats ? stats.totalLiteraryEvents : literaryEvents.length;
   const totalLiteraryBooks = stats ? stats.totalLiteraryBooks : literaryEvents.reduce((sum, e) => sum + (e.booksSold || 0), 0);
 
-  const totalLibraries = stats ? stats.totalLibraries : 4;
-  const totalLibraryBooks = stats ? stats.totalLibraryBooks : 450;
+  const totalLibraries = stats ? (stats.totalAirportLibraries !== undefined ? stats.totalAirportLibraries : stats.totalLibraries) : 6;
+  const totalLibraryBooks = stats ? stats.totalLibraryBooks : 780;
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
