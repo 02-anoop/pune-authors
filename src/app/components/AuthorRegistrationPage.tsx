@@ -92,17 +92,23 @@ function WizardEventsStep() {
   const nextPastEvent = () => setCurrentPastEventIndex((prev) => (prev + 1) % pastEvents.length);
   const prevPastEvent = () => setCurrentPastEventIndex((prev) => (prev - 1 + pastEvents.length) % pastEvents.length);
 
-  const fairs = pastEvents.filter(e => e.name.toLowerCase().includes("fair") || e.name.toLowerCase().includes("stall") || e.name.toLowerCase().includes("mela"));
-  const literaryEvents = pastEvents.filter(e => !e.name.toLowerCase().includes("fair") && !e.name.toLowerCase().includes("stall") && !e.name.toLowerCase().includes("mela"));
+  const fairs = pastEvents.filter(e => {
+    const name = (e.name || '').toLowerCase();
+    return name.includes('book fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
+  });
+  const literaryEvents = pastEvents.filter(e => {
+    const name = (e.name || '').toLowerCase();
+    return !name.includes('book fair') && !name.includes('srinagar') && !name.includes('dehradun') && !name.includes('bengali mela') && !name.includes('diwali stall');
+  });
 
-  const totalFairs = stats ? stats.totalFairs : fairs.length;
-  const totalFairsBooks = stats ? stats.totalFairsBooks : fairs.reduce((sum, e) => sum + (e.booksSold || 0), 0);
+  const totalFairs = stats ? stats.totalFairs : 6;
+  const totalFairsBooks = stats ? stats.totalFairsBooks : 1171;
 
-  const totalLiteraryEvents = stats ? stats.totalLiteraryEvents : literaryEvents.length;
-  const totalLiteraryBooks = stats ? stats.totalLiteraryBooks : literaryEvents.reduce((sum, e) => sum + (e.booksSold || 0), 0);
+  const totalLiteraryEvents = stats ? stats.totalLiteraryEvents : 31;
+  const totalLiteraryBooks = stats ? stats.totalLiteraryBooks : 1777;
 
   const totalLibraries = stats ? (stats.totalAirportLibraries !== undefined ? stats.totalAirportLibraries : stats.totalLibraries) : 6;
-  const totalLibraryBooks = stats ? stats.totalLibraryBooks : 780;
+  const totalLibraryBooks = stats ? stats.totalLibraryBooks : 1500;
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">

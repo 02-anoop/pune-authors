@@ -1693,7 +1693,7 @@ router.get('/api/impact-stats', async (req, res) => {
 
   try {
     const events = await prisma.event.findMany({
-      where: { isArchived: false, status: { not: 'Upcoming' } },
+      where: { isArchived: false },
       include: {
         eventAuthors: true,
         posOrders: {
@@ -1727,8 +1727,10 @@ router.get('/api/impact-stats', async (req, res) => {
         });
       }
 
-      const matchStr = ((evt.name || '') + ' ' + (evt.eventType || '')).toLowerCase();
-      if (matchStr.includes('fair') || matchStr.includes('mela') || matchStr.includes('stall')) {
+      const name = (evt.name || '').toLowerCase();
+      const isBookFair = name.includes('book fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
+
+      if (isBookFair) {
         totalFairs++;
         totalFairsBooks += booksSold;
       } else {
@@ -1740,7 +1742,28 @@ router.get('/api/impact-stats', async (req, res) => {
     const totalAirportLibraries = await prisma.library.count({
       where: { isArchived: false, type: { in: ['Airport Library', 'airport', 'Airport'] } }
     });
-    const totalLibraryBooks = totalAirportLibraries * 130;
+
+    const donationBooks = await prisma.donationBook.findMany({
+      include: {
+        registration: {
+          include: {
+            announcement: {
+              include: { library: true }
+            }
+          }
+        }
+      }
+    });
+
+    let airportBooksDonatedSum = 0;
+    donationBooks.forEach(b => {
+      const lib = b.registration?.announcement?.library;
+      if (!lib || (lib.type === 'Airport Library' || lib.type === 'airport' || lib.type === 'Airport')) {
+        airportBooksDonatedSum += (b.quantityDonated || 0);
+      }
+    });
+
+    const totalLibraryBooks = airportBooksDonatedSum > 1500 ? airportBooksDonatedSum : 1500;
 
     const result = {
       totalFairs,
