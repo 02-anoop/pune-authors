@@ -50,7 +50,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
 
   // Memoize heavy calculations to prevent layout thrashing and high main-thread execution time
   const {
-    lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries, pendingFines,
+    lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, pendingOrdersCount, recentDispatchedOrders, recentDeliveredOrders, pendingQueries, pendingFines,
     delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
     orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
     completedOrders, topParticipatingAuthors
@@ -100,6 +100,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
 
     const newWebOrders = orders.filter((o: any) => !o.isArchived && !o.isBulk && ['Pending Verification', 'Pending'].includes(getAggregateStatusText(o))).length;
     const pendingBulkOrders = orders.filter((o: any) => !o.isArchived && o.isBulk && ['Bulk Req Pending', 'Pending Payment'].includes(getAggregateStatusText(o))).length;
+    const pendingOrdersCount = (orders && orders.length > 0) ? (newWebOrders + pendingBulkOrders) : (stats?.globalPendingOrders !== undefined ? stats.globalPendingOrders : 0);
 
     const recentDispatchedOrders = lastAdminVisit ? orders.filter((o: any) => !o.isArchived && o.items?.some((it: any) => it.dispatchedAt && new Date(it.dispatchedAt).getTime() > lastAdminVisit)).length : 0;
     const recentDeliveredOrders = lastAdminVisit ? orders.filter((o: any) => !o.isArchived && o.items?.some((it: any) => it.deliveredAt && new Date(it.deliveredAt).getTime() > lastAdminVisit)).length : 0;
@@ -208,7 +209,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
       .slice(0, 20);
 
     return {
-      lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries: prevQueries, pendingFines,
+      lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, pendingOrdersCount, recentDispatchedOrders, recentDeliveredOrders, pendingQueries: prevQueries, pendingFines,
       delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
       orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
       completedOrders: completedOrdersCount, topParticipatingAuthors
@@ -248,6 +249,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
   };
   const insights = [
     { label: '% Orders Delayed', value: `${delayedOrdersRate}%`, desc: 'Of all web orders', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', tabId: 'web_orders' },
+    { label: 'Pending Orders', value: pendingOrdersCount !== null && pendingOrdersCount !== undefined ? pendingOrdersCount : 0, desc: 'Orders requiring action', icon: Clock, color: 'text-emerald-600', bg: 'bg-emerald-50', tabId: 'web_orders' },
     { label: 'Web Orders Received', value: totalBooksSoldWeb, desc: 'Total web orders received online', icon: ShoppingCart, color: 'text-purple-600', bg: 'bg-purple-50', tabId: 'web_orders' },
   ];
 
@@ -306,11 +308,12 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
       </div>
 
       {/* ════ High Level KPIs ════ */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
         {[
           { label: 'Total Authors', value: authors ? authors.length : null, icon: Users, colorClass: 'blue', tabId: 'authors' },
           { label: 'Books Listed', value: books ? books.length : null, icon: BookOpen, colorClass: 'green', tabId: 'books' },
-          { label: 'No of Events', value: events ? events.length : null, icon: CalendarIcon, colorClass: 'amber', tabId: 'events' },
+          { label: 'Pending Orders', value: pendingOrdersCount !== null && pendingOrdersCount !== undefined ? pendingOrdersCount : null, icon: Clock, colorClass: 'amber', tabId: 'web_orders' },
+          { label: 'No of Events', value: events ? events.length : null, icon: CalendarIcon, colorClass: 'purple', tabId: 'events' },
           {
             label: 'Airport Libraries',
             value: (libraries && libraries.length > 0)
@@ -330,7 +333,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
                 ? stats.totalOtherLibraries
                 : null,
             icon: Library,
-            colorClass: 'purple',
+            colorClass: 'green',
             tabId: 'library_donations'
           },
           { 
