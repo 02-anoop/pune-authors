@@ -1817,8 +1817,8 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       else totalLiteraryEvents++;
     });
 
-    // 1. Total Revenue (Fast Database Aggregation)
-    const [webAgg, posAgg, legacyEventsAll] = await Promise.all([
+    // 1. Total Revenue & Total Books Sold (Fast Database Aggregation)
+    const [webAgg, posAgg, legacyEventsAll, webItemsAgg, posItemsAgg] = await Promise.all([
       prisma.order.aggregate({
         _sum: { amount: true },
         where: { status: { in: ['Completed', 'Delivered', 'Shipped', 'Dispatched'] } }
@@ -1829,18 +1829,34 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       prisma.event.findMany({
         where: { status: 'Legacy Archive' },
         select: { aggRevenue: true, aggSold: true }
+      }),
+      prisma.orderItem.aggregate({
+        _sum: { quantity: true },
+        where: {
+          order: { status: { in: ['Completed', 'Delivered', 'Shipped', 'Dispatched'] } },
+          status: { notIn: ['Cancelled', 'Rejected'] }
+        }
+      }),
+      prisma.posOrderItem.aggregate({
+        _sum: { quantity: true },
+        where: {
+          posOrder: { paymentStatus: 'CONFIRMED' }
+        }
       })
     ]);
 
     let webRevenue = webAgg._sum.amount || 0;
     let posRevenue = posAgg._sum.totalAmount || 0;
     let legacyRevenue = 0;
+    let legacyBooksSold = 0;
     legacyEventsAll.forEach(evt => {
       const qty = evt.aggSold || 0;
       legacyRevenue += evt.aggRevenue || (qty * 200) || 0;
+      legacyBooksSold += qty;
     });
 
     const totalRevenue = webRevenue + posRevenue + legacyRevenue;
+    const totalBooksSold = (webItemsAgg._sum.quantity || 0) + (posItemsAgg._sum.quantity || 0) + legacyBooksSold;
 
     // 2. Revenue Data (Last 6 Months)
     // We can use Prisma groupBy or queryRaw. To be safe across DBs, we'll fetch only date & amount for web orders
@@ -2117,7 +2133,7 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
     const globalTotalCustomers = uniqueCustomersData.length;
 
     const result = {
-      totalAuthors, totalBooks, eventParticipations, totalRevenue, revenueData, recentActivities,
+      totalAuthors, totalBooks, eventParticipations, totalRevenue, totalBooksSold, revenueData, recentActivities,
       salesByAuthor, salesByGenre, topSellingBooks, topCustomers, lowStockAlerts, eventSalesData, pendingEventRegistrations,
       globalSuccessfulOrders, globalPendingOrders, globalDispatchedOrders, globalTotalCustomers,
       totalEvents, totalBookFairs, totalLiteraryEvents, totalLibraries, totalAirportLibraries, totalOtherLibraries

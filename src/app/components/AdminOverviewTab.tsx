@@ -20,6 +20,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
   });
 
   const [dynamicRevenue, setDynamicRevenue] = useState<number | null>(null);
+  const [dynamicBooksSold, setDynamicBooksSold] = useState<number | null>(null);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -28,8 +29,13 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
         const res = await axios.get(`${API}/api/admin/sales-report?startDate=2000-01-01&endDate=2099-12-31&filterType=lifetime`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
-        if (isMounted && res.data?.kpis?.totalRevenue !== undefined) {
-          setDynamicRevenue(res.data.kpis.totalRevenue);
+        if (isMounted) {
+          if (res.data?.kpis?.totalRevenue !== undefined) {
+            setDynamicRevenue(res.data.kpis.totalRevenue);
+          }
+          if (res.data?.kpis?.totalBooksSold !== undefined) {
+            setDynamicBooksSold(res.data.kpis.totalBooksSold);
+          }
         }
       } catch (e) {
         console.error("Failed to fetch dynamic lifetime revenue", e);
@@ -421,33 +427,29 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
             </div>
           ))}
 
-          {/* Low Stock Alert Mini Card */}
-          <div onClick={() => setActiveTab('inventory')} className="p-4 rounded-2xl border border-red-100 bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between flex-1 cursor-pointer hover:scale-[1.02]">
+          {/* Total Books Sold Mini Card */}
+          <div onClick={() => setActiveTab('sales_report')} className="p-4 rounded-2xl border border-paa-navy/5 bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between flex-1 cursor-pointer hover:scale-[1.02]">
             <div>
               <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-                  <Package size={18} aria-hidden="true" />
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <BookOpen size={18} aria-hidden="true" />
                 </div>
-                {lowStockBooks.length > 0 && (
-                  <button
-                    aria-label="Notify All Authors About Low Stock"
-                    onClick={handleNotifyAllLowStock}
-                    className="text-[10px] flex items-center gap-1 font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 px-2 py-0.5 rounded-full transition-colors uppercase tracking-wider"
-                  >
-                    <Bell size={10} className="text-amber-600" /> Notify All
-                  </button>
-                )}
+                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  All Channels
+                </span>
               </div>
-              <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{lowStockBooks.length}</h4>
-              <p className="text-xs font-bold text-gray-800 mb-0.5">Low Stock Titles</p>
-              <p className="text-[11px] text-paa-gray-text">Titles requiring restocking</p>
+              <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">
+                {(dynamicBooksSold !== null ? dynamicBooksSold : (stats?.totalBooksSold || 0)).toLocaleString()}
+              </h4>
+              <p className="text-xs font-bold text-gray-800 mb-0.5">Total Books Sold</p>
+              <p className="text-[11px] text-paa-gray-text">Across web orders, events &amp; book fairs</p>
             </div>
 
             <button
-              onClick={() => setActiveTab('inventory')}
+              onClick={(e) => { e.stopPropagation(); setActiveTab('sales_report'); }}
               className="mt-3 w-full text-xs font-bold text-white bg-paa-navy hover:bg-[#0c1e30] rounded-xl py-2 transition-all flex items-center justify-center gap-1.5 shadow-xs hover:shadow-sm"
             >
-              <Package size={13} /> View Inventory
+              <TrendingUp size={13} /> View Sales Report
             </button>
           </div>
         </div>
