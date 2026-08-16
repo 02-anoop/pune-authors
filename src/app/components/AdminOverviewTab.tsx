@@ -19,8 +19,14 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
     return saved ? JSON.parse(saved) : {};
   });
 
-  const [dynamicRevenue, setDynamicRevenue] = useState<number | null>(null);
-  const [dynamicBooksSold, setDynamicBooksSold] = useState<number | null>(null);
+  const [dynamicRevenue, setDynamicRevenue] = useState<number | null>(() => {
+    const cached = localStorage.getItem('paa_cached_lifetime_revenue');
+    return cached ? parseInt(cached, 10) : null;
+  });
+  const [dynamicBooksSold, setDynamicBooksSold] = useState<number | null>(() => {
+    const cached = localStorage.getItem('paa_cached_lifetime_books_sold');
+    return cached ? parseInt(cached, 10) : null;
+  });
 
   React.useEffect(() => {
     let isMounted = true;
@@ -32,9 +38,11 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
         if (isMounted) {
           if (res.data?.kpis?.totalRevenue !== undefined) {
             setDynamicRevenue(res.data.kpis.totalRevenue);
+            localStorage.setItem('paa_cached_lifetime_revenue', String(res.data.kpis.totalRevenue));
           }
           if (res.data?.kpis?.totalBooksSold !== undefined) {
             setDynamicBooksSold(res.data.kpis.totalBooksSold);
+            localStorage.setItem('paa_cached_lifetime_books_sold', String(res.data.kpis.totalBooksSold));
           }
         }
       } catch (e) {
