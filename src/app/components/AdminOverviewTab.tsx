@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Users, Activity, Clock, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit, CheckCircle } from 'lucide-react';
+import { Users, Activity, Clock, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit, CheckCircle, Plane, Store } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, LabelList, ScatterChart, Scatter, ZAxis } from 'recharts';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -8,7 +8,7 @@ import { getAuthorParticipationStats } from './OperationsDashboardPage';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, orders, events, stats, prevQueries, lastAdminVisit, setActiveTab, setAuthorStatusFilter, API }: any) => {
+export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, orders, events, stats, prevQueries, lastAdminVisit, setActiveTab, setAuthorStatusFilter, API, libraries }: any) => {
 
   const [localDismissed, setLocalDismissed] = useState<string[]>(() => {
     const saved = localStorage.getItem('paa_dismissed_actions');
@@ -20,6 +20,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
   });
 
   const [dynamicRevenue, setDynamicRevenue] = useState<number | null>(null);
+  const [dynamicBooksSold, setDynamicBooksSold] = useState<number | null>(null);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -28,8 +29,13 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
         const res = await axios.get(`${API}/api/admin/sales-report?startDate=2000-01-01&endDate=2099-12-31&filterType=lifetime`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
-        if (isMounted && res.data?.kpis?.totalRevenue !== undefined) {
-          setDynamicRevenue(res.data.kpis.totalRevenue);
+        if (isMounted) {
+          if (res.data?.kpis?.totalRevenue !== undefined) {
+            setDynamicRevenue(res.data.kpis.totalRevenue);
+          }
+          if (res.data?.kpis?.totalBooksSold !== undefined) {
+            setDynamicBooksSold(res.data.kpis.totalBooksSold);
+          }
         }
       } catch (e) {
         console.error("Failed to fetch dynamic lifetime revenue", e);
@@ -50,7 +56,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
 
   // Memoize heavy calculations to prevent layout thrashing and high main-thread execution time
   const {
-    lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries, pendingFines,
+    lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, pendingOrdersCount, recentDispatchedOrders, recentDeliveredOrders, pendingQueries, pendingFines,
     delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
     orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
     completedOrders, topParticipatingAuthors
@@ -100,6 +106,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
 
     const newWebOrders = orders.filter((o: any) => !o.isArchived && !o.isBulk && ['Pending Verification', 'Pending'].includes(getAggregateStatusText(o))).length;
     const pendingBulkOrders = orders.filter((o: any) => !o.isArchived && o.isBulk && ['Bulk Req Pending', 'Pending Payment'].includes(getAggregateStatusText(o))).length;
+    const pendingOrdersCount = (orders && orders.length > 0) ? (newWebOrders + pendingBulkOrders) : (stats?.globalPendingOrders !== undefined ? stats.globalPendingOrders : 0);
 
     const recentDispatchedOrders = lastAdminVisit ? orders.filter((o: any) => !o.isArchived && o.items?.some((it: any) => it.dispatchedAt && new Date(it.dispatchedAt).getTime() > lastAdminVisit)).length : 0;
     const recentDeliveredOrders = lastAdminVisit ? orders.filter((o: any) => !o.isArchived && o.items?.some((it: any) => it.deliveredAt && new Date(it.deliveredAt).getTime() > lastAdminVisit)).length : 0;
@@ -208,7 +215,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
       .slice(0, 20);
 
     return {
-      lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, recentDispatchedOrders, recentDeliveredOrders, pendingQueries: prevQueries, pendingFines,
+      lowStockBooks, pendingAuthors, pendingEdits, pendingEvents, newWebOrders, pendingBulkOrders, pendingOrdersCount, recentDispatchedOrders, recentDeliveredOrders, pendingQueries: prevQueries, pendingFines,
       delayedOrdersRate, avgParticipation, participationChartData, latestEventRate, categoryChartData,
       orderStatusData, topAuthorsData, topBooksData, revenueTrendData, totalBooksSoldWeb, totalRevenueWeb,
       completedOrders: completedOrdersCount, topParticipatingAuthors
@@ -248,6 +255,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
   };
   const insights = [
     { label: '% Orders Delayed', value: `${delayedOrdersRate}%`, desc: 'Of all web orders', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', tabId: 'web_orders' },
+    { label: 'Pending Orders', value: pendingOrdersCount !== null && pendingOrdersCount !== undefined ? pendingOrdersCount : 0, desc: 'Orders requiring action', icon: Clock, color: 'text-emerald-600', bg: 'bg-emerald-50', tabId: 'web_orders' },
     { label: 'Web Orders Received', value: totalBooksSoldWeb, desc: 'Total web orders received online', icon: ShoppingCart, color: 'text-purple-600', bg: 'bg-purple-50', tabId: 'web_orders' },
   ];
 
@@ -306,20 +314,81 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
       </div>
 
       {/* ════ High Level KPIs ════ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
         {[
-          { label: 'Total Authors', value: authors?.length || 0, icon: Users, colorClass: 'blue', tabId: 'authors' },
-          { label: 'Books Listed', value: books?.length || 0, icon: BookOpen, colorClass: 'green', tabId: 'books' },
-          { label: 'No of Events', value: events?.length || 0, icon: CalendarIcon, colorClass: 'amber', tabId: 'events' },
-          { label: 'No of Libraries', value: stats?.totalLibraries || 0, icon: Library, colorClass: 'purple', tabId: 'library_donations' },
-          { label: 'Total Revenue', value: `₹${(dynamicRevenue !== null ? dynamicRevenue : (stats?.totalRevenue || 0)).toLocaleString()}`, icon: TrendingUp, colorClass: 'red', tabId: 'sales_report' },
+          { label: 'Total Authors', value: authors ? authors.length : null, icon: Users, colorClass: 'blue', tabId: 'authors' },
+          { label: 'Books Listed', value: books ? books.length : null, icon: BookOpen, colorClass: 'green', tabId: 'books' },
+          {
+            label: 'Book Fairs',
+            value: (events && events.length > 0)
+              ? events.filter((e: any) => {
+                  const name = (e.name || e.title || '').toLowerCase();
+                  return e.eventType === 'Book Fair' || name.includes('book fair') || name.includes('fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
+                }).length
+              : (stats?.totalBookFairs !== undefined && stats?.totalBookFairs > 0)
+                ? stats.totalBookFairs
+                : (events ? 0 : null),
+            icon: Store,
+            colorClass: 'amber',
+            tabId: 'events'
+          },
+          {
+            label: 'Literary Events',
+            value: (events && events.length > 0)
+              ? events.filter((e: any) => {
+                  const name = (e.name || e.title || '').toLowerCase();
+                  const isFair = e.eventType === 'Book Fair' || name.includes('book fair') || name.includes('fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
+                  return !isFair;
+                }).length
+              : (stats?.totalLiteraryEvents !== undefined && stats?.totalLiteraryEvents > 0)
+                ? stats.totalLiteraryEvents
+                : (events ? 0 : null),
+            icon: CalendarIcon,
+            colorClass: 'purple',
+            tabId: 'events'
+          },
+          {
+            label: 'Airport Libraries',
+            value: (libraries && libraries.length > 0)
+              ? libraries.filter((l: any) => (l.type === 'Airport Library' || l.type === 'airport') && !l.isArchived).length
+              : (stats?.totalAirportLibraries !== undefined && stats?.totalAirportLibraries > 0)
+                ? stats.totalAirportLibraries
+                : null,
+            icon: Plane,
+            colorClass: 'cyan',
+            tabId: 'library_donations'
+          },
+          {
+            label: 'Other Libraries',
+            value: (libraries && libraries.length > 0)
+              ? libraries.filter((l: any) => l.type !== 'Airport Library' && l.type !== 'airport' && !l.isArchived).length
+              : (stats?.totalOtherLibraries !== undefined && stats?.totalOtherLibraries > 0)
+                ? stats.totalOtherLibraries
+                : null,
+            icon: Library,
+            colorClass: 'green',
+            tabId: 'library_donations'
+          },
+          { 
+            label: 'Total Revenue', 
+            value: (dynamicRevenue !== null || stats?.totalRevenue !== undefined) 
+              ? `₹${(dynamicRevenue !== null ? dynamicRevenue : (stats?.totalRevenue || 0)).toLocaleString()}` 
+              : null, 
+            icon: TrendingUp, 
+            colorClass: 'red', 
+            tabId: 'sales_report' 
+          },
         ].map((kpi, i) => (
-          <div key={i} onClick={() => kpi.tabId && setActiveTab(kpi.tabId)} className={`dash-kpi-card ${kpi.colorClass} !p-4 !rounded-xl cursor-pointer hover:scale-[1.02] transition-transform`}>
+          <div key={i} onClick={() => kpi.tabId && setActiveTab(kpi.tabId)} className={`dash-kpi-card ${kpi.colorClass} !p-3.5 sm:!p-4 !rounded-xl cursor-pointer hover:scale-[1.02] transition-transform`}>
             <div className="flex items-start justify-between mb-2">
-              <div className={`dash-kpi-icon ${kpi.colorClass} !w-9 !h-9 !rounded-lg`}><kpi.icon className="w-4 h-4" /></div>
+              <div className={`dash-kpi-icon ${kpi.colorClass} !w-8 sm:!w-9 !h-8 sm:!h-9 !rounded-lg`}><kpi.icon className="w-4 h-4" /></div>
             </div>
-            <p className="text-[10px] font-bold tracking-wide uppercase text-paa-gray-text mb-0.5">{kpi.label}</p>
-            <h3 className="text-xl font-black text-paa-navy tracking-tight">{kpi.value}</h3>
+            <p className="text-[10px] font-bold tracking-wide uppercase text-paa-gray-text mb-0.5 truncate" title={kpi.label}>{kpi.label}</p>
+            {kpi.value !== null && kpi.value !== undefined ? (
+              <h3 className="text-lg sm:text-xl font-black text-paa-navy tracking-tight truncate">{kpi.value}</h3>
+            ) : (
+              <div className="h-6 sm:h-7 w-16 bg-gray-200/80 animate-pulse rounded-md my-0.5" />
+            )}
           </div>
         ))}
       </div>
@@ -358,33 +427,29 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
             </div>
           ))}
 
-          {/* Low Stock Alert Mini Card */}
-          <div onClick={() => setActiveTab('inventory')} className="p-4 rounded-2xl border border-red-100 bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between flex-1 cursor-pointer hover:scale-[1.02]">
+          {/* Total Books Sold Mini Card */}
+          <div onClick={() => setActiveTab('sales_report')} className="p-4 rounded-2xl border border-paa-navy/5 bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between flex-1 cursor-pointer hover:scale-[1.02]">
             <div>
               <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-                  <Package size={18} aria-hidden="true" />
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <BookOpen size={18} aria-hidden="true" />
                 </div>
-                {lowStockBooks.length > 0 && (
-                  <button
-                    aria-label="Notify All Authors About Low Stock"
-                    onClick={handleNotifyAllLowStock}
-                    className="text-[10px] flex items-center gap-1 font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 px-2 py-0.5 rounded-full transition-colors uppercase tracking-wider"
-                  >
-                    <Bell size={10} className="text-amber-600" /> Notify All
-                  </button>
-                )}
+                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  All Channels
+                </span>
               </div>
-              <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{lowStockBooks.length}</h4>
-              <p className="text-xs font-bold text-gray-800 mb-0.5">Low Stock Titles</p>
-              <p className="text-[11px] text-paa-gray-text">Titles requiring restocking</p>
+              <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">
+                {(dynamicBooksSold !== null ? dynamicBooksSold : (stats?.totalBooksSold || 0)).toLocaleString()}
+              </h4>
+              <p className="text-xs font-bold text-gray-800 mb-0.5">Total Books Sold</p>
+              <p className="text-[11px] text-paa-gray-text">Across web orders, events &amp; book fairs</p>
             </div>
 
             <button
-              onClick={() => setActiveTab('inventory')}
+              onClick={(e) => { e.stopPropagation(); setActiveTab('sales_report'); }}
               className="mt-3 w-full text-xs font-bold text-white bg-paa-navy hover:bg-[#0c1e30] rounded-xl py-2 transition-all flex items-center justify-center gap-1.5 shadow-xs hover:shadow-sm"
             >
-              <Package size={13} /> View Inventory
+              <TrendingUp size={13} /> View Sales Report
             </button>
           </div>
         </div>

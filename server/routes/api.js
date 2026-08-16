@@ -1693,6 +1693,7 @@ router.get('/api/impact-stats', async (req, res) => {
 
   try {
     const events = await prisma.event.findMany({
+      where: { isArchived: false },
       include: {
         eventAuthors: true,
         posOrders: {
@@ -1726,8 +1727,10 @@ router.get('/api/impact-stats', async (req, res) => {
         });
       }
 
-      const matchStr = ((evt.name || '') + ' ' + (evt.eventType || '')).toLowerCase();
-      if (matchStr.includes('fair') || matchStr.includes('mela')) {
+      const name = (evt.name || '').toLowerCase();
+      const isBookFair = name.includes('book fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
+
+      if (isBookFair) {
         totalFairs++;
         totalFairsBooks += booksSold;
       } else {
@@ -1736,19 +1739,43 @@ router.get('/api/impact-stats', async (req, res) => {
       }
     });
 
-    const totalLibraries = await prisma.library.count();
-    const totalLibraryBooks = totalLibraries * 112;
+    const totalAirportLibraries = await prisma.library.count({
+      where: { isArchived: false, type: { in: ['Airport Library', 'airport', 'Airport'] } }
+    });
+
+    const donationBooks = await prisma.donationBook.findMany({
+      include: {
+        registration: {
+          include: {
+            announcement: {
+              include: { library: true }
+            }
+          }
+        }
+      }
+    });
+
+    let airportBooksDonatedSum = 0;
+    donationBooks.forEach(b => {
+      const lib = b.registration?.announcement?.library;
+      if (!lib || (lib.type === 'Airport Library' || lib.type === 'airport' || lib.type === 'Airport')) {
+        airportBooksDonatedSum += (b.quantityDonated || 0);
+      }
+    });
+
+    const totalLibraryBooks = airportBooksDonatedSum > 1500 ? airportBooksDonatedSum : 1500;
 
     const result = {
       totalFairs,
       totalFairsBooks,
       totalLiteraryEvents,
       totalLiteraryBooks,
-      totalLibraries,
+      totalLibraries: totalAirportLibraries,
+      totalAirportLibraries,
       totalLibraryBooks
     };
 
-    setCache('impact:stats', result, 1000 * 60 * 15); // cache for 15 mins
+    setCache('impact:stats', result, 1000 * 60 * 5); // cache for 5 mins
     res.json(result);
   } catch (e) {
     console.error(e);
@@ -1760,48 +1787,76 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
   const cached = getCache('admin:dashboard-stats');
   if (cached) return res.json(cached);
   try {
-    const totalAuthors = await prisma.author.count();
-    const totalBooks = await prisma.book.count();
-
-    const [eventParticipations, pendingEventRegistrations, totalEvents, totalLibraries] = await Promise.all([
+    const [
+      totalAuthors,
+      totalBooks,
+      eventParticipations,
+      pendingEventRegistrations,
+      allDbEvents,
+      totalLibraries,
+      totalAirportLibraries,
+      totalOtherLibraries
+    ] = await Promise.all([
+      prisma.author.count(),
+      prisma.book.count(),
       prisma.eventAuthor.count({ where: { optInStatus: 'Registered' } }),
       prisma.eventAuthor.count({ where: { optInStatus: 'Pending Approval' } }),
-      prisma.event.count(),
-      prisma.library.count()
+      prisma.event.findMany({ where: { isArchived: false }, select: { id: true, name: true, eventType: true } }),
+      prisma.library.count({ where: { isArchived: false } }),
+      prisma.library.count({ where: { isArchived: false, type: { in: ['Airport Library', 'airport', 'Airport'] } } }),
+      prisma.library.count({ where: { isArchived: false, type: { notIn: ['Airport Library', 'airport', 'Airport'] } } })
     ]);
 
-    // 1. Total Revenue (Aligned with Sales Report logic)
-    const webOrdersAll = await prisma.order.findMany({
-      where: { status: { in: ['Completed', 'Delivered', 'Shipped', 'Dispatched'] } },
-      include: { items: { include: { book: true } } }
-    });
-    let webRevenue = 0;
-    webOrdersAll.forEach(o => {
-      o.items.forEach(i => {
-        webRevenue += i.quantity * (i.book?.mrp || 0);
-      });
+    const totalEvents = allDbEvents.length;
+    let totalBookFairs = 0;
+    let totalLiteraryEvents = 0;
+    allDbEvents.forEach(evt => {
+      const name = (evt.name || '').toLowerCase();
+      const isBookFair = evt.eventType === 'Book Fair' || name.includes('book fair') || name.includes('fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
+      if (isBookFair) totalBookFairs++;
+      else totalLiteraryEvents++;
     });
 
-    const posOrdersAll = await prisma.posOrder.findMany({
-      include: { items: true }
-    });
-    let posRevenue = 0;
-    posOrdersAll.forEach(po => {
-      po.items.forEach(i => {
-        posRevenue += i.quantity * (i.price || 0);
-      });
-    });
+    // 1. Total Revenue & Total Books Sold (Fast Database Aggregation)
+    const [webAgg, posAgg, legacyEventsAll, webItemsAgg, posItemsAgg] = await Promise.all([
+      prisma.order.aggregate({
+        _sum: { amount: true },
+        where: { status: { in: ['Completed', 'Delivered', 'Shipped', 'Dispatched'] } }
+      }),
+      prisma.posOrder.aggregate({
+        _sum: { totalAmount: true }
+      }),
+      prisma.event.findMany({
+        where: { status: 'Legacy Archive' },
+        select: { aggRevenue: true, aggSold: true }
+      }),
+      prisma.orderItem.aggregate({
+        _sum: { quantity: true },
+        where: {
+          order: { status: { in: ['Completed', 'Delivered', 'Shipped', 'Dispatched'] } },
+          status: { notIn: ['Cancelled', 'Rejected'] }
+        }
+      }),
+      prisma.posOrderItem.aggregate({
+        _sum: { quantity: true },
+        where: {
+          posOrder: { paymentStatus: 'CONFIRMED' }
+        }
+      })
+    ]);
 
-    const legacyEventsAll = await prisma.event.findMany({
-      where: { status: 'Legacy Archive' }
-    });
+    let webRevenue = webAgg._sum.amount || 0;
+    let posRevenue = posAgg._sum.totalAmount || 0;
     let legacyRevenue = 0;
+    let legacyBooksSold = 0;
     legacyEventsAll.forEach(evt => {
       const qty = evt.aggSold || 0;
       legacyRevenue += evt.aggRevenue || (qty * 200) || 0;
+      legacyBooksSold += qty;
     });
 
     const totalRevenue = webRevenue + posRevenue + legacyRevenue;
+    const totalBooksSold = (webItemsAgg._sum.quantity || 0) + (posItemsAgg._sum.quantity || 0) + legacyBooksSold;
 
     // 2. Revenue Data (Last 6 Months)
     // We can use Prisma groupBy or queryRaw. To be safe across DBs, we'll fetch only date & amount for web orders
@@ -2078,10 +2133,10 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
     const globalTotalCustomers = uniqueCustomersData.length;
 
     const result = {
-      totalAuthors, totalBooks, eventParticipations, totalRevenue, revenueData, recentActivities,
+      totalAuthors, totalBooks, eventParticipations, totalRevenue, totalBooksSold, revenueData, recentActivities,
       salesByAuthor, salesByGenre, topSellingBooks, topCustomers, lowStockAlerts, eventSalesData, pendingEventRegistrations,
       globalSuccessfulOrders, globalPendingOrders, globalDispatchedOrders, globalTotalCustomers,
-      totalEvents, totalLibraries
+      totalEvents, totalBookFairs, totalLiteraryEvents, totalLibraries, totalAirportLibraries, totalOtherLibraries
     };
 
     setCache('admin:dashboard-stats', result, 45 * 1000);
@@ -5708,6 +5763,7 @@ router.get('/api/public/events', async (req, res) => {
     const events = await prisma.event.findMany({
       include: {
         galleryEvent: { include: { images: true } },
+        eventBooks: true,
         _count: {
           select: {
             eventBooks: true,

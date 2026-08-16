@@ -897,6 +897,8 @@ export function OperationsDashboardPage() {
           totalBooks: 0,
           totalEvents: 0,
           totalLibraries: 0,
+          totalAirportLibraries: 0,
+          totalOtherLibraries: 0,
           totalRevenue: 0,
           revenueData: [],
           recentActivities: [],
@@ -1710,6 +1712,7 @@ export function OperationsDashboardPage() {
           promises.push(fetchOrders(true));
           promises.push(fetchAuthors(isBackground));
           promises.push(fetchBooks(isBackground));
+          promises.push(fetchLibraries(isBackground));
           promises.push(fetchNotifications());
           promises.push(fetchServerFiles());
         } else if (activeTab === "authors") {
@@ -9268,6 +9271,7 @@ const totalAuthorsBase = eventRegistrations.length;
                   orders={orders}
                   events={events}
                   stats={stats}
+                  libraries={libraries}
                   lastAdminVisit={lastAdminVisit}
                   prevQueries={pendingQueriesCount}
                   API={API}
