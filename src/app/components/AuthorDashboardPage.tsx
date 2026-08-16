@@ -1383,7 +1383,12 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
       {(() => {
          const isSpecialAuthor = data?.authorProfile?.email === 'arvindpuri1492@gmail.com';
          const livePosEvents = (data.eventInvites || [])
-            .filter((inv: any) => ((inv.event?.livePosEnabled && inv.event?.status === 'Live') || isSpecialAuthor) && (inv.optInStatus === 'Registered' || inv.optInStatus === 'Approved'))
+            .filter((inv: any) => {
+               const evt = inv.event;
+               if (!evt) return false;
+               const isPast = evt.status === 'Past' || evt.status === 'Legacy Archive' || (evt.date && new Date(evt.date) < new Date());
+               return ((evt.livePosEnabled && evt.status === 'Live') || (isSpecialAuthor && !isPast)) && (inv.optInStatus === 'Registered' || inv.optInStatus === 'Approved');
+            })
             .map((inv: any) => inv.event);
             
          if (livePosEvents.length === 0) return null;
@@ -4915,7 +4920,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
         <div className="space-y-6">
           {(() => {
              const isSpecialAuthor = dashboardData?.authorProfile?.email === 'arvindpuri1492@gmail.com';
-             const livePosEvents = allEvents.filter((evt: any) => ((evt.livePosEnabled && evt.status === 'Live') || isSpecialAuthor) && (evt.registration === 'Registered' || evt.registration === 'Approved'));
+             const livePosEvents = allEvents.filter((evt: any) => ((evt.livePosEnabled && evt.status === 'Live') || (isSpecialAuthor && !evt.isPast)) && (evt.registration === 'Registered' || evt.registration === 'Approved'));
              if (livePosEvents.length === 0) return null;
              return (
                <div className="mb-8 animate-fade-in-up space-y-4">
