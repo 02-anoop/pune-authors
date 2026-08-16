@@ -281,18 +281,14 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
 
   return (
     <div className="space-y-6">
-      {/* ════ Pending Actions — Full Width Strip Above KPIs ════ */}
-      <div className="bg-white rounded-2xl border border-paa-navy/5 shadow-sm px-6 py-5">
-        <div className="flex items-center gap-2 mb-4">
-          <AlertCircle className="w-5 h-5 text-amber-500 animate-pulse" aria-hidden="true" />
-          <h3 className="text-base font-serif font-semibold text-paa-navy">Pending Actions</h3>
-          {pendingActionItems.length > 0 && (
+      {/* ════ Pending Actions — Full Width Strip Above KPIs (Only shown if items exist) ════ */}
+      {pendingActionItems.length > 0 && (
+        <div className="bg-white rounded-2xl border border-paa-navy/5 shadow-sm px-6 py-5">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertCircle className="w-5 h-5 text-amber-500 animate-pulse" aria-hidden="true" />
+            <h3 className="text-base font-serif font-semibold text-paa-navy">Pending Actions</h3>
             <span className="ml-1 text-xs font-bold bg-amber-100 text-amber-700 rounded-full px-2.5 py-0.5">{pendingActionItems.length}</span>
-          )}
-        </div>
-        {pendingActionItems.length === 0 ? (
-          <p className="text-sm text-paa-gray-text py-1">✓ All caught up — no pending actions.</p>
-        ) : (
+          </div>
           <div className="flex flex-wrap gap-3">
             {pendingActionItems.map((item) => {
               const Icon = item.icon;
@@ -318,170 +314,94 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* ════ High Level KPIs ════ */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
+      {/* ════ All KPI Cards in ONE Bright Row ════ */}
+      <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}>
         {[
-          { label: 'Total Authors', value: authors ? authors.length : null, icon: Users, colorClass: 'blue', tabId: 'authors' },
-          { label: 'Books Listed', value: books ? books.length : null, icon: BookOpen, colorClass: 'green', tabId: 'books' },
+          { label: 'Total Authors', value: authors ? authors.length : null, icon: Users, bg: '#3b82f6', tabId: 'authors' }, // Bright Blue
+          { label: 'Books Listed', value: books ? books.length : null, icon: BookOpen, bg: '#22c55e', tabId: 'books' }, // Bright Green
           {
             label: 'Book Fairs',
             value: (events && events.length > 0)
-              ? events.filter((e: any) => {
-                  const name = (e.name || e.title || '').toLowerCase();
-                  return e.eventType === 'Book Fair' || name.includes('book fair') || name.includes('fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
-                }).length
-              : (stats?.totalBookFairs !== undefined && stats?.totalBookFairs > 0)
-                ? stats.totalBookFairs
-                : (events ? 0 : null),
-            icon: Store,
-            colorClass: 'amber',
-            tabId: 'events'
+              ? events.filter((e: any) => { const n = (e.name || e.title || '').toLowerCase(); return e.eventType === 'Book Fair' || n.includes('book fair') || n.includes('fair') || n.includes('srinagar') || n.includes('dehradun') || n.includes('bengali mela') || n.includes('diwali stall'); }).length
+              : (stats?.totalBookFairs !== undefined && stats?.totalBookFairs > 0) ? stats.totalBookFairs : (events ? 0 : null),
+            icon: Store, bg: '#f97316', tabId: 'events' // Bright Orange
           },
           {
             label: 'Literary Events',
             value: (events && events.length > 0)
-              ? events.filter((e: any) => {
-                  const name = (e.name || e.title || '').toLowerCase();
-                  const isFair = e.eventType === 'Book Fair' || name.includes('book fair') || name.includes('fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
-                  return !isFair;
-                }).length
-              : (stats?.totalLiteraryEvents !== undefined && stats?.totalLiteraryEvents > 0)
-                ? stats.totalLiteraryEvents
-                : (events ? 0 : null),
-            icon: CalendarIcon,
-            colorClass: 'purple',
-            tabId: 'events'
+              ? events.filter((e: any) => { const n = (e.name || e.title || '').toLowerCase(); const isFair = e.eventType === 'Book Fair' || n.includes('book fair') || n.includes('fair') || n.includes('srinagar') || n.includes('dehradun') || n.includes('bengali mela') || n.includes('diwali stall'); return !isFair; }).length
+              : (stats?.totalLiteraryEvents !== undefined && stats?.totalLiteraryEvents > 0) ? stats.totalLiteraryEvents : (events ? 0 : null),
+            icon: CalendarIcon, bg: '#a855f7', tabId: 'events' // Bright Purple
           },
           {
             label: 'Airport Libraries',
             value: (libraries && libraries.length > 0)
               ? libraries.filter((l: any) => (l.type === 'Airport Library' || l.type === 'airport') && !l.isArchived).length
-              : (stats?.totalAirportLibraries !== undefined && stats?.totalAirportLibraries > 0)
-                ? stats.totalAirportLibraries
-                : null,
-            icon: Plane,
-            colorClass: 'cyan',
-            tabId: 'library_donations'
+              : (stats?.totalAirportLibraries !== undefined && stats?.totalAirportLibraries > 0) ? stats.totalAirportLibraries : null,
+            icon: Plane, bg: '#06b6d4', tabId: 'library_donations' // Bright Cyan
           },
           {
             label: 'Other Libraries',
             value: (libraries && libraries.length > 0)
               ? libraries.filter((l: any) => l.type !== 'Airport Library' && l.type !== 'airport' && !l.isArchived).length
-              : (stats?.totalOtherLibraries !== undefined && stats?.totalOtherLibraries > 0)
-                ? stats.totalOtherLibraries
-                : null,
-            icon: Library,
-            colorClass: 'green',
-            tabId: 'library_donations'
+              : (stats?.totalOtherLibraries !== undefined && stats?.totalOtherLibraries > 0) ? stats.totalOtherLibraries : null,
+            icon: Library, bg: '#14b8a6', tabId: 'library_donations' // Bright Teal
           },
-          { 
-            label: 'Total Revenue', 
-            value: (dynamicRevenue !== null || stats?.totalRevenue !== undefined) 
-              ? `₹${(dynamicRevenue !== null ? dynamicRevenue : (stats?.totalRevenue || 0)).toLocaleString()}` 
-              : null, 
-            icon: TrendingUp, 
-            colorClass: 'red', 
-            tabId: 'sales_report' 
+          {
+            label: 'Total Revenue',
+            value: (dynamicRevenue !== null || stats?.totalRevenue !== undefined)
+              ? `₹${(dynamicRevenue !== null ? dynamicRevenue : (stats?.totalRevenue || 0)).toLocaleString()}` : null,
+            icon: TrendingUp, bg: '#ef4444', tabId: 'sales_report' // Bright Red
+          },
+          { label: 'Orders Delayed', value: `${delayedOrdersRate}%`, icon: Clock, bg: '#f59e0b', tabId: 'web_orders' }, // Bright Amber
+          { label: 'Pending Orders', value: pendingOrdersCount ?? 0, icon: Package, bg: '#10b981', tabId: 'web_orders' }, // Bright Emerald
+          {
+            label: 'Books Sold',
+            value: (dynamicBooksSold !== null ? dynamicBooksSold : (stats?.totalBooksSold || 0)).toLocaleString(),
+            icon: ShoppingCart, bg: '#8b5cf6', tabId: 'sales_report' // Bright Violet
           },
         ].map((kpi, i) => (
-          <div key={i} onClick={() => kpi.tabId && setActiveTab(kpi.tabId)} className={`dash-kpi-card ${kpi.colorClass} !p-3.5 sm:!p-4 !rounded-xl cursor-pointer hover:scale-[1.02] transition-transform`}>
-            <div className="flex items-start justify-between mb-2">
-              <div className={`dash-kpi-icon ${kpi.colorClass} !w-8 sm:!w-9 !h-8 sm:!h-9 !rounded-lg`}><kpi.icon className="w-4 h-4" /></div>
-            </div>
-            <p className="text-[10px] font-bold tracking-wide uppercase text-paa-gray-text mb-0.5 truncate" title={kpi.label}>{kpi.label}</p>
+          <div
+            key={i}
+            onClick={() => kpi.tabId && setActiveTab(kpi.tabId)}
+            className="rounded-xl p-3 cursor-pointer hover:brightness-110 transition-all hover:scale-[1.03] flex flex-col gap-1 min-w-0"
+            style={{ background: kpi.bg }}
+          >
+            <kpi.icon className="w-4 h-4 text-white/90 shrink-0" />
             {kpi.value !== null && kpi.value !== undefined ? (
-              <h3 className="text-lg sm:text-xl font-black text-paa-navy tracking-tight truncate">{kpi.value}</h3>
+              <h3 className="text-base xl:text-lg font-black text-white leading-none tracking-tight truncate">{kpi.value}</h3>
             ) : (
-              <div className="h-6 sm:h-7 w-16 bg-gray-200/80 animate-pulse rounded-md my-0.5" />
+              <div className="h-5 w-12 bg-white/30 animate-pulse rounded mt-0.5" />
             )}
+            <p className="text-[9px] xl:text-[10px] font-bold uppercase tracking-wide text-white/90 leading-tight truncate">{kpi.label}</p>
           </div>
         ))}
       </div>
 
-      {/* ════ Combined Insights & Participation Graph Row ════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-        {/* Left Column: Stacked Mini Cards */}
-        <div className="lg:col-span-1 flex flex-col gap-4 sm:gap-5">
-          {insights.map((insight, idx) => (
-            <div key={idx} onClick={() => insight.tabId && setActiveTab(insight.tabId)} className="p-4 rounded-2xl border border-paa-navy/5 bg-white shadow-sm hover:shadow-md transition-all relative group flex flex-col justify-between flex-1 cursor-pointer hover:scale-[1.02]">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${insight.bg} ${insight.color}`}>
-                    <insight.icon size={18} aria-hidden="true" />
-                  </div>
-                  {(insight as any).hoverData && <Eye size={14} className="cursor-pointer text-indigo-400 hover:text-indigo-600" />}
-                </div>
-                <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">{insight.value}</h4>
-                <p className="text-xs font-bold text-gray-800 mb-0.5">{insight.label}</p>
-                <p className="text-[11px] text-paa-gray-text">{insight.desc}</p>
-              </div>
-
-              {(insight as any).hoverData && (
-                <div className="absolute z-10 bottom-full left-0 mb-2 w-52 bg-white border border-gray-100 shadow-xl rounded-xl p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-paa-gray-text mb-2 border-b pb-1">Last 3 Events</p>
-                  <div className="space-y-2">
-                    {(insight as any).hoverData.map((ev: any, i: number) => (
-                      <div key={i} className="flex justify-between items-center text-xs">
-                        <span className="text-gray-600 truncate mr-2">{ev.name}</span>
-                        <span className="font-bold text-paa-navy">{ev.rate}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Total Books Sold Mini Card */}
-          <div onClick={() => setActiveTab('sales_report')} className="p-4 rounded-2xl border border-paa-navy/5 bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between flex-1 cursor-pointer hover:scale-[1.02]">
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <BookOpen size={18} aria-hidden="true" />
-                </div>
-                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  All Channels
-                </span>
-              </div>
-              <h4 className="text-2xl font-black text-paa-navy tracking-tight mb-1">
-                {(dynamicBooksSold !== null ? dynamicBooksSold : (stats?.totalBooksSold || 0)).toLocaleString()}
-              </h4>
-              <p className="text-xs font-bold text-gray-800 mb-0.5">Total Books Sold</p>
-              <p className="text-[11px] text-paa-gray-text">Across web orders, events &amp; book fairs</p>
-            </div>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); setActiveTab('sales_report'); }}
-              className="mt-3 w-full text-xs font-bold text-white bg-paa-navy hover:bg-[#0c1e30] rounded-xl py-2 transition-all flex items-center justify-center gap-1.5 shadow-xs hover:shadow-sm"
-            >
-              <TrendingUp size={13} /> View Sales Report
-            </button>
-          </div>
-        </div>
-
-        {/* Right Column: Participation Graph */}
-        <div className="lg:col-span-3 bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all flex flex-col">
-          <h3 className="text-base font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2 shrink-0">
-            <Users className="w-5 h-5 text-purple-500" aria-hidden="true" /> Top 20 Authors by Participation
+      {/* ════ Row 1: Top 20 (2/3) + Popular Categories (1/3) ════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-3">
+        
+        {/* Top 20 Authors by Participation (2/3 width) */}
+        <div className="lg:col-span-2 bg-white p-4 rounded-2xl border border-paa-navy/5 shadow-sm flex flex-col">
+          <h3 className="text-sm font-serif font-semibold text-paa-navy mb-2 flex items-center gap-2 shrink-0">
+            <Users className="w-4 h-4 text-purple-500" /> Top 20 by Participation
           </h3>
-          <div className="flex-1 w-full min-h-[320px]">
+          <div className="flex-1 w-full min-h-[200px]">
             {topParticipatingAuthors && topParticipatingAuthors.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topParticipatingAuthors} margin={{ top: 15, right: 10, left: 0, bottom: 45 }}>
+                <BarChart data={topParticipatingAuthors} margin={{ top: 5, right: 10, left: 0, bottom: 45 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis dataKey="name" fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} angle={-45} textAnchor="end" interval={0} height={60} />
-                  <YAxis fontSize={11} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
+                  <XAxis dataKey="name" fontSize={9} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} angle={-45} textAnchor="end" interval={0} height={50} />
+                  <YAxis fontSize={9} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                   <RechartsTooltip
                     cursor={{ fill: '#f3f4f6' }}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                    formatter={(value: any, name: any, props: any) => {
-                      return [`${value}% (${props.payload.participated}/${props.payload.total} events)`, 'Participation'];
-                    }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '11px' }}
+                    formatter={(value: any, name: any, props: any) => [`${value}% (${props.payload.participated}/${props.payload.total})`, 'Participation']}
                   />
-                  <Bar dataKey="percentage" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Participation">
+                  <Bar dataKey="percentage" radius={[4, 4, 0, 0]}>
                     {topParticipatingAuthors.map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
@@ -489,31 +409,26 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-xs">No participation data available.</div>
+              <div className="h-full flex items-center justify-center text-gray-400 text-xs">No data yet.</div>
             )}
           </div>
         </div>
-      </div>
 
-      {/* ════ Performance & Leaderboards Row — 3 Equal Responsive Columns ════ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Popular Categories */}
-        <div className="bg-white p-6 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
-          <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-            <BarChart2 className="w-4 h-4 text-blue-500" aria-hidden="true" /> Popular by Category &amp; Genre
+        {/* Popular Categories (1/3 width) */}
+        <div className="lg:col-span-1 bg-white p-4 rounded-2xl border border-paa-navy/5 shadow-sm flex flex-col">
+          <h3 className="text-sm font-serif font-semibold text-paa-navy mb-2 flex items-center gap-2 shrink-0">
+            <BarChart2 className="w-4 h-4 text-blue-500" /> Popular by Category
           </h3>
-          <div className="h-56 w-full">
+          <div className="flex-1 w-full min-h-[200px]">
             {categoryChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryChartData} layout="vertical" margin={{ top: 5, right: 10, left: 35, bottom: 0 }}>
+                <BarChart data={categoryChartData} layout="vertical" margin={{ top: 0, right: 10, left: 35, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
-                  <XAxis type="number" fontSize={10} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
-                  <YAxis dataKey="name" type="category" fontSize={10} tick={{ fill: '#4B5563', fontWeight: 600 }} axisLine={false} tickLine={false} width={75} />
-                  <RechartsTooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                  <Bar dataKey="sales" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Books Sold">
-                    {categoryChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                  <XAxis type="number" fontSize={9} tick={{ fill: '#6B7280' }} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="name" type="category" fontSize={9} tick={{ fill: '#4B5563', fontWeight: 600 }} axisLine={false} tickLine={false} width={70} />
+                  <RechartsTooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '11px' }} />
+                  <Bar dataKey="sales" radius={[0, 4, 4, 0]} name="Books Sold">
+                    {categoryChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -523,16 +438,21 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
           </div>
         </div>
 
+      </div>
+
+      {/* ════ Row 2: Top Selling Authors & Books (1/2 + 1/2) ════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
+        
         {/* Top Selling Authors */}
-        <div className="bg-white p-5 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
-          <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-            <Users className="w-4 h-4 text-indigo-500" aria-hidden="true" /> Top Selling Authors
+        <div className="bg-white p-4 rounded-2xl border border-paa-navy/5 shadow-sm flex flex-col">
+          <h3 className="text-sm font-serif font-semibold text-paa-navy mb-2 flex items-center gap-2 shrink-0">
+            <Users className="w-4 h-4 text-indigo-500" /> Top Selling Authors
           </h3>
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {topAuthorsData.length > 0 ? topAuthorsData.map((a, idx) => (
-              <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-indigo-50/40 border border-indigo-100/60 hover:bg-indigo-50 transition-colors">
-                <div className="flex items-center gap-3 min-w-0 pr-2">
-                  <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0">#{idx + 1}</div>
+              <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-indigo-50/50 border border-indigo-100/60 hover:bg-indigo-50 transition-colors">
+                <div className="flex items-center gap-2 min-w-0 pr-2">
+                  <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0">#{idx + 1}</div>
                   <p className="text-xs font-bold text-paa-navy truncate">{a.name}</p>
                 </div>
                 <div className="text-right shrink-0">
@@ -540,20 +460,20 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
                   <span className="text-[10px] text-gray-500 ml-1">Sold</span>
                 </div>
               </div>
-            )) : <p className="text-xs text-gray-400 py-4 text-center">No completed sales yet.</p>}
+            )) : <p className="text-xs text-gray-400 py-2 text-center">No completed sales yet.</p>}
           </div>
         </div>
 
         {/* Highest Selling Books */}
-        <div className="bg-white p-5 rounded-2xl border border-paa-navy/5 shadow-sm hover:shadow-md transition-all">
-          <h3 className="text-sm font-serif font-semibold text-paa-navy mb-4 flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-emerald-500" aria-hidden="true" /> Highest Selling Books
+        <div className="bg-white p-4 rounded-2xl border border-paa-navy/5 shadow-sm flex flex-col">
+          <h3 className="text-sm font-serif font-semibold text-paa-navy mb-2 flex items-center gap-2 shrink-0">
+            <BookOpen className="w-4 h-4 text-emerald-500" /> Highest Selling Books
           </h3>
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {topBooksData.length > 0 ? topBooksData.map((b, idx) => (
-              <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/40 border border-emerald-100/60 hover:bg-emerald-50 transition-colors">
-                <div className="flex items-center gap-3 min-w-0 pr-2">
-                  <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0">#{idx + 1}</div>
+              <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-emerald-50/50 border border-emerald-100/60 hover:bg-emerald-50 transition-colors">
+                <div className="flex items-center gap-2 min-w-0 pr-2">
+                  <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0">#{idx + 1}</div>
                   <p className="text-xs font-bold text-paa-navy truncate">{b.name}</p>
                 </div>
                 <div className="text-right shrink-0">
@@ -561,9 +481,10 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
                   <span className="text-[10px] text-gray-500 ml-1">Sold</span>
                 </div>
               </div>
-            )) : <p className="text-xs text-gray-400 py-4 text-center">No completed sales yet.</p>}
+            )) : <p className="text-xs text-gray-400 py-2 text-center">No completed sales yet.</p>}
           </div>
         </div>
+        
       </div>
 
     </div>
