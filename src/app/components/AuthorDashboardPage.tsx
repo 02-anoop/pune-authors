@@ -4552,6 +4552,14 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       toast.success('Payment submitted successfully!');
+      // Optimistically hide the payment form immediately
+      setInvites((prev: any[]) =>
+        prev.map((inv: any) =>
+          (inv.eventId || inv.event?.id) === (typeof eventId === 'string' ? parseInt(eventId.replace('act_', '')) : eventId)
+            ? { ...inv, paymentStatus: 'Pending Verification', paymentProofUrl: URL.createObjectURL(file) }
+            : inv
+        )
+      );
       fetchAuthorEvents();
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to submit payment');
@@ -4591,6 +4599,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
         paymentStatus: inv.paymentStatus,
         transactionId: inv.transactionId,
         paymentProofUrl: inv.paymentScreenshot || inv.paymentProofUrl || inv.paymentScreenshotUrl || inv.paymentProof,
+        rejectionReason: inv.rejectionReason || null,
         manualTotalSold: inv.manualTotalSold,
         manualTotalRevenue: inv.manualTotalRevenue,
         isPast: inv.event?.status === 'Past' || inv.event?.status === 'Legacy Archive' || (inv.event?.date && new Date(inv.event.date) < new Date()),
