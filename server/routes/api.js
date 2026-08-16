@@ -1792,7 +1792,7 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       totalBooks,
       eventParticipations,
       pendingEventRegistrations,
-      totalEvents,
+      allDbEvents,
       totalLibraries,
       totalAirportLibraries,
       totalOtherLibraries
@@ -1801,11 +1801,21 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       prisma.book.count(),
       prisma.eventAuthor.count({ where: { optInStatus: 'Registered' } }),
       prisma.eventAuthor.count({ where: { optInStatus: 'Pending Approval' } }),
-      prisma.event.count({ where: { isArchived: false } }),
+      prisma.event.findMany({ where: { isArchived: false }, select: { id: true, name: true, eventType: true } }),
       prisma.library.count({ where: { isArchived: false } }),
       prisma.library.count({ where: { isArchived: false, type: { in: ['Airport Library', 'airport', 'Airport'] } } }),
       prisma.library.count({ where: { isArchived: false, type: { notIn: ['Airport Library', 'airport', 'Airport'] } } })
     ]);
+
+    const totalEvents = allDbEvents.length;
+    let totalBookFairs = 0;
+    let totalLiteraryEvents = 0;
+    allDbEvents.forEach(evt => {
+      const name = (evt.name || '').toLowerCase();
+      const isBookFair = evt.eventType === 'Book Fair' || name.includes('book fair') || name.includes('fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
+      if (isBookFair) totalBookFairs++;
+      else totalLiteraryEvents++;
+    });
 
     // 1. Total Revenue (Fast Database Aggregation)
     const [webAgg, posAgg, legacyEventsAll] = await Promise.all([
@@ -2110,7 +2120,7 @@ router.get('/api/admin/dashboard-stats', verifyToken, isAdmin, async (req, res) 
       totalAuthors, totalBooks, eventParticipations, totalRevenue, revenueData, recentActivities,
       salesByAuthor, salesByGenre, topSellingBooks, topCustomers, lowStockAlerts, eventSalesData, pendingEventRegistrations,
       globalSuccessfulOrders, globalPendingOrders, globalDispatchedOrders, globalTotalCustomers,
-      totalEvents, totalLibraries, totalAirportLibraries, totalOtherLibraries
+      totalEvents, totalBookFairs, totalLiteraryEvents, totalLibraries, totalAirportLibraries, totalOtherLibraries
     };
 
     setCache('admin:dashboard-stats', result, 45 * 1000);

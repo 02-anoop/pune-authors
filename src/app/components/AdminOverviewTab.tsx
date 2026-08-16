@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Users, Activity, Clock, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit, CheckCircle, Plane } from 'lucide-react';
+import { Users, Activity, Clock, ShoppingCart, BookOpen, Calendar as CalendarIcon, Library, TrendingUp, Eye, PieChart, BarChart2, AlertCircle, Package, Bell, X, MessageSquare, Edit, CheckCircle, Plane, Store } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, LabelList, ScatterChart, Scatter, ZAxis } from 'recharts';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -312,8 +312,35 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
         {[
           { label: 'Total Authors', value: authors ? authors.length : null, icon: Users, colorClass: 'blue', tabId: 'authors' },
           { label: 'Books Listed', value: books ? books.length : null, icon: BookOpen, colorClass: 'green', tabId: 'books' },
-          { label: 'Pending Orders', value: pendingOrdersCount !== null && pendingOrdersCount !== undefined ? pendingOrdersCount : null, icon: Clock, colorClass: 'amber', tabId: 'web_orders' },
-          { label: 'No of Events', value: events ? events.length : null, icon: CalendarIcon, colorClass: 'purple', tabId: 'events' },
+          {
+            label: 'Book Fairs',
+            value: (events && events.length > 0)
+              ? events.filter((e: any) => {
+                  const name = (e.name || e.title || '').toLowerCase();
+                  return e.eventType === 'Book Fair' || name.includes('book fair') || name.includes('fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
+                }).length
+              : (stats?.totalBookFairs !== undefined && stats?.totalBookFairs > 0)
+                ? stats.totalBookFairs
+                : (events ? 0 : null),
+            icon: Store,
+            colorClass: 'amber',
+            tabId: 'events'
+          },
+          {
+            label: 'Literary Events',
+            value: (events && events.length > 0)
+              ? events.filter((e: any) => {
+                  const name = (e.name || e.title || '').toLowerCase();
+                  const isFair = e.eventType === 'Book Fair' || name.includes('book fair') || name.includes('fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
+                  return !isFair;
+                }).length
+              : (stats?.totalLiteraryEvents !== undefined && stats?.totalLiteraryEvents > 0)
+                ? stats.totalLiteraryEvents
+                : (events ? 0 : null),
+            icon: CalendarIcon,
+            colorClass: 'purple',
+            tabId: 'events'
+          },
           {
             label: 'Airport Libraries',
             value: (libraries && libraries.length > 0)
