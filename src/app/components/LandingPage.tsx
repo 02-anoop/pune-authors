@@ -139,6 +139,7 @@ export function LandingPage() {
   const ficScrollRef = useRef<HTMLDivElement>(null);
   const nfScrollRef = useRef<HTMLDivElement>(null);
   const nrScrollRef = useRef<HTMLDivElement>(null);
+  const childScrollRef = useRef<HTMLDivElement>(null);
   const scrollContainer = (ref: React.RefObject<HTMLDivElement>, direction: 'left'|'right') => {
     if (ref.current) {
       const { scrollLeft, clientWidth } = ref.current;
@@ -434,10 +435,10 @@ export function LandingPage() {
       {/* ════════════════════════════════════════════
           IMMERSIVE FICTION (ORANGE)
       ════════════════════════════════════════════ */}
-      <section style={{ backgroundColor: "#FF6B00", backgroundImage: "linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)", backgroundSize: "24px 24px", padding: "5rem 2rem", fontFamily: "'Google Sans', sans-serif", overflow: "hidden" }}>
+      <section style={{ backgroundColor: "#FF6B00", backgroundImage: "linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)", backgroundSize: "24px 24px", padding: "3rem 2rem", fontFamily: "'Google Sans', sans-serif", overflow: "hidden" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <FadeIn>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "3rem", flexWrap: "wrap", gap: "1rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
               <div>
                 <h2 style={{ fontFamily: "\'Playfair Display\', serif", fontSize: "clamp(2.5rem, 4vw, 3.5rem)", fontWeight: 800, color: "#fff", marginBottom: "0.5rem" }}>Fiction</h2>
                 <p style={{ color: "rgba(255,255,255,0.9)", fontSize: 16, fontWeight: 500 }}>Lose yourself in worlds woven by our finest storytellers.</p>
@@ -454,28 +455,21 @@ export function LandingPage() {
             </div>
           </FadeIn>
           
-          <div ref={ficScrollRef} className="horizontal-scroll" style={{ display: "flex", gap: "1.5rem", overflowX: "auto", paddingBottom: "2rem", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", scrollBehavior: "smooth" }}>
-            {galleryItems.filter(b => b.genre === "F").slice(0, 8).map((book, i) => (
-              <Link to={`/book/${book.id}`} key={i} className="fic-card" style={{ flex: "0 0 280px", width: 280, background: "#fff", borderRadius: 16, padding: "1rem", position: "relative", display: "flex", flexDirection: "column", textDecoration: "none" }}>
-                <div className="fic-img-wrapper" style={{ width: "100%", height: 220, background: "#f1f5f9", borderRadius: 8, marginBottom: "1rem", overflow: "hidden" }}>
+          <div ref={ficScrollRef} className="horizontal-scroll grid grid-rows-2 grid-flow-col gap-4 overflow-x-auto pb-4 auto-cols-[85%] sm:auto-cols-[calc(50%-0.5rem)] lg:auto-cols-[calc(25%-0.75rem)]" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch", scrollBehavior: "smooth" }}>
+            {[...galleryItems.filter(b => b.genre === "F")].sort((a, b) => a.title.localeCompare(b.title)).slice(0, 16).map((book, i) => (
+              <Link to={`/book/${book.id}`} key={i} className="fic-card" style={{ background: "#fff", borderRadius: 12, padding: "0.9rem", display: "flex", gap: "0.8rem", alignItems: "center", boxShadow: "0 4px 15px rgba(0,0,0,0.03)", textDecoration: "none" }}>
+                <div className="fic-img-wrapper" style={{ width: 80, height: 110, background: "#f1f5f9", borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
                   <img src={book.coverUrl ? (book.coverUrl.startsWith("http") ? book.coverUrl : `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${book.coverUrl}`) : "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=450&fit=crop"} alt={book.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </div>
-                <div className="fic-content-wrapper" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                  <div>
-                    <h4 style={{ fontSize: 16, fontWeight: 800, color: "#111", margin: "0 0 0.2rem 0",  }}>{book.title}</h4>
-                    <p className="fic-author" style={{ fontSize: 13, color: "#666", margin: "0 0 1rem 0", fontWeight: 500 }}>{book.authorName}</p>
-                  </div>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
+                  <h4 style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: "0 0 0.3rem 0", lineHeight: 1.2 }}>{book.title}</h4>
+                  <p className="fic-author" style={{ fontSize: 12, color: "#666", margin: "0 0 0.5rem 0", fontWeight: 500 }}>{book.authorName}</p>
                   <div className="fic-stars" style={{ display: "flex", alignItems: "center", gap: "0.2rem", marginBottom: "0.8rem" }}>
-                       {[1,2,3,4].map(star => <span key={star} style={{ color: "#FFCC00", fontSize: 12 }}>★</span>)}
-                       <span style={{ color: "#e2e8f0", fontSize: 12 }}>★</span>
-                       <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: "0.3rem", fontWeight: 700 }}>4.0</span>
+                     {[1,2,3,4].map(star => <span key={star} style={{ color: "#FFCC00", fontSize: 12 }}>★</span>)}
+                     <span style={{ color: "#e2e8f0", fontSize: 12 }}>★</span>
+                     <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: "0.3rem", fontWeight: 600 }}>4.0</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
-                    <span style={{ fontSize: 18, fontWeight: 800, color: "#FF6B00" }}>₹{book.mrp || 150}</span>
-                    <div className="fic-arrow" style={{ width: 32, height: 32, borderRadius: "50%", background: "#FF6B00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", transition: "background-color 0.3s ease, transform 0.2s" }}>
-                      <ArrowRight size={16} />
-                    </div>
-                  </div>
+                  <span style={{ fontSize: 16, fontWeight: 800, color: "#FF6B00" }}>₹{book.mrp || 150}</span>
                 </div>
               </Link>
             ))}
@@ -486,10 +480,10 @@ export function LandingPage() {
       {/* ════════════════════════════════════════════
           KNOWLEDGE & NON-FICTION (WHITE DOTS)
       ════════════════════════════════════════════ */}
-      <section className="bg-dots-light" style={{ padding: "5rem 2rem", borderTop: "4px solid #FFCC00", borderBottom: "12px solid #FFCC00", overflow: "hidden", fontFamily: "'Google Sans', sans-serif" }}>
+      <section className="bg-dots-light" style={{ padding: "3rem 2rem", borderTop: "4px solid #FFCC00", borderBottom: "12px solid #FFCC00", overflow: "hidden", fontFamily: "'Google Sans', sans-serif" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <FadeIn>
-            <div className="nf-header-flex" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "3rem", flexWrap: "wrap", gap: "2rem" }}>
+            <div className="nf-header-flex" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "1.5rem", flexWrap: "wrap", gap: "2rem" }}>
               <div style={{ textAlign: "left" }}>
                 <h2 style={{ fontFamily: "\'Playfair Display\', serif", fontSize: "clamp(2.5rem, 4vw, 3.5rem)", fontWeight: 800, color: "#0033FF", marginBottom: "0.5rem", lineHeight: 1.1 }}>Non-Fiction</h2>
                 <p style={{ color: "#334155", fontSize: 16, fontWeight: 500 }}>Explore real-world insights, histories, and thought-provoking analysis.</p>
@@ -506,9 +500,9 @@ export function LandingPage() {
             </div>
           </FadeIn>
           
-          <div ref={nfScrollRef} className="horizontal-scroll" style={{ display: "grid", gridTemplateRows: "1fr 1fr", gridAutoFlow: "column", gridAutoColumns: "320px", gap: "1.5rem", overflowX: "auto", paddingBottom: "2rem", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", scrollBehavior: "smooth" }}>
-            {galleryItems.filter(b => b.genre === "NF").slice(0, 8).map((book, i) => (
-              <Link to={`/book/${book.id}`} key={i} className="nf-card" style={{ flex: "0 0 320px", width: 320, background: "#fff", borderRadius: 12, padding: "1.2rem", display: "flex", gap: "1rem", alignItems: "center", boxShadow: "0 4px 15px rgba(0,0,0,0.03)", textDecoration: "none" }}>
+          <div ref={nfScrollRef} className="horizontal-scroll grid grid-rows-2 grid-flow-col gap-4 overflow-x-auto pb-4 auto-cols-[85%] sm:auto-cols-[calc(50%-0.5rem)] lg:auto-cols-[calc(25%-0.75rem)]" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch", scrollBehavior: "smooth" }}>
+            {[...galleryItems.filter(b => b.genre === "NF")].sort((a, b) => a.title.localeCompare(b.title)).slice(0, 16).map((book, i) => (
+              <Link to={`/book/${book.id}`} key={i} className="nf-card" style={{ background: "#fff", borderRadius: 12, padding: "0.9rem", display: "flex", gap: "0.8rem", alignItems: "center", boxShadow: "0 4px 15px rgba(0,0,0,0.03)", textDecoration: "none" }}>
                 <div className="nf-img-wrapper" style={{ width: 80, height: 110, background: "#f1f5f9", borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
                   <img src={book.coverUrl ? (book.coverUrl.startsWith("http") ? book.coverUrl : `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${book.coverUrl}`) : "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=450&fit=crop"} alt={book.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </div>
@@ -532,7 +526,7 @@ export function LandingPage() {
       {/* ════════════════════════════════════════════
           CHILDREN'S CORNER (YELLOW 3D)
       ════════════════════════════════════════════ */}
-      <section style={{ backgroundColor: "#FFD700", padding: "5rem 2rem", position: "relative", overflow: "hidden", fontFamily: "'Google Sans', sans-serif" }}>
+      <section style={{ backgroundColor: "#FFD700", padding: "3rem 2rem", position: "relative", overflow: "hidden", fontFamily: "'Google Sans', sans-serif" }}>
         {/* Floating 3D emojis */}
         <div className="emoji-rocket" style={{ position: "absolute", top: "10%", left: "5%", fontSize: "3rem", animation: "float 6s ease-in-out infinite" }}>🚀</div>
         <div className="emoji-dice" style={{ position: "absolute", top: "20%", right: "15%", fontSize: "3rem", animation: "float 8s ease-in-out infinite reverse" }}>🎲</div>
@@ -542,15 +536,15 @@ export function LandingPage() {
 
         <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 10 }}>
           <FadeIn>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "3rem", flexWrap: "wrap", gap: "1rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
               <div>
                 <h2 style={{ fontFamily: "\'Playfair Display\', serif", fontSize: "clamp(2.5rem, 4vw, 3.5rem)", fontWeight: 900, color: "#111", marginBottom: "0.5rem", letterSpacing: "-0.02em" }}>Children's Corner</h2>
                 <p style={{ color: "#333", fontSize: 16, fontWeight: 600 }}>Colorful stories for young, imaginative minds.</p>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
-                   <div className="arrow-btn hover-bg-black" style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#111", transition: "background 0.2s" }}><ArrowLeft size={16}/></div>
-                   <div className="arrow-btn hover-bg-black" style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#111", transition: "background 0.2s" }}><ArrowRight size={16}/></div>
+                   <div className="arrow-btn hover-bg-black" onClick={() => scrollContainer(childScrollRef, 'left')} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#111", transition: "background 0.2s" }}><ArrowLeft size={16}/></div>
+                   <div className="arrow-btn hover-bg-black" onClick={() => scrollContainer(childScrollRef, 'right')} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#111", transition: "background 0.2s" }}><ArrowRight size={16}/></div>
                 </div>
                 <Link to="/catalogue?category=Children's Books" className="view-all-btn" style={{ background: "#111", color: "#fff", padding: "0.8rem 2rem", borderRadius: 50, fontWeight: 700, textDecoration: "none", fontSize: 13, letterSpacing: "0.05em", display: "inline-block" }}>
                   VIEW ALL
@@ -559,21 +553,21 @@ export function LandingPage() {
             </div>
           </FadeIn>
           
-          <div className="horizontal-scroll" style={{ display: "flex", gap: "1.5rem", overflowX: "auto", paddingBottom: "2rem", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-            {galleryItems.filter(b => b.genre === "C").slice(0, 8).map((book, i) => (
-              <Link to={`/book/${book.id}`} key={i} className="child-card" style={{ flex: "0 0 300px", width: 300, background: "#fff", borderRadius: 20, padding: "1.2rem", position: "relative", display: "flex", gap: "1rem", boxShadow: "0 10px 30px rgba(0,0,0,0.05)", textDecoration: "none" }}>
-                <div className="child-img-wrapper" style={{ width: 100, height: 140, background: "#f1f5f9", borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
+          <div ref={childScrollRef} className="horizontal-scroll grid grid-rows-2 grid-flow-col gap-4 overflow-x-auto pb-4 auto-cols-[85%] sm:auto-cols-[calc(50%-0.5rem)] lg:auto-cols-[calc(25%-0.75rem)]" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch", scrollBehavior: "smooth" }}>
+            {[...galleryItems.filter(b => b.genre === "C")].sort((a, b) => a.title.localeCompare(b.title)).slice(0, 16).map((book, i) => (
+              <Link to={`/book/${book.id}`} key={i} className="child-card" style={{ background: "#fff", borderRadius: 12, padding: "0.9rem", display: "flex", gap: "0.8rem", alignItems: "center", boxShadow: "0 4px 15px rgba(0,0,0,0.03)", textDecoration: "none" }}>
+                <div className="child-img-wrapper" style={{ width: 80, height: 110, background: "#f1f5f9", borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
                    <img src={book.coverUrl ? (book.coverUrl.startsWith("http") ? book.coverUrl : `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${book.coverUrl}`) : "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=450&fit=crop"} alt={book.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </div>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                  <h4 style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: "0 0 0.2rem 0", lineHeight: 1.2 }}>{book.title}</h4>
-                  <p className="child-author" style={{ fontSize: 12, color: "#666", margin: "0 0 0.5rem 0", fontWeight: 600 }}>by {book.authorName}</p>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
+                  <h4 style={{ fontSize: 15, fontWeight: 800, color: "#111", margin: "0 0 0.3rem 0", lineHeight: 1.2 }}>{book.title}</h4>
+                  <p className="child-author" style={{ fontSize: 12, color: "#666", margin: "0 0 0.5rem 0", fontWeight: 500 }}>{book.authorName}</p>
                   <div className="child-stars" style={{ display: "flex", alignItems: "center", gap: "0.2rem", marginBottom: "0.8rem" }}>
                      {[1,2,3,4].map(star => <span key={star} style={{ color: "#FFD700", fontSize: 12 }}>★</span>)}
                      <span style={{ color: "#e2e8f0", fontSize: 12 }}>★</span>
                      <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: "0.3rem", fontWeight: 700 }}>4.0</span>
                   </div>
-                  <span style={{ fontSize: 18, fontWeight: 900, color: "#111" }}>₹{book.mrp || 220}</span>
+                  <span style={{ fontSize: 16, fontWeight: 800, color: "#111" }}>₹{book.mrp || 220}</span>
                 </div>
               </Link>
             ))}
