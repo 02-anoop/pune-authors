@@ -4412,8 +4412,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
   const [proposeEventForm, setProposeEventForm] = useState({ name: '', location: '', date: '', duration: '', eventType: 'Book Fair', description: '' });
   const [isProposingEvent, setIsProposingEvent] = useState(false);
   const [optInBooks, setOptInBooks] = useState<any[]>([]);
-  const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null);
-  const [transactionId, setTransactionId] = useState('');
+
   const [expandedEventId, setExpandedEventId] = useState<string | number | null>(null);
   const [expandedBookId, setExpandedBookId] = useState<string | null>(null);
 
@@ -4421,8 +4420,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
     setSelectedInvite(evt);
     // Initialize all books as included with default stock capped by availableStock
     setOptInBooks(books.map((b: any) => ({ bookId: b.id.toString(), title: b.title, stock: Math.min(10, b.stock || 0), included: true, availableStock: b.stock || 0 })));
-    setPaymentScreenshot(null);
-    setTransactionId('');
+
     setIsOptInModalOpen(true);
   };
 
@@ -4433,12 +4431,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
         const fd = new FormData();
         const includedBooks = optInBooks.filter(b => b.included);
         fd.append('booksToLink', JSON.stringify(includedBooks));
-        if (paymentScreenshot) {
-          fd.append('paymentScreenshot', paymentScreenshot);
-        }
-        if (transactionId) {
-          fd.append('transactionId', transactionId);
-        }
+
         await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/author/events/${selectedInvite.id}/opt-in`, fd, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
@@ -4466,7 +4459,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
             manualTotalSold: null,
             manualTotalRevenue: null,
             paymentStatus: null,
-            transactionId: transactionId || null,
+            transactionId: null,
             paymentProofUrl: null,
           }];
         });
@@ -4676,12 +4669,8 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                 availableStock: b.stock || 0
             };
         }));
-        setPaymentScreenshot(null);
-        setTransactionId(evt.transactionId || '');
     } else {
         setOptInBooks(books.map((b: any) => ({ bookId: b.id.toString(), title: b.title, stock: Math.min(10, b.stock || 0), included: true, availableStock: b.stock || 0 })));
-        setPaymentScreenshot(null);
-        setTransactionId('');
     }
   };
 
@@ -5006,7 +4995,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                               e.stopPropagation();
                               setSelectedInvite(evt);
                               setOptInBooks(books.map((b: any) => ({ bookId: b.id.toString(), title: b.title, stock: Math.min(10, b.stock || 0), included: true, availableStock: b.stock || 0 })));
-                              setPaymentScreenshot(null);
+
                               setExpandedEventId(evt.id);
                               setTimeout(() => {
                                  document.getElementById('event-row-' + evt.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
