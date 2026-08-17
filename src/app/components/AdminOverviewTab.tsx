@@ -318,7 +318,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
       )}
 
       {/* ════ All KPI Cards in ONE Bright Row ════ */}
-      <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}>
+      <div className="flex flex-wrap justify-center lg:grid lg:grid-cols-10 gap-2 px-2 lg:px-0">
         {[
           { label: 'Total Authors', value: authors ? authors.length : null, icon: Users, bg: '#3b82f6', tabId: 'authors' }, // Bright Blue
           { label: 'Books Listed', value: books ? books.length : null, icon: BookOpen, bg: '#22c55e', tabId: 'books' }, // Bright Green
@@ -367,7 +367,7 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
           <div
             key={i}
             onClick={() => kpi.tabId && setActiveTab(kpi.tabId)}
-            className="rounded-xl p-3 cursor-pointer hover:brightness-110 transition-all hover:scale-[1.03] flex flex-col gap-1 min-w-0"
+            className="rounded-xl p-3 cursor-pointer hover:brightness-110 transition-all hover:scale-[1.03] flex flex-col gap-1 flex-1 min-w-[110px] max-w-[160px] lg:max-w-none lg:min-w-0"
             style={{ background: kpi.bg }}
           >
             <kpi.icon className="w-4 h-4 text-white/90 shrink-0" />
