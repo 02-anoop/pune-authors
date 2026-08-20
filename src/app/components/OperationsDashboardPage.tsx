@@ -822,7 +822,7 @@ export function OperationsDashboardPage() {
     | "gallery"
     | "reviews"
     | "invitations"
-    | "late_authors"
+    | "delayed_orders"
     | "helpdesk"
     | "settings"
     | "library_donations"
@@ -832,7 +832,9 @@ export function OperationsDashboardPage() {
   >(
     (() => {
       const t = localStorage.getItem("adminActiveTab");
-      return t === "author_data" ? "overview" : (t as any) || "overview";
+      if (t === "author_data") return "overview";
+      if (t === "late_authors") return "delayed_orders";
+      return (t as any) || "overview";
     })(),
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -865,7 +867,7 @@ export function OperationsDashboardPage() {
       if (activeTab === "helpdesk") next.queries = false;
       if (activeTab === "authors") next.authors = false;
       if (activeTab === "books") next.books = false;
-      if (activeTab === "late_authors") next.fines = false;
+      if (activeTab === "delayed_orders") next.fines = false;
       return next;
     });
   }, [activeTab]);
@@ -2637,7 +2639,7 @@ export function OperationsDashboardPage() {
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6 px-6 sm:px-0">
             <div className="shrink-0">
               <h2 className="text-2xl font-serif text-paa-navy tracking-tight">
-                Late Authors System
+                Delayed Orders System
               </h2>
               <p className="text-sm text-gray-500 mt-1 hidden xl:block">
                 Manage delayed dispatches, charge fines, and approve fine
@@ -8736,8 +8738,8 @@ const totalAuthorsBase = eventRegistrations.length;
             { id: "reviews", label: "Reviews & Feedback", icon: MessageSquare },
             { id: "gallery", label: "Gallery Management", icon: ImageIcon },
             {
-              id: "late_authors",
-              label: "Late Authors System",
+              id: "delayed_orders",
+              label: "Delayed Orders",
               icon: AlertCircle,
               hasAlert: pendingAlerts.fines,
             },
@@ -9617,7 +9619,7 @@ const totalAuthorsBase = eventRegistrations.length;
             {activeTab === "gallery" && renderGalleryTab()}
             {activeTab === "invitations" && <AdminInvitationsTab />}
             {activeTab === "reviews" && <AdminReviewsTab />}
-            {activeTab === "late_authors" && (
+            {activeTab === "delayed_orders" && (
               <LateAuthorsSystemTab
                 orders={orders}
                 authors={authors}

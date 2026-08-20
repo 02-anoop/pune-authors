@@ -1852,7 +1852,7 @@ export function LibraryDonationsTab() {
           onClick={() => setActiveMainTab('Libraries')}
           className={`pb-2 px-1 border-b-2 font-bold text-sm ${activeMainTab === 'Libraries' ? 'border-paa-navy text-paa-navy' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
-          Library Master
+          Add New Library
         </button>
       </div>
 
@@ -2208,7 +2208,7 @@ export function LibraryDonationsTab() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 w-full flex flex-col overflow-hidden">
             <div className="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50/80">
               <div>
-                <h3 className="text-xl font-bold text-paa-navy flex items-center gap-2"><BookOpen className="w-5 h-5 text-paa-gold" /> Library Master</h3>
+                <h3 className="text-xl font-bold text-paa-navy flex items-center gap-2"><BookOpen className="w-5 h-5 text-paa-gold" /> Add New Library</h3>
                 <p className="text-xs text-gray-500 mt-0.5">Manage target libraries and airports for donation drives</p>
               </div>
             </div>
