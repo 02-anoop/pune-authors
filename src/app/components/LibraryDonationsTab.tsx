@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 // exceljs and file-saver are dynamically imported inside export handlers
-import { Download, Edit, Trash2, Megaphone, MapPin, Search, Calendar, Package, Plus, X, List, CheckCircle, CheckCircle2, XCircle, FileDown, BookOpen, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import { Download, Edit, Trash2, Megaphone, MapPin, Search, Calendar, Package, Plus, X, List, CheckCircle, CheckCircle2, XCircle, FileDown, BookOpen, Eye, ChevronDown, ChevronUp, Plane, Building2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, LabelList } from 'recharts';
 import FocusTrap from 'focus-trap-react';
 
@@ -12,7 +12,10 @@ export function LibraryDonationsTab() {
   const [loading, setLoading] = useState(true);
 
   // UI States
-  const [activeMainTab, setActiveMainTab] = useState<'Drives' | 'Libraries'>('Drives');
+  const [activeMainTab, setActiveMainTab] = useState<'Airport' | 'Other' | 'Libraries'>(() => {
+    const saved = localStorage.getItem('paa_lib_donations_subtab');
+    return (saved && ['Airport', 'Other', 'Libraries'].includes(saved)) ? (saved as any) : 'Airport';
+  });
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [selectedDriveBreakdown, setSelectedDriveBreakdown] = useState<any>(null);
@@ -213,6 +216,19 @@ export function LibraryDonationsTab() {
     fetchGlobalLogs();
     fetchAuthors();
     fetchStatsOverrides();
+
+    const handleSubTabNavigation = () => {
+      const saved = localStorage.getItem('paa_lib_donations_subtab');
+      if (saved && ['Airport', 'Other', 'Libraries'].includes(saved)) {
+        setActiveMainTab(saved as any);
+      }
+    };
+    window.addEventListener('storage', handleSubTabNavigation);
+    window.addEventListener('paa_navigate_lib_tab', handleSubTabNavigation);
+    return () => {
+      window.removeEventListener('storage', handleSubTabNavigation);
+      window.removeEventListener('paa_navigate_lib_tab', handleSubTabNavigation);
+    };
   }, []);
 
 
@@ -1754,7 +1770,28 @@ export function LibraryDonationsTab() {
   // ==========================================
 
 
-  const nonDraftDrives = drives.filter(d => d.visibility !== 'Draft');
+  const isAirportDrive = (d: any) =>
+    d.library?.type === 'Airport Library' ||
+    (d.library?.name || '').toLowerCase().includes('airport') ||
+    (d.title || '').toLowerCase().includes('airport');
+
+  const isAirportLibrary = (lib: any) =>
+    lib.type === 'Airport Library' || (lib.name || '').toLowerCase().includes('airport');
+
+  // Drives and libraries scoped by the active tab
+  const tabScopedDrives = drives.filter(d => {
+    if (activeMainTab === 'Airport') return isAirportDrive(d);
+    if (activeMainTab === 'Other') return !isAirportDrive(d);
+    return true;
+  });
+
+  const tabScopedLibraries = libraries.filter(lib => {
+    if (activeMainTab === 'Airport') return isAirportLibrary(lib);
+    if (activeMainTab === 'Other') return !isAirportLibrary(lib);
+    return true;
+  });
+
+  const nonDraftDrives = tabScopedDrives.filter(d => d.visibility !== 'Draft');
   const nonDraftDrivesCount = nonDraftDrives.length;
 
   const calculatedBooks = nonDraftDrives.reduce((sum, drive) => {
@@ -1777,12 +1814,12 @@ export function LibraryDonationsTab() {
     return sum + authors;
   }, 0);
 
-  const activeLibrariesCount = libraries.filter(lib => drives.some(d => d.libraryId === lib.id && d.visibility !== 'Draft')).length;
+  const activeLibrariesCount = tabScopedLibraries.filter(lib => tabScopedDrives.some(d => d.libraryId === lib.id && d.visibility !== 'Draft')).length;
 
-  const filteredBySearch = drives.filter(d => d.title.toLowerCase().includes(driveSearch.toLowerCase()));
-  const allDrivesCount = drives.length;
-  const openDrivesCount = drives.filter(d => d.visibility === 'Published').length;
-  const closedDrivesCount = drives.filter(d => d.visibility === 'Closed').length;
+  const filteredBySearch = tabScopedDrives.filter(d => d.title.toLowerCase().includes(driveSearch.toLowerCase()));
+  const allDrivesCount = tabScopedDrives.length;
+  const openDrivesCount = tabScopedDrives.filter(d => d.visibility === 'Published').length;
+  const closedDrivesCount = tabScopedDrives.filter(d => d.visibility === 'Closed').length;
 
   const filteredDrives = filteredBySearch.filter(d => {
     if (showArchivedDrives) return d.isArchived;
@@ -1841,27 +1878,41 @@ export function LibraryDonationsTab() {
         </div>
       </div>
 
-      <div className="flex gap-4 border-b border-gray-200 mb-6">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-6 border-b border-gray-200 mb-6">
         <button
-          onClick={() => setActiveMainTab('Drives')}
-          className={`pb-2 px-1 border-b-2 font-bold text-sm ${activeMainTab === 'Drives' ? 'border-paa-navy text-paa-navy' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          onClick={() => { setActiveMainTab('Airport'); localStorage.setItem('paa_lib_donations_subtab', 'Airport'); }}
+          className={`pb-2.5 px-2 border-b-2 font-bold text-sm transition-all flex items-center gap-2 ${activeMainTab === 'Airport' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
-          Donation Drives
+          <Plane className="w-4 h-4" /> Airport Libraries
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${activeMainTab === 'Airport' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700'}`}>
+            {drives.filter(d => (d.library?.type === 'Airport Library' || (d.library?.name || '').toLowerCase().includes('airport') || (d.title || '').toLowerCase().includes('airport'))).length}
+          </span>
         </button>
         <button
-          onClick={() => setActiveMainTab('Libraries')}
-          className={`pb-2 px-1 border-b-2 font-bold text-sm ${activeMainTab === 'Libraries' ? 'border-paa-navy text-paa-navy' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          onClick={() => { setActiveMainTab('Other'); localStorage.setItem('paa_lib_donations_subtab', 'Other'); }}
+          className={`pb-2.5 px-2 border-b-2 font-bold text-sm transition-all flex items-center gap-2 ${activeMainTab === 'Other' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <Building2 className="w-4 h-4" /> Other Libraries
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${activeMainTab === 'Other' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700'}`}>
+            {drives.filter(d => !(d.library?.type === 'Airport Library' || (d.library?.name || '').toLowerCase().includes('airport') || (d.title || '').toLowerCase().includes('airport'))).length}
+          </span>
+        </button>
+        <button
+          onClick={() => { setActiveMainTab('Libraries'); localStorage.setItem('paa_lib_donations_subtab', 'Libraries'); }}
+          className={`pb-2.5 px-2 border-b-2 font-bold text-sm transition-all ${activeMainTab === 'Libraries' ? 'border-paa-navy text-paa-navy' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
           Add New Library
         </button>
       </div>
 
-      {activeMainTab === 'Drives' ? (
+      {activeMainTab !== 'Libraries' ? (
         <>
 
       {/* Ecosystem Summary Heading & Edit Stats Button */}
       <div className="mb-3 flex justify-between items-center mt-6">
-        <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Ecosystem Summary</span>
+        <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+          Ecosystem Summary {activeMainTab === 'Airport' ? '— Airport Libraries' : activeMainTab === 'Other' ? '— Other Partner Libraries' : '— All Libraries'}
+        </span>
         {isEditingStats ? (
           <div className="flex gap-2">
             <button
@@ -1908,7 +1959,7 @@ export function LibraryDonationsTab() {
             />
           ) : (
             <div className="text-xl font-serif text-white font-bold">
-              {statsOverrides.drivesOverride !== null ? statsOverrides.drivesOverride : nonDraftDrivesCount}
+              {nonDraftDrivesCount}
             </div>
           )}
         </div>
@@ -1930,7 +1981,7 @@ export function LibraryDonationsTab() {
             />
           ) : (
             <div className="text-xl font-serif text-white font-bold">
-              {statsOverrides.librariesOverride !== null ? statsOverrides.librariesOverride : activeLibrariesCount}
+              {activeLibrariesCount}
             </div>
           )}
         </div>
@@ -2059,9 +2110,12 @@ export function LibraryDonationsTab() {
         );
       })()}
 
-      {/* Drives Grid Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4 mt-8">
-        <h3 className="text-xl font-bold text-paa-navy font-serif">Donation Drives Master</h3>
+      {/* Master Drives Filters & Search */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4 mt-8 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+        <div>
+          <h3 className="text-xl font-bold text-paa-navy font-serif">Donation Drives</h3>
+          <p className="text-xs text-gray-500 mt-0.5">Categorized by Airport Flybraries and Other Partner Libraries</p>
+        </div>
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full lg:w-auto">
           <div className="flex flex-wrap bg-gray-100 p-1 rounded-lg gap-1">
             {['All', 'Open', 'Closed'].map((filter) => (
@@ -2087,116 +2141,194 @@ export function LibraryDonationsTab() {
               <span className="text-[10px] font-bold tracking-wider uppercase text-gray-600">Archived</span>
             </div>
           </div>
-          <input
-            type="text"
-            placeholder="Search drives by title..."
-            className="w-full sm:w-80 border border-gray-300 rounded-lg p-2.5 text-sm outline-none focus:border-paa-navy focus:ring-1 focus:ring-paa-navy shadow-sm"
-            value={driveSearch}
-            onChange={(e) => setDriveSearch(e.target.value)}
-          />
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search drives by title..."
+              className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-paa-navy focus:ring-1 focus:ring-paa-navy shadow-sm"
+              value={driveSearch}
+              onChange={(e) => setDriveSearch(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm overflow-x-auto">
-        <table className="w-full text-left min-w-max">
-          <thead className="bg-indigo-50 border-b-2 border-indigo-100">
-            <tr>
-              <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider w-[50px] text-center">S.No</th>
-              <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider">Drive Name</th>
-              <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider">Deadline</th>
-              <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider">Location</th>
-              <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider">Status</th>
-              <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider">Authors</th>
-              <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider">Books</th>
-              <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {loading ? (
-              <tr><td colSpan={8} className="p-12 text-center text-gray-500">Loading donation drives...</td></tr>
-            ) : filteredDrives.length === 0 ? (
-              <tr><td colSpan={8} className="p-12 text-center text-gray-500">No donation drives found. Click "Create New Drive" to start.</td></tr>
-            ) : [...filteredDrives]
-                .sort((a, b) => new Date(b.registrationEndDate || 0).getTime() - new Date(a.registrationEndDate || 0).getTime())
-                .map((drive, idx) => {
-              // Calculate books for this drive from globalLogs (since fetchDrives doesn't nest books)
-              const driveLogs = globalLogs.filter(l => l.announcementId === drive.id);
-              const totalBooks = driveLogs.reduce((sum, log) => sum + (log.books?.reduce((acc: number, b: any) => acc + b.quantityDonated, 0) || 0), 0);
+      {(() => {
+        const isAirportDrive = (d: any) =>
+          d.library?.type === 'Airport Library' ||
+          (d.library?.name || '').toLowerCase().includes('airport') ||
+          (d.title || '').toLowerCase().includes('airport');
 
-              // Check if we have overrides for this specific drive
-              const driveOverride = statsOverrides?.driveOverrides?.[drive.id] || statsOverrides?.driveOverrides?.[drive.id.toString()];
-              
-              const displayAuthors = (driveOverride && driveOverride.authorsOverride !== null && driveOverride.authorsOverride !== undefined)
-                ? driveOverride.authorsOverride
-                : (drive.registrations?.length || 0);
+        const airportDrives = filteredDrives.filter(d => isAirportDrive(d));
+        const otherLibraryDrives = filteredDrives.filter(d => !isAirportDrive(d));
 
-              const displayBooks = (driveOverride && driveOverride.booksOverride !== null && driveOverride.booksOverride !== undefined)
-                ? driveOverride.booksOverride
-                : totalBooks;
+        const renderDrivesTableSection = (
+          title: string,
+          badgeText: string,
+          badgeBg: string,
+          drivesList: any[],
+          emptyMessage: string,
+          icon: React.ReactNode,
+          subtitle: string
+        ) => {
+          const sortedList = [...drivesList].sort(
+            (a, b) => new Date(b.registrationEndDate || 0).getTime() - new Date(a.registrationEndDate || 0).getTime()
+          );
 
-              return (
-                <tr key={drive.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-[#ebd8c0]'} hover:bg-slate-200/60 transition-colors`}>
-                  <td className="p-4 text-center font-bold text-gray-500">{idx + 1}</td>
-                  <td className="p-4 max-w-[200px]">
-                    <div className="font-bold text-sm text-paa-navy leading-snug line-clamp-2" title={drive.title}>{drive.title}</div>
-                  </td>
-                  <td className="p-4 text-sm text-gray-600">
-                    {new Date(drive.registrationEndDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </td>
-                  <td className="p-4 text-sm text-gray-600 max-w-[200px]">
-                    <div className="line-clamp-2 leading-snug" title={drive.library?.city ? `${drive.library.name}, ${drive.library.city}` : drive.library?.name}>
-                      {drive.library?.city ? `${drive.library.name}, ${drive.library.city}` : drive.library?.name}
+          return (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm mb-8 animate-fade-in-up">
+              {/* Section Header */}
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/75 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-white shadow-sm border border-gray-200/80">
+                    {icon}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h4 className="text-lg font-serif font-bold text-paa-navy tracking-tight">{title}</h4>
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${badgeBg}`}>
+                        {badgeText}: {drivesList.length}
+                      </span>
                     </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${drive.visibility === 'Published' ? 'bg-[#ebd8c0] text-emerald-600 border-emerald-200' :
-                        drive.visibility === 'Closed' ? 'bg-gray-100 text-gray-600 border-gray-200' :
-                          'bg-yellow-50 text-yellow-600 border-yellow-200'
-                      }`}>
-                      {drive.visibility}
-                    </span>
-                  </td>
-                  <td className="p-4 font-bold text-sm text-paa-navy">{displayAuthors}</td>
-                  <td className="p-4 font-bold text-sm text-paa-navy">{displayBooks}</td>
-                  <td className="p-4 text-right space-x-2">
-                    <button onClick={() => {
-                      setSelectedDriveBreakdown(drive);
-                      fetchRegistrations(drive.id);
-                    }}
-                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded border border-blue-200 transition-colors" title="Manage Drive"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => { setEditingDrive(drive); setIsDriveModalOpen(true); }}
-                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded border border-blue-200 transition-colors" title="Edit Drive"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    {drive.visibility === 'Published' && !drive.isArchived ? (
-                      <button onClick={() => unpublishCampaign(drive.id)} className="p-1.5 text-orange-600 hover:bg-orange-50 rounded border border-orange-200 transition-colors" title="Unpublish Campaign">
-                        <X className="w-4 h-4" />
-                      </button>
-                    ) : !drive.isArchived ? (
-                      <button onClick={() => publishCampaign(drive.id)} className="p-1.5 text-emerald-600 hover:bg-[#ebd8c0] rounded border border-emerald-200 transition-colors" title="Publish to All Authors">
-                        <CheckCircle className="w-4 h-4" />
-                      </button>
-                    ) : null}
-                    {drive.isArchived ? (
-                      <button onClick={() => handleRestoreDrive(drive.id)} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-amber-100 text-amber-800 border-none rounded shadow hover:bg-amber-200 transition-colors" title="Restore Drive">
-                        Restore
-                      </button>
+                    <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-max">
+                  <thead className="bg-indigo-50 border-b-2 border-indigo-100">
+                    <tr>
+                      <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider w-[50px] text-center">S.No</th>
+                      <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider">Drive Name</th>
+                      <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider">Deadline</th>
+                      <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider">Location</th>
+                      <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider">Status</th>
+                      <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider">Authors</th>
+                      <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider">Books</th>
+                      <th className="p-4 !text-[14px] font-bold !text-indigo-800 !bg-transparent uppercase tracking-wider text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {loading ? (
+                      <tr><td colSpan={8} className="p-12 text-center text-gray-500">Loading donation drives...</td></tr>
+                    ) : drivesList.length === 0 ? (
+                      <tr><td colSpan={8} className="p-12 text-center text-gray-500 italic">{emptyMessage}</td></tr>
                     ) : (
-                      <button onClick={() => handleDeleteDrive(drive.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded border border-red-200 transition-colors" title="Archive Drive">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      sortedList.map((drive, idx) => {
+                        const driveLogs = globalLogs.filter(l => l.announcementId === drive.id);
+                        const totalBooks = driveLogs.reduce((sum, log) => sum + (log.books?.reduce((acc: number, b: any) => acc + b.quantityDonated, 0) || 0), 0);
+
+                        const driveOverride = statsOverrides?.driveOverrides?.[drive.id] || statsOverrides?.driveOverrides?.[drive.id.toString()];
+                        
+                        const displayAuthors = (driveOverride && driveOverride.authorsOverride !== null && driveOverride.authorsOverride !== undefined)
+                          ? driveOverride.authorsOverride
+                          : (drive.registrations?.length || 0);
+
+                        const displayBooks = (driveOverride && driveOverride.booksOverride !== null && driveOverride.booksOverride !== undefined)
+                          ? driveOverride.booksOverride
+                          : totalBooks;
+
+                        return (
+                          <tr key={drive.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-[#ebd8c0]'} hover:bg-slate-200/60 transition-colors`}>
+                            <td className="p-4 text-center font-bold text-gray-500">{idx + 1}</td>
+                            <td className="p-4 max-w-[200px]">
+                              <div className="font-bold text-sm text-paa-navy leading-snug line-clamp-2" title={drive.title}>{drive.title}</div>
+                            </td>
+                            <td className="p-4 text-sm text-gray-600">
+                              {drive.registrationEndDate ? new Date(drive.registrationEndDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                            </td>
+                            <td className="p-4 text-sm text-gray-600 max-w-[200px]">
+                              <div className="line-clamp-2 leading-snug" title={drive.library?.city ? `${drive.library.name}, ${drive.library.city}` : drive.library?.name}>
+                                {drive.library?.city ? `${drive.library.name}, ${drive.library.city}` : drive.library?.name || 'N/A'}
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${drive.visibility === 'Published' ? 'bg-[#ebd8c0] text-emerald-600 border-emerald-200' :
+                                  drive.visibility === 'Closed' ? 'bg-gray-100 text-gray-600 border-gray-200' :
+                                    'bg-yellow-50 text-yellow-600 border-yellow-200'
+                                }`}>
+                                {drive.visibility}
+                              </span>
+                            </td>
+                            <td className="p-4 font-bold text-sm text-paa-navy">{displayAuthors}</td>
+                            <td className="p-4 font-bold text-sm text-paa-navy">{displayBooks}</td>
+                            <td className="p-4 text-right space-x-2">
+                              <button onClick={() => {
+                                setSelectedDriveBreakdown(drive);
+                                fetchRegistrations(drive.id);
+                              }}
+                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded border border-blue-200 transition-colors" title="Manage Drive"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => { setEditingDrive(drive); setIsDriveModalOpen(true); }}
+                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded border border-blue-200 transition-colors" title="Edit Drive"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              {drive.visibility === 'Published' && !drive.isArchived ? (
+                                <button onClick={() => unpublishCampaign(drive.id)} className="p-1.5 text-orange-600 hover:bg-orange-50 rounded border border-orange-200 transition-colors" title="Unpublish Campaign">
+                                  <X className="w-4 h-4" />
+                                </button>
+                              ) : !drive.isArchived ? (
+                                <button onClick={() => publishCampaign(drive.id)} className="p-1.5 text-emerald-600 hover:bg-[#ebd8c0] rounded border border-emerald-200 transition-colors" title="Publish to All Authors">
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                              ) : null}
+                              {drive.isArchived ? (
+                                <button onClick={() => handleRestoreDrive(drive.id)} className="px-2 py-1 text-[9px] uppercase tracking-widest font-bold bg-amber-100 text-amber-800 border-none rounded shadow hover:bg-amber-200 transition-colors" title="Restore Drive">
+                                  Restore
+                                </button>
+                              ) : (
+                                <button onClick={() => handleDeleteDrive(drive.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded border border-red-200 transition-colors" title="Archive Drive">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        };
+
+        return (
+          <div className="space-y-6">
+            {/* Section 1: Airport Library Donation Drives */}
+            {activeMainTab === 'Airport' && (
+              renderDrivesTableSection(
+                'Airport Library Donation Drives (Flybraries)',
+                'Airport Drives',
+                'bg-indigo-100 text-indigo-800',
+                airportDrives,
+                'No airport donation drives found matching current filters.',
+                <Plane className="w-5 h-5 text-indigo-600" />,
+                'Dedicated flybrary book donation drives organized across airport passenger terminals'
+              )
+            )}
+
+            {/* Section 2: Other Libraries Donation Drives */}
+            {activeMainTab === 'Other' && (
+              renderDrivesTableSection(
+                'Other Libraries Donation Drives',
+                'Other Library Drives',
+                'bg-emerald-100 text-emerald-800',
+                otherLibraryDrives,
+                'No other library donation drives found matching current filters.',
+                <Building2 className="w-5 h-5 text-emerald-600" />,
+                'Book donation drives organized for public, institutional, and community partner libraries'
+              )
+            )}
+          </div>
+        );
+      })()}
 
 
         </>

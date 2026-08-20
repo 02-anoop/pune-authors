@@ -339,16 +339,16 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
           {
             label: 'Airport Libraries',
             value: (libraries && libraries.length > 0)
-              ? libraries.filter((l: any) => (l.type === 'Airport Library' || l.type === 'airport') && !l.isArchived).length
+              ? libraries.filter((l: any) => (l.type === 'Airport Library' || (l.type || '').toLowerCase().includes('airport') || (l.name || '').toLowerCase().includes('airport')) && !l.isArchived).length
               : (stats?.totalAirportLibraries !== undefined && stats?.totalAirportLibraries > 0) ? stats.totalAirportLibraries : null,
-            icon: Plane, bg: '#06b6d4', tabId: 'library_donations' // Bright Cyan
+            icon: Plane, bg: '#06b6d4', tabId: 'library_donations', subTab: 'Airport' // Bright Cyan
           },
           {
             label: 'Other Libraries',
             value: (libraries && libraries.length > 0)
-              ? libraries.filter((l: any) => l.type !== 'Airport Library' && l.type !== 'airport' && !l.isArchived).length
+              ? libraries.filter((l: any) => !(l.type === 'Airport Library' || (l.type || '').toLowerCase().includes('airport') || (l.name || '').toLowerCase().includes('airport')) && !l.isArchived).length
               : (stats?.totalOtherLibraries !== undefined && stats?.totalOtherLibraries > 0) ? stats.totalOtherLibraries : null,
-            icon: Library, bg: '#14b8a6', tabId: 'library_donations' // Bright Teal
+            icon: Library, bg: '#14b8a6', tabId: 'library_donations', subTab: 'Other' // Bright Teal
           },
           {
             label: 'Total Revenue',
@@ -363,10 +363,16 @@ export const AdminOverviewTab = React.memo(({ refreshTrigger, books, authors, or
             value: (dynamicBooksSold !== null ? dynamicBooksSold : (stats?.totalBooksSold || 0)).toLocaleString(),
             icon: ShoppingCart, bg: '#8b5cf6', tabId: 'sales_report' // Bright Violet
           },
-        ].map((kpi, i) => (
+        ].map((kpi: any, i) => (
           <div
             key={i}
-            onClick={() => kpi.tabId && setActiveTab(kpi.tabId)}
+            onClick={() => {
+              if (kpi.subTab) {
+                localStorage.setItem('paa_lib_donations_subtab', kpi.subTab);
+                window.dispatchEvent(new Event('paa_navigate_lib_tab'));
+              }
+              if (kpi.tabId) setActiveTab(kpi.tabId);
+            }}
             className="rounded-xl p-3 cursor-pointer hover:brightness-110 transition-all hover:scale-[1.03] flex flex-col gap-1 flex-1 min-w-[110px] max-w-[160px] lg:max-w-none lg:min-w-0"
             style={{ background: kpi.bg }}
           >
