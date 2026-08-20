@@ -591,13 +591,13 @@ export function AuthorDashboardPage() {
               {hasUnread && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>}
             </button>
             {hasUnread && !showNotifications && dismissedToastId !== String(visibleNotifications[0]?.id || unreadEventInvites[0]?.id || 'toast') && (
-              <div className="animate-pulse" style={{ position: 'absolute', top: '100%', right: '100%', marginRight: 12, marginTop: -8, width: 280, background: '#1a1a2e', borderRadius: 12, padding: '12px 16px', color: '#fff', zIndex: 9999, display: 'flex', gap: 12, alignItems: 'flex-start', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
-                <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => { setShowNotifications(true); const latestId = String(visibleNotifications[0]?.id || unreadEventInvites[0]?.id || 'toast'); setDismissedToastId(latestId); localStorage.setItem('paa_dismissed_toast', latestId); }}>
-                  <p style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#3b82f6', marginBottom: 2 }}>New Message</p>
-                  <p style={{ fontSize: 12, color: '#f3f4f6', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{visibleNotifications[0]?.message?.replace(/\[LOW_STOCK:\d+\]\s*/g, '') || (unreadEventInvites.length > 0 ? `New Event: ${unreadEventInvites[0].event.name}` : 'You have unread notifications.')}</p>
+              <div className="hidden sm:flex" style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', right: '100%', marginRight: 12, width: 280, background: '#1a1a2e', borderRadius: 12, padding: '10px 14px', color: '#fff', zIndex: 9999, gap: 10, alignItems: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+                <div style={{ flex: 1, cursor: 'pointer', minWidth: 0 }} onClick={() => { setShowNotifications(true); const latestId = String(visibleNotifications[0]?.id || unreadEventInvites[0]?.id || 'toast'); setDismissedToastId(latestId); localStorage.setItem('paa_dismissed_toast', latestId); }}>
+                  <p style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#3b82f6', marginBottom: 2 }}>New Message</p>
+                  <p style={{ fontSize: 12, color: '#f3f4f6', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{visibleNotifications[0]?.message?.replace(/\[LOW_STOCK:\d+\]\s*/g, '') || (unreadEventInvites.length > 0 ? `New Event: ${unreadEventInvites[0].event.name}` : 'You have unread notifications.')}</p>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); const latestId = String(visibleNotifications[0]?.id || unreadEventInvites[0]?.id || 'toast'); setDismissedToastId(latestId); localStorage.setItem('paa_dismissed_toast', latestId); }} style={{ color: '#9ca3af', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}><X size={14} /></button>
-                <div style={{ position: 'absolute', top: 12, right: -6, width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '6px solid #1a1a2e' }}></div>
+                <button onClick={(e) => { e.stopPropagation(); const latestId = String(visibleNotifications[0]?.id || unreadEventInvites[0]?.id || 'toast'); setDismissedToastId(latestId); localStorage.setItem('paa_dismissed_toast', latestId); }} style={{ color: '#9ca3af', background: 'transparent', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0 }}><X size={14} /></button>
+                <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', right: -6, width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '6px solid #1a1a2e' }}></div>
               </div>
             )}
             {showNotifications && (
@@ -5198,9 +5198,6 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
              {/* Row 2: Actions & Search */}
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 w-full">
                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                   <button onClick={() => setShowProposeEventModal(true)} className="px-5 py-2 bg-indigo-600 text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-sm h-[38px] whitespace-nowrap shrink-0 flex items-center gap-1.5">
-                      <Plus size={14} /> Propose an Event
-                   </button>
                    <button onClick={handleExportEventsExcel} className="px-5 py-2 bg-green-50 text-green-700 border border-green-200 text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-green-100 transition-all shadow-sm h-[38px] whitespace-nowrap flex items-center gap-2 shrink-0">
                      <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Export Excel</span><span className="sm:hidden">Export</span>
                    </button>
