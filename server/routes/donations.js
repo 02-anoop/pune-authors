@@ -5,6 +5,66 @@ const path = require('path');
 const prisma = require('../config/db');
 const { verifyToken, isAdmin } = require('../middleware/auth');
 const { upload } = require('../config/upload');
+const { sendNotificationEmail, emailWrap } = require('../utils/email');
+
+// Helper to broadcast new donation drive emails to all approved/active authors
+async function sendDriveAnnouncementEmailToAuthors(announcement) {
+  try {
+    const authors = await prisma.author.findMany({
+      where: {
+        status: { in: ['Active', 'Approved'] }
+      },
+      select: { id: true, name: true, email: true }
+    });
+
+    if (!authors || authors.length === 0) return;
+
+    let library = announcement.library;
+    if (!library && announcement.libraryId) {
+      library = await prisma.library.findUnique({ where: { id: announcement.libraryId } });
+    }
+
+    const libName = library ? library.name : 'Target Library';
+    const libType = library?.type || 'Library';
+    const libLocation = library ? [library.location, library.city, library.state].filter(Boolean).join(', ') : '';
+
+    const feeDisplay = announcement.feeType === 'Free' || !announcement.feeAmount
+      ? 'Free'
+      : `₹${announcement.feeAmount} (${announcement.feeType || 'Fixed Fee'})`;
+
+    const subject = `New Library Donation Drive: ${announcement.title || libName}`;
+    const heading = `New Library Donation Campaign`;
+
+    for (const author of authors) {
+      if (!author.email) continue;
+      const htmlContent = `
+        <p>Dear ${author.name || 'Author'},</p>
+        <p>A new Library Donation Drive has been announced for <strong>${libName}</strong>.</p>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <h3 style="margin-top: 0; color: #1e293b; font-size: 16px;">${announcement.title}</h3>
+          ${announcement.description ? `<p style="margin: 8px 0; color: #475569; font-size: 14px;">${announcement.description}</p>` : ''}
+          <table style="width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px;">
+            <tr><td style="font-weight: bold; padding: 6px 10px; color: #334155; width: 160px;">Target Library:</td><td style="padding: 6px 10px; color: #1e293b;">${libName} (${libType})</td></tr>
+            ${libLocation ? `<tr><td style="font-weight: bold; padding: 6px 10px; color: #334155;">Location:</td><td style="padding: 6px 10px; color: #1e293b;">${libLocation}</td></tr>` : ''}
+            ${announcement.registrationStartDate || announcement.registrationEndDate ? `<tr><td style="font-weight: bold; padding: 6px 10px; color: #334155;">Registration Window:</td><td style="padding: 6px 10px; color: #1e293b;">${announcement.registrationStartDate || 'Now'} to ${announcement.registrationEndDate || 'TBA'}</td></tr>` : ''}
+            ${announcement.expectedCollectionDate ? `<tr><td style="font-weight: bold; padding: 6px 10px; color: #334155;">Collection Date:</td><td style="padding: 6px 10px; color: #1e293b;">${announcement.expectedCollectionDate}</td></tr>` : ''}
+            ${announcement.expectedDispatchDate ? `<tr><td style="font-weight: bold; padding: 6px 10px; color: #334155;">Dispatch Date:</td><td style="padding: 6px 10px; color: #1e293b;">${announcement.expectedDispatchDate}</td></tr>` : ''}
+            ${announcement.collectionPoint ? `<tr><td style="font-weight: bold; padding: 6px 10px; color: #334155;">Collection Point:</td><td style="padding: 6px 10px; color: #1e293b;">${announcement.collectionPoint}</td></tr>` : ''}
+            ${announcement.dispatchAddress ? `<tr><td style="font-weight: bold; padding: 6px 10px; color: #334155;">Dispatch Address:</td><td style="padding: 6px 10px; color: #1e293b;">${announcement.dispatchAddress}</td></tr>` : ''}
+            <tr><td style="font-weight: bold; padding: 6px 10px; color: #334155;">Participation Fee:</td><td style="padding: 6px 10px; color: #1e293b;">${feeDisplay}</td></tr>
+            ${announcement.contactPerson || announcement.contactNumber ? `<tr><td style="font-weight: bold; padding: 6px 10px; color: #334155;">Coordinator:</td><td style="padding: 6px 10px; color: #1e293b;">${announcement.contactPerson || ''} ${announcement.contactNumber ? `(${announcement.contactNumber})` : ''}</td></tr>` : ''}
+            ${announcement.additionalInstructions ? `<tr><td style="font-weight: bold; padding: 6px 10px; color: #334155;">Instructions:</td><td style="padding: 6px 10px; color: #1e293b;">${announcement.additionalInstructions}</td></tr>` : ''}
+          </table>
+        </div>
+        <p>Log in to your Author Portal to register your books and participate in this donation drive.</p>
+      `;
+
+      sendNotificationEmail(author.email, subject, emailWrap(heading, htmlContent));
+    }
+  } catch (emailErr) {
+    console.error('Error broadcasting donation announcement to authors:', emailErr);
+  }
+}
 
 // --- LIBRARY MASTER CRUD ---
 
@@ -169,8 +229,15 @@ router.post('/api/admin/donation-announcements', verifyToken, isAdmin, async (re
         ...rest,
         feeAmount: feeAmount ? parseInt(feeAmount) : 0,
         libraryId: parseInt(libraryId)
+      },
+      include: {
+        library: true
       }
     });
+
+    // Send email with all drive details to all authors
+    sendDriveAnnouncementEmailToAuthors(announcement);
+
     res.json(announcement);
   } catch (err) {
     console.error(err);
@@ -227,8 +294,15 @@ router.post('/api/admin/donation-announcements/:id/publish-all', verifyToken, is
   try {
     const announcement = await prisma.donationAnnouncement.update({
       where: { id: parseInt(req.params.id) },
-      data: { visibility: 'Published' }
+      data: { visibility: 'Published' },
+      include: {
+        library: true
+      }
     });
+
+    // Send email with all drive details to all authors
+    sendDriveAnnouncementEmailToAuthors(announcement);
+
     res.json(announcement);
   } catch (err) {
     res.status(500).json({ error: 'Failed to publish campaign' });
