@@ -7,7 +7,7 @@ const prisma = require('../config/db');
 const bcrypt = require('bcrypt');
 const { getCache, setCache, invalidateCache } = require('../utils/cache');
 const { isAdmin, verifyToken, optionalVerifyToken } = require('../middleware/auth');
-const { sendNotificationEmail, emailWrap } = require('../utils/email');
+const { sendNotificationEmail, emailWrap, getAdminEmails } = require('../utils/email');
 const { upload } = require('../config/upload');
 const { inr } = require('../utils/helpers');
 const path = require('path');
@@ -8435,6 +8435,53 @@ ${description || ''}`;
         commissionPercent: 0,
       }
     });
+
+    const authorEmail = author ? author.email : req.user.email;
+
+    // Send email notifications to Admin and Author
+    if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      try {
+        const adminEmail = typeof getAdminEmails === 'function' ? getAdminEmails() : 'info@puneauthorsassociation.com';
+        
+        const adminContent = `
+          <p>A new event proposal has been submitted by an author on the platform.</p>
+          <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc; width: 140px;">Event Name:</td><td style="padding: 8px 12px;"><strong>${event.name}</strong></td></tr>
+            <tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Proposed By:</td><td style="padding: 8px 12px;">${authorName} (${authorEmail || 'N/A'})</td></tr>
+            <tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Event Type:</td><td style="padding: 8px 12px;">${eventType || 'Other'}</td></tr>
+            <tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Proposed Date:</td><td style="padding: 8px 12px;">${date || 'TBA'}</td></tr>
+            <tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Location / Venue:</td><td style="padding: 8px 12px;">${location || 'TBA'}</td></tr>
+            ${duration ? `<tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Duration:</td><td style="padding: 8px 12px;">${duration}</td></tr>` : ''}
+            ${registrationFee ? `<tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Registration Fee:</td><td style="padding: 8px 12px;">₹${registrationFee} (${feeType || 'Per Author'})</td></tr>` : ''}
+            ${description ? `<tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Description:</td><td style="padding: 8px 12px;">${description}</td></tr>` : ''}
+          </table>
+          <p>Please log in to the admin portal to review and manage this proposed event.</p>
+        `;
+        sendNotificationEmail(adminEmail, `New Event Proposed: ${event.name} by ${authorName}`, emailWrap("New Event Proposed", adminContent));
+
+        if (authorEmail) {
+          const authorContent = `
+            <p>Dear ${authorName},</p>
+            <p>Thank you for submitting a proposal for the event <strong>"${event.name}"</strong> to the Pune Authors' Association.</p>
+            <p>Here are the details of your proposal:</p>
+            <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+              <tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc; width: 140px;">Event Name:</td><td style="padding: 8px 12px;"><strong>${event.name}</strong></td></tr>
+              <tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Event Type:</td><td style="padding: 8px 12px;">${eventType || 'Other'}</td></tr>
+              <tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Proposed Date:</td><td style="padding: 8px 12px;">${date || 'TBA'}</td></tr>
+              <tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Location / Venue:</td><td style="padding: 8px 12px;">${location || 'TBA'}</td></tr>
+              ${duration ? `<tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Duration:</td><td style="padding: 8px 12px;">${duration}</td></tr>` : ''}
+              ${registrationFee ? `<tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Registration Fee:</td><td style="padding: 8px 12px;">₹${registrationFee} (${feeType || 'Per Author'})</td></tr>` : ''}
+              ${description ? `<tr><td style="font-weight: bold; padding: 8px 12px; background: #f8fafc;">Description:</td><td style="padding: 8px 12px;">${description}</td></tr>` : ''}
+            </table>
+            <p>Your proposal is currently <strong>Pending Admin Review</strong>. We will review it shortly and keep you updated.</p>
+          `;
+          sendNotificationEmail(authorEmail, `Event Proposal Confirmation: ${event.name}`, emailWrap("Event Proposal Submitted", authorContent));
+        }
+      } catch (mailErr) {
+        console.error("Error sending propose-event emails:", mailErr);
+      }
+    }
+
     res.json(event);
   } catch (error) {
     console.error(error);

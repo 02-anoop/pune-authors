@@ -4916,6 +4916,20 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
 
       {activeTab === 'events' && (
         <div className="space-y-6">
+          {/* Top Header Bar with Propose an Event Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-200/80 shadow-sm animate-fade-in-up">
+            <div>
+              <h2 className="text-2xl font-serif font-black text-paa-navy tracking-tight">Events Data</h2>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                onClick={() => setShowProposeEventModal(true)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 flex items-center gap-2"
+              >
+                <Plus size={16} /> Propose an Event
+              </button>
+            </div>
+          </div>
           {(() => {
              const isSpecialAuthor = dashboardData?.authorProfile?.email === 'arvindpuri1492@gmail.com';
              const livePosEvents = allEvents.filter((evt: any) => ((evt.livePosEnabled && evt.status === 'Live') || (isSpecialAuthor && !evt.isPast)) && (evt.registration === 'Registered' || evt.registration === 'Approved'));
@@ -5184,8 +5198,8 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
              {/* Row 2: Actions & Search */}
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 w-full">
                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                   <button onClick={() => setShowProposeEventModal(true)} className="px-5 py-2 bg-indigo-600 text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-sm h-[38px] whitespace-nowrap shrink-0">
-                      + Propose
+                   <button onClick={() => setShowProposeEventModal(true)} className="px-5 py-2 bg-indigo-600 text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-sm h-[38px] whitespace-nowrap shrink-0 flex items-center gap-1.5">
+                      <Plus size={14} /> Propose an Event
                    </button>
                    <button onClick={handleExportEventsExcel} className="px-5 py-2 bg-green-50 text-green-700 border border-green-200 text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-green-100 transition-all shadow-sm h-[38px] whitespace-nowrap flex items-center gap-2 shrink-0">
                      <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Export Excel</span><span className="sm:hidden">Export</span>
@@ -5714,7 +5728,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-fade-in-up">
             <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50/50">
-              <h3 className="text-xl font-bold font-serif text-paa-navy">Propose New Event</h3>
+              <h3 className="text-xl font-bold font-serif text-paa-navy">Propose an Event</h3>
               <button onClick={() => setShowProposeEventModal(false)} className="text-gray-400 hover:text-red-500 transition-colors p-1 bg-white rounded-full shadow-sm">
                 <X className="w-5 h-5" />
               </button>
