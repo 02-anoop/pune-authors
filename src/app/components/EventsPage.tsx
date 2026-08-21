@@ -84,10 +84,10 @@ export function EventsPage() {
         }).sort((a: any, b: any) => {
           const dA = new Date(a.date || a.startDate).getTime();
           const dB = new Date(b.date || b.startDate).getTime();
-          if (isNaN(dA) && isNaN(dB)) return (b.id || 0) - (a.id || 0);
+          if (isNaN(dA) && isNaN(dB)) return (a.id || 0) - (b.id || 0);
           if (isNaN(dA)) return 1;
           if (isNaN(dB)) return -1;
-          return dB - dA;
+          return dA - dB;
         });
         
         setUpcomingEvents(up);
