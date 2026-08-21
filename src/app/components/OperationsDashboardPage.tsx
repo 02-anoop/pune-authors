@@ -58,6 +58,7 @@ import {
   ExternalLink,
   HelpCircle,
   Key,
+  Sparkles,
   Globe,
   Mail,
   Phone,
@@ -978,6 +979,10 @@ export function OperationsDashboardPage() {
   const [showAuthorDataModal, setShowAuthorDataModal] = useState(false);
   const [showAllPlatformAuthors, setShowAllPlatformAuthors] = useState(false);
   const [isEditingKPIs, setIsEditingKPIs] = useState(false);
+  const [allAuthorsList, setAllAuthorsList] = useState<any[]>([]);
+  const [createExemptAuthorIds, setCreateExemptAuthorIds] = useState<number[]>([]);
+  const [createAuthorSearch, setCreateAuthorSearch] = useState("");
+  const [editAuthorSearch, setEditAuthorSearch] = useState("");
   const [selectedEventForData, setSelectedEventForData] = useState<any>(null);
   const [selectedAuthorForData, setSelectedAuthorForData] = useState<any>(null);
 
@@ -1307,6 +1312,27 @@ export function OperationsDashboardPage() {
     }
   };
 
+  const fetchAllAuthorsList = async () => {
+    try {
+      const res = await axios.get(`${API}/api/admin/authors?limit=10000`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const list = res.data?.data || res.data || [];
+      const sorted = list.sort((a: any, b: any) =>
+        (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })
+      );
+      setAllAuthorsList(sorted);
+    } catch (err) {
+      console.error("Failed to fetch all authors list:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (isEventModalOpen || isEditEventModalOpen) {
+      fetchAllAuthorsList();
+    }
+  }, [isEventModalOpen, isEditEventModalOpen]);
+
   const fetchBooks = async (isBackground = false) => {
     if (!isBackground) setIsRefreshing(true);
     try {
@@ -1477,6 +1503,7 @@ export function OperationsDashboardPage() {
     if (!dt) {
       dt = event.date && isNaN(Date.parse(event.date)) ? "tentative" : "exact";
     }
+    setEditAuthorSearch("");
     setEditingEvent({
       id: event.id,
       name: event.name,
@@ -1492,6 +1519,7 @@ export function OperationsDashboardPage() {
       description: event.description || "",
       registrationFee: event.registrationFee || 0,
       feeType: event.feeType || "Per Author",
+      exemptAuthorIds: Array.isArray(event.exemptAuthorIds) ? event.exemptAuthorIds : [],
       startTime: event.startTime || "",
       endTime: event.endTime || "",
       livePosEnabled: event.livePosEnabled,
@@ -1525,6 +1553,7 @@ export function OperationsDashboardPage() {
       fd.append("category", editingEvent.category || "");
       fd.append("registrationFee", editingEvent.registrationFee.toString());
       fd.append("feeType", editingEvent.feeType);
+      fd.append("exemptAuthorIds", JSON.stringify(editingEvent.exemptAuthorIds || []));
       fd.append("status", editingEvent.status);
       fd.append(
         "livePosEnabled",
@@ -4284,6 +4313,7 @@ const totalAuthorsBase = eventRegistrations.length;
                     fd.append("category", target.category.value);
                     fd.append("registrationFee", target.registrationFee.value);
                     fd.append("feeType", target.feeType.value);
+                    fd.append("exemptAuthorIds", JSON.stringify(createExemptAuthorIds));
                     if (target.description.value)
                       fd.append("description", target.description.value);
                     fd.append(
@@ -4317,6 +4347,8 @@ const totalAuthorsBase = eventRegistrations.length;
                       },
                     );
                     toast.success("Event Created Successfully!");
+                    setCreateExemptAuthorIds([]);
+                    setCreateAuthorSearch("");
                     setIsEventModalOpen(false);
                     fetchEvents();
                   } catch (err: any) {
@@ -4582,7 +4614,140 @@ const totalAuthorsBase = eventRegistrations.length;
                   </div>
                 </div>
 
-                
+                {/* Author Fee Exemption (Zero Fee) Selector */}
+                <div className="mt-4 p-4 bg-emerald-50/50 rounded-xl border border-emerald-200/80 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <label className="text-sm font-bold text-emerald-950 flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-emerald-600" />
+                          Fee Exemption for Authors (₹0 Event Fees)
+                        </label>
+                        {createExemptAuthorIds.length > 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-600 text-white shadow-xs">
+                            {createExemptAuthorIds.length} Selected (₹0 Fee)
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        Select authors who will get 100% fee waiver for this event. These selected authors need not pay any registration fees.
+                      </p>
+                    </div>
+
+                    {/* Quick Action Buttons */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const authorSource = (allAuthorsList && allAuthorsList.length > 0 ? allAuthorsList : authors) || [];
+                          const allActiveIds = authorSource
+                            .filter((a: any) => a.status === "Active" || !a.status || a.status === "Approved")
+                            .map((a: any) => a.id);
+                          setCreateExemptAuthorIds(allActiveIds);
+                        }}
+                        className="px-2.5 py-1 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCreateExemptAuthorIds([])}
+                        className="px-2.5 py-1 text-xs font-bold text-gray-600 bg-white hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Search filter for authors */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search authors by name, pen name, or email..."
+                      value={createAuthorSearch}
+                      onChange={(e) => setCreateAuthorSearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                    />
+                  </div>
+
+                  {/* Scrollable Checklist */}
+                  <div className="max-h-56 overflow-y-auto border border-emerald-100 bg-white rounded-xl divide-y divide-gray-100 p-1">
+                    {((allAuthorsList && allAuthorsList.length > 0 ? allAuthorsList : authors) || [])
+                      .filter((a: any) => a.status === "Active" || !a.status || a.status === "Approved")
+                      .filter((a: any) => {
+                        if (!createAuthorSearch) return true;
+                        const q = createAuthorSearch.toLowerCase();
+                        return (
+                          (a.name && a.name.toLowerCase().includes(q)) ||
+                          (a.penName && a.penName.toLowerCase().includes(q)) ||
+                          (a.email && a.email.toLowerCase().includes(q))
+                        );
+                      })
+                      .map((author: any) => {
+                        const isChecked = createExemptAuthorIds.includes(author.id);
+                        return (
+                          <label
+                            key={author.id}
+                            className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                              isChecked ? "bg-emerald-50/80" : "hover:bg-gray-50"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setCreateExemptAuthorIds((prev) => [...prev, author.id]);
+                                } else {
+                                  setCreateExemptAuthorIds((prev) =>
+                                    prev.filter((id) => id !== author.id)
+                                  );
+                                }
+                              }}
+                              className="w-4 h-4 text-emerald-600 accent-emerald-600 rounded cursor-pointer shrink-0"
+                            />
+                            <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200 shrink-0">
+                              {author.photoUrl ? (
+                                <img
+                                  src={
+                                    author.photoUrl.startsWith("http")
+                                      ? author.photoUrl
+                                      : `${API}${author.photoUrl.startsWith("/") ? author.photoUrl : "/" + author.photoUrl}`
+                                  }
+                                  alt={author.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-xs font-bold text-paa-navy font-serif">
+                                  {author.name ? author.name.charAt(0) : "A"}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-bold text-gray-900 truncate">
+                                  {author.name}
+                                </span>
+                                {author.penName && (
+                                  <span className="text-[11px] text-gray-500 font-medium italic">
+                                    ({author.penName})
+                                  </span>
+                                )}
+                                {isChecked && (
+                                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                                    ₹0 Fee Waived
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-gray-400 truncate">{author.email}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-2 mt-4 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
                   <input
                     type="checkbox"
@@ -10164,6 +10329,153 @@ const totalAuthorsBase = eventRegistrations.length;
                       >
                         Live POS Enabled
                       </label>
+                    </div>
+                  </div>
+
+                  {/* Edit Event: Author Fee Exemption Selector */}
+                  <div className="mt-4 p-4 bg-emerald-50/50 rounded-xl border border-emerald-200/80 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <label className="text-sm font-bold text-emerald-950 flex items-center gap-1.5">
+                            <Sparkles className="w-4 h-4 text-emerald-600" />
+                            Fee Exemption for Authors (₹0 Event Fees)
+                          </label>
+                          {(editingEvent.exemptAuthorIds || []).length > 0 && (
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-600 text-white shadow-xs">
+                              {(editingEvent.exemptAuthorIds || []).length} Selected (₹0 Fee)
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          Select authors who get 100% fee waiver for this event.
+                        </p>
+                      </div>
+
+                      {/* Quick Action Buttons */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const authorSource = (allAuthorsList && allAuthorsList.length > 0 ? allAuthorsList : authors) || [];
+                            const allActiveIds = authorSource
+                              .filter((a: any) => a.status === "Active" || !a.status || a.status === "Approved")
+                              .map((a: any) => a.id);
+                            setEditingEvent({
+                              ...editingEvent,
+                              exemptAuthorIds: allActiveIds,
+                            });
+                          }}
+                          className="px-2.5 py-1 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors"
+                        >
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditingEvent({
+                              ...editingEvent,
+                              exemptAuthorIds: [],
+                            })
+                          }
+                          className="px-2.5 py-1 text-xs font-bold text-gray-600 bg-white hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Search filter for authors */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search authors by name, pen name, or email..."
+                        value={editAuthorSearch}
+                        onChange={(e) => setEditAuthorSearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                      />
+                    </div>
+
+                    {/* Scrollable Checklist */}
+                    <div className="max-h-56 overflow-y-auto border border-emerald-100 bg-white rounded-xl divide-y divide-gray-100 p-1">
+                      {((allAuthorsList && allAuthorsList.length > 0 ? allAuthorsList : authors) || [])
+                        .filter((a: any) => a.status === "Active" || !a.status || a.status === "Approved")
+                        .filter((a: any) => {
+                          if (!editAuthorSearch) return true;
+                          const q = editAuthorSearch.toLowerCase();
+                          return (
+                            (a.name && a.name.toLowerCase().includes(q)) ||
+                            (a.penName && a.penName.toLowerCase().includes(q)) ||
+                            (a.email && a.email.toLowerCase().includes(q))
+                          );
+                        })
+                        .map((author: any) => {
+                          const currentExempt: number[] = editingEvent.exemptAuthorIds || [];
+                          const isChecked = currentExempt.includes(author.id);
+                          return (
+                            <label
+                              key={author.id}
+                              className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                                isChecked ? "bg-emerald-50/80" : "hover:bg-gray-50"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setEditingEvent({
+                                      ...editingEvent,
+                                      exemptAuthorIds: [...currentExempt, author.id],
+                                    });
+                                  } else {
+                                    setEditingEvent({
+                                      ...editingEvent,
+                                      exemptAuthorIds: currentExempt.filter((id: number) => id !== author.id),
+                                    });
+                                  }
+                                }}
+                                className="w-4 h-4 text-emerald-600 accent-emerald-600 rounded cursor-pointer shrink-0"
+                              />
+                              <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200 shrink-0">
+                                {author.photoUrl ? (
+                                  <img
+                                    src={
+                                      author.photoUrl.startsWith("http")
+                                        ? author.photoUrl
+                                        : `${API}${author.photoUrl.startsWith("/") ? author.photoUrl : "/" + author.photoUrl}`
+                                    }
+                                    alt={author.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-xs font-bold text-paa-navy font-serif">
+                                    {author.name ? author.name.charAt(0) : "A"}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs font-bold text-gray-900 truncate">
+                                    {author.name}
+                                  </span>
+                                  {author.penName && (
+                                    <span className="text-[11px] text-gray-500 font-medium italic">
+                                      ({author.penName})
+                                    </span>
+                                  )}
+                                  {isChecked && (
+                                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                                      ₹0 Fee Waived
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-gray-400 truncate">{author.email}</p>
+                              </div>
+                            </label>
+                          );
+                        })}
                     </div>
                   </div>
 

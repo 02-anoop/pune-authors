@@ -4953,37 +4953,50 @@ router.post('/api/admin/events/:eventId/author/:authorId/approve', verifyToken, 
     const eventId = parseInt(req.params.eventId);
     const authorId = parseInt(req.params.authorId);
 
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
     const existingRegistration = await prisma.eventAuthor.findFirst({
       where: { eventId, authorId }
     });
 
+    const isExempt = Boolean(
+      existingRegistration?.isFeeExempt || 
+      (event?.exemptAuthorIds && Array.isArray(event.exemptAuthorIds) && event.exemptAuthorIds.includes(authorId))
+    );
+
     if (existingRegistration) {
       await prisma.eventAuthor.update({
         where: { id: existingRegistration.id },
-        data: { optInStatus: 'Approved' }
+        data: { 
+          optInStatus: 'Approved',
+          isFeeExempt: isExempt,
+          ...(isExempt ? { paymentStatus: 'Paid' } : {})
+        }
       });
     } else {
       await prisma.eventAuthor.create({
         data: {
           eventId,
           authorId,
-          optInStatus: 'Approved'
+          optInStatus: 'Approved',
+          isFeeExempt: isExempt,
+          paymentStatus: isExempt ? 'Paid' : 'Unpaid'
         }
       });
     }
 
     const author = await prisma.author.findUnique({ where: { id: authorId } });
-    const event = await prisma.event.findUnique({ where: { id: eventId } });
     if (author && event) {
+      const emailBody = isExempt
+        ? `<p>Great news! Your registration for the event <strong>${event.name}</strong> has been approved by the administrators.</p>
+           <p><strong>Fee Exemption:</strong> Your event registration fee has been waived (₹0 fee). Your slot is confirmed!</p>`
+        : `<p>Great news! Your registration for the event <strong>${event.name}</strong> has been approved by the administrators.</p>
+           <p><strong>Next Step:</strong> Please log in to your Author Dashboard and navigate to the Events section to complete your payment and secure your slot.</p>
+           <p>Your slot is not confirmed until the payment has been processed.</p>`;
+
       sendNotificationEmail(
         author.email,
         `Action Required: Event Registration Approved - ${event.name}`,
-        emailWrap(
-          `Your Registration is Approved`,
-          `<p>Great news! Your registration for the event <strong>${event.name}</strong> has been approved by the administrators.</p>
-           <p><strong>Next Step:</strong> Please log in to your Author Dashboard and navigate to the Events section to complete your payment and secure your slot.</p>
-           <p>Your slot is not confirmed until the payment has been processed.</p>`
-        )
+        emailWrap(`Your Registration is Approved`, emailBody)
       ).catch(e => console.error('Failed to send approve email:', e));
 
       invalidateCache(`author:dashboard:${author.email}`);
@@ -5320,8 +5333,19 @@ router.get('/api/author/events', verifyToken, async (req, res) => {
     };
 
     pastEvents.forEach(attachParticipation);
-    availableEvents.forEach(attachParticipation);
-    eventInvites.forEach(ei => { if (ei.event) attachParticipation(ei.event); });
+    availableEvents.forEach(ae => {
+      attachParticipation(ae);
+      const isAvailExempt = Boolean(Array.isArray(ae.exemptAuthorIds) && ae.exemptAuthorIds.includes(author.id));
+      ae.isFeeExempt = isAvailExempt;
+    });
+    eventInvites.forEach(ei => { 
+      const isExempt = Boolean(ei.isFeeExempt || (ei.event?.exemptAuthorIds && Array.isArray(ei.event.exemptAuthorIds) && ei.event.exemptAuthorIds.includes(author.id)));
+      ei.isFeeExempt = isExempt;
+      if (ei.event) {
+        attachParticipation(ei.event);
+        ei.event.isFeeExempt = isExempt;
+      }
+    });
 
     const result = { eventInvites, books, listedBooks, pastEvents, availableEvents };
     setCache(cacheKey, result, 30 * 1000);
@@ -5564,11 +5588,14 @@ router.post('/api/author/events/:eventId/opt-in', verifyToken, upload.single('pa
 
       // ── STEP 3: Create or Update EventAuthor status (handles authors not in original broadcast) ──
       const existingTxAuthor = await tx.eventAuthor.findFirst({ where: { eventId, authorId: author.id } });
+      const isAuthorFeeExempt = Boolean(existingTxAuthor?.isFeeExempt || (event.exemptAuthorIds && Array.isArray(event.exemptAuthorIds) && event.exemptAuthorIds.includes(author.id)));
       if (existingTxAuthor) {
         await tx.eventAuthor.update({
           where: { id: existingTxAuthor.id },
           data: {
             optInStatus: 'Pending Approval',
+            isFeeExempt: isAuthorFeeExempt,
+            paymentStatus: isAuthorFeeExempt ? 'Paid' : (existingTxAuthor.paymentStatus || 'Unpaid'),
             ...(paymentScreenshot && { paymentScreenshot }),
             ...(transactionId && { transactionId }),
           }
@@ -5579,6 +5606,8 @@ router.post('/api/author/events/:eventId/opt-in', verifyToken, upload.single('pa
             eventId,
             authorId: author.id,
             optInStatus: 'Pending Approval',
+            isFeeExempt: isAuthorFeeExempt,
+            paymentStatus: isAuthorFeeExempt ? 'Paid' : 'Unpaid',
             ...(paymentScreenshot && { paymentScreenshot }),
             ...(transactionId && { transactionId }),
           }
@@ -5876,6 +5905,17 @@ router.post('/api/admin/events', verifyToken, isAdmin, upload.single('banner'), 
       bannerUrl = `/uploads/${req.file.filename}`;
     }
 
+    let exemptAuthorIds = [];
+    if (req.body.exemptAuthorIds) {
+      try {
+        exemptAuthorIds = typeof req.body.exemptAuthorIds === 'string' ? JSON.parse(req.body.exemptAuthorIds) : req.body.exemptAuthorIds;
+      } catch (e) {
+        exemptAuthorIds = [];
+      }
+    }
+    if (!Array.isArray(exemptAuthorIds)) exemptAuthorIds = [];
+    exemptAuthorIds = exemptAuthorIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+
     const event = await prisma.event.create({
       data: {
         name,
@@ -5894,6 +5934,7 @@ router.post('/api/admin/events', verifyToken, isAdmin, upload.single('banner'), 
         category: category || null,
         registrationFee: registrationFee ? parseFloat(registrationFee) : 0,
         feeType: feeType || 'Per Author',
+        exemptAuthorIds: exemptAuthorIds.length > 0 ? exemptAuthorIds : null,
         aggAuthors: req.body.aggAuthors ? parseInt(req.body.aggAuthors) : null,
         aggTitles: req.body.aggTitles ? parseInt(req.body.aggTitles) : null,
         aggSent: req.body.aggSent ? parseInt(req.body.aggSent) : null,
@@ -5904,8 +5945,18 @@ router.post('/api/admin/events', verifyToken, isAdmin, upload.single('banner'), 
       }
     });
 
+    const exemptSet = new Set(exemptAuthorIds);
     const activeAuthors = await prisma.author.findMany({ where: { status: 'Active' } });
-    const eventAuthorsData = activeAuthors.map(a => ({ eventId: event.id, authorId: a.id, optInStatus: 'Pending' }));
+    const eventAuthorsData = activeAuthors.map(a => {
+      const isExempt = exemptSet.has(a.id);
+      return {
+        eventId: event.id,
+        authorId: a.id,
+        optInStatus: 'Pending',
+        isFeeExempt: isExempt,
+        paymentStatus: isExempt ? 'Paid' : 'Unpaid'
+      };
+    });
     await prisma.eventAuthor.createMany({ data: eventAuthorsData, skipDuplicates: true });
 
     if (notifyAllAuthors !== 'false') {
@@ -5917,31 +5968,38 @@ router.post('/api/admin/events', verifyToken, isAdmin, upload.single('banner'), 
          </div>`;
       }
 
-      const content = `
-        ${bannerHtml}
-        <h2 style="color: #1e3a8a; margin-bottom: 15px;">${event.name}</h2>
-        
-        <div style="background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 15px 20px; border-radius: 4px; margin-bottom: 25px; color: #4b5563; font-size: 15px; font-style: italic; line-height: 1.5;">
-          ${event.description ? event.description.replace(/\\n/g, '<br>') : 'Join us for our upcoming event! Click the link below to view more details and register.'}
-        </div>
-        
-        <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-          <h3 style="margin-top: 0; color: #1f2937; font-size: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 15px;">Event Quick Facts</h3>
-          <p style="margin: 8px 0; font-size: 15px;"><strong>📅 Date:</strong> ${new Date(event.date || event.startDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          <p style="margin: 8px 0; font-size: 15px;"><strong>📍 Location:</strong> ${event.location || event.venue || 'TBA'}</p>
-          ${event.registrationFee > 0 ? `<p style="margin: 8px 0; font-size: 15px;"><strong>💰 Registration Fee:</strong> ₹${event.registrationFee} ${event.feeType === 'Per Title' ? 'per title' : ''}</p>` : '<p style="margin: 8px 0; font-size: 15px;"><strong>💰 Registration:</strong> Free</p>'}
-        </div>
-        
-        <div style="text-align: center; margin-top: 35px; margin-bottom: 15px;">
-          <a href="https://puneauthorsassociation.com/dashboard/events" style="background-color: #dc2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px rgba(220, 38, 38, 0.2);">Register Now</a>
-        </div>
-        <p style="text-align: center; font-size: 13px; color: #6b7280; margin-top: 15px;">
-          You can also access the registration page from the "Events Ecosystem" tab in your Author Portal.
-        </p>
-      `;
-
       // Async email sending loop so we don't block the response
       for (const author of activeAuthors) {
+        const isAuthorExempt = exemptSet.has(author.id);
+        const feeText = isAuthorExempt
+          ? '<p style="margin: 8px 0; font-size: 15px;"><strong>💰 Registration:</strong> <span style="color: #16a34a; font-weight: bold;">Free (Fee Waived by Admin)</span></p>'
+          : (event.registrationFee > 0
+              ? `<p style="margin: 8px 0; font-size: 15px;"><strong>💰 Registration Fee:</strong> ₹${event.registrationFee} ${event.feeType === 'Per Title' ? 'per title' : ''}</p>`
+              : '<p style="margin: 8px 0; font-size: 15px;"><strong>💰 Registration:</strong> Free</p>');
+
+        const content = `
+          ${bannerHtml}
+          <h2 style="color: #1e3a8a; margin-bottom: 15px;">${event.name}</h2>
+          
+          <div style="background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 15px 20px; border-radius: 4px; margin-bottom: 25px; color: #4b5563; font-size: 15px; font-style: italic; line-height: 1.5;">
+            ${event.description ? event.description.replace(/\\n/g, '<br>') : 'Join us for our upcoming event! Click the link below to view more details and register.'}
+          </div>
+          
+          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+            <h3 style="margin-top: 0; color: #1f2937; font-size: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 15px;">Event Quick Facts</h3>
+            <p style="margin: 8px 0; font-size: 15px;"><strong>📅 Date:</strong> ${new Date(event.date || event.startDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p style="margin: 8px 0; font-size: 15px;"><strong>📍 Location:</strong> ${event.location || event.venue || 'TBA'}</p>
+            ${feeText}
+          </div>
+          
+          <div style="text-align: center; margin-top: 35px; margin-bottom: 15px;">
+            <a href="https://puneauthorsassociation.com/dashboard/events" style="background-color: #dc2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px rgba(220, 38, 38, 0.2);">Register Now</a>
+          </div>
+          <p style="text-align: center; font-size: 13px; color: #6b7280; margin-top: 15px;">
+            You can also access the registration page from the "Events Ecosystem" tab in your Author Portal.
+          </p>
+        `;
+
         sendNotificationEmail(author.email, subject, emailWrap(subject, content)).catch(e => console.error('Failed to notify author:', author.email, e));
       }
     }
@@ -6204,6 +6262,34 @@ router.put('/api/admin/events/:id', verifyToken, isAdmin, upload.single('banner'
 
     if (req.file) {
       updateData.bannerUrl = `/uploads/${req.file.filename}`;
+    }
+
+    if (req.body.exemptAuthorIds !== undefined) {
+      let exemptAuthorIds = [];
+      try {
+        exemptAuthorIds = typeof req.body.exemptAuthorIds === 'string' ? JSON.parse(req.body.exemptAuthorIds) : req.body.exemptAuthorIds;
+      } catch (e) {
+        exemptAuthorIds = [];
+      }
+      if (Array.isArray(exemptAuthorIds)) {
+        exemptAuthorIds = exemptAuthorIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+        updateData.exemptAuthorIds = exemptAuthorIds.length > 0 ? exemptAuthorIds : null;
+
+        const exemptSet = new Set(exemptAuthorIds);
+        const existingEAs = await prisma.eventAuthor.findMany({ where: { eventId } });
+        for (const ea of existingEAs) {
+          const isExempt = exemptSet.has(ea.authorId);
+          if (ea.isFeeExempt !== isExempt) {
+            await prisma.eventAuthor.update({
+              where: { id: ea.id },
+              data: {
+                isFeeExempt: isExempt,
+                ...(isExempt && (ea.paymentStatus === 'Unpaid' || !ea.paymentStatus) ? { paymentStatus: 'Paid' } : {})
+              }
+            });
+          }
+        }
+      }
     }
 
     const event = await prisma.event.update({

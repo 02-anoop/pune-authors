@@ -329,6 +329,7 @@ model Event {
   category           String?
   dateType           String?       @default("exact")
   tentativeDate      String?
+  exemptAuthorIds    Json?
   eventAuthors       EventAuthor[]
   eventBooks         EventBook[]
   galleryEvent       GalleryEvent?
@@ -352,6 +353,7 @@ model EventAuthor {
   rejectionReason    String?
   manualDailySales   Json?
   isArchived         Boolean  @default(false)
+  isFeeExempt        Boolean  @default(false)
   author             Author   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   event              Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import FocusTrap from 'focus-trap-react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router';
-import { Home, Check, AlertCircle, Upload, Download, Loader2, LogOut, User, Bell, Search, ShoppingCart, BookOpen, CalendarIcon, BarChart3, Package, TrendingUp, TrendingDown, X, MapPin, Menu, ChevronDown, ChevronUp, DollarSign, CheckCircle2, FileText, Image as ImageIcon, Star, Plus, Minus, Eye, Edit2, Mail, Phone, Clock, Trash2, MessageSquare, ExternalLink, Send, ChevronLeft, ChevronRight, RefreshCw, Users, Megaphone, Archive } from 'lucide-react';
+import { Home, Check, AlertCircle, Upload, Download, Loader2, LogOut, User, Bell, Search, ShoppingCart, BookOpen, CalendarIcon, BarChart3, Package, TrendingUp, TrendingDown, X, MapPin, Menu, ChevronDown, ChevronUp, DollarSign, CheckCircle2, FileText, Image as ImageIcon, Star, Plus, Minus, Eye, Edit2, Mail, Phone, Clock, Trash2, MessageSquare, ExternalLink, Send, ChevronLeft, ChevronRight, RefreshCw, Users, Megaphone, Archive, Sparkles } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell , AreaChart, Area, LabelList, Legend, ScatterChart, Scatter, ZAxis, Label } from 'recharts';
 import axios from 'axios';
 // exceljs and file-saver are dynamically imported inside export handlers to reduce initial bundle size
@@ -849,6 +849,11 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
   const titlesData = authorBooks.map((b: any, index: number) => {
     const webSales = authorOrders.filter((o: any) => (o.bookId === b.id || o.bookTitle === b.title) && ['Pending Verification', 'Completed', 'Processing', 'Delivered', 'Dispatched', 'Accepted', 'Paid'].includes(o.status || o.orderStatus)).reduce((acc: number, curr: any) => acc + (curr.quantity || 1), 0);
     const eventSales = (data.listedBooks || []).filter((lb: any) => lb.bookId === b.id).reduce((acc: number, curr: any) => acc + (curr.soldStock || 0), 0);
+    const donatedCopies = (data?.authorProfile?.donationRegistrations || []).reduce((acc: number, dr: any) => {
+      const bookDonations = (dr.books || []).filter((db: any) => db.bookId === b.id);
+      return acc + bookDonations.reduce((dAcc: number, db: any) => dAcc + (db.quantityDonated || db.qtyReceived || db.qtyDispatched || 0), 0);
+    }, 0);
+
     const totalSold = webSales + eventSales;
     return {
       sno: index + 1,
@@ -859,7 +864,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
       overpriced: b.overpriced ? 'Yes' : 'No',
       pub: 'Self-Published',
       genre: b.genre,
-      sold: { total: totalSold, web: webSales, events: eventSales },
+      sold: { total: totalSold, web: webSales, events: eventSales, donated: donatedCopies },
       status: b.status,
       rejectionReason: b.rejectionReason,
       stock: b.stock
@@ -883,13 +888,12 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
     }));
 
   const distributionActivityData = titlesData.map((t: any) => {
-    const bk = authorBooks.find((b: any) => b.id === t.id) || {};
     return {
-      name: t.title.length > 12 ? t.title.substring(0, 12) + '…' : t.title,
+      name: t.title.length > 14 ? t.title.substring(0, 14) + '…' : t.title,
       fullTitle: t.title,
       'Web Sold': t.sold.web || 0,
-      'Airport Qty': bk.airportQty || 0,
-      'Book Fair Qty': bk.eventQty || 0
+      'Event / Fair Sold': t.sold.events || 0,
+      'Donated': t.sold.donated || 0
     };
   });
 
@@ -993,6 +997,8 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
   const pendingPaymentEvents = data.eventInvites?.filter((inv: any) => {
     const evt = inv.event;
     if (!evt) return false;
+    const isExempt = Boolean(inv.isFeeExempt || evt.isFeeExempt || (evt.exemptAuthorIds && Array.isArray(evt.exemptAuthorIds) && evt.exemptAuthorIds.includes(data.authorProfile?.id)));
+    if (isExempt) return false;
     return inv.optInStatus === 'Approved' && (evt.registrationFee > 0 || evt.charges > 0) && !inv.paymentScreenshot && inv.paymentStatus !== 'Paid' && inv.paymentStatus !== 'Pending Verification' && evt.status !== 'Past' && evt.status !== 'Legacy Archive';
   }) || [];
   const pendingPaymentActivities = data.authorProfile?.eventRegistrations?.filter((reg: any) => {
@@ -1043,10 +1049,6 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
   const maxLowStockTs = activeAlerts.length > 0 ? Math.max(...activeAlerts.map((a: any) => a.timestamp)) : 0;
   if (activeAlerts.length > 0 && !dismissedActions.includes(`act-lowstock-${maxLowStockTs}`)) {
     actionItems.push({ id: `act-lowstock-${maxLowStockTs}`, text: `Admin Notification: ${activeAlerts.length} of your books have critically low stock!`, icon: Package, color: 'text-red-600', bg: 'bg-red-100', link: '/dashboard/inventory' });
-  }
-
-  if (actionItems.length === 0) {
-    actionItems.push({ id: 'act-none', text: 'All caught up! No pending actions.', icon: Check, color: 'text-gray-600', bg: 'bg-gray-100', link: '' });
   }
 
   const handleAddBook = async (e: React.FormEvent | null, addAnother: boolean = false) => {
@@ -1431,32 +1433,32 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
       })()}
 
       {/* ── CTA: Upcoming Event Registration ── */}
-      <div className="mb-8 relative group cursor-pointer">
+      <div className="mb-3.5 relative group cursor-pointer">
         <Link 
           to="/dashboard/events" 
-          className="relative overflow-hidden w-full flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white p-5 rounded-2xl shadow-[0_8px_30px_-4px_rgba(79,70,229,0.3)] transition-all duration-300 border border-indigo-400/30"
+          className="relative overflow-hidden w-full flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white px-4 py-3 rounded-xl shadow-xs transition-all duration-300 border border-indigo-400/30"
         >
           {/* Subtle background pattern/texture */}
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:20px_20px]"></div>
           
-          <div className="relative z-10 flex items-center gap-4">
-            <div className="flex h-4 w-4 relative items-center justify-center shrink-0">
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="flex h-3.5 w-3.5 relative items-center justify-center shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-80"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-300 shadow-[0_0_12px_rgba(251,191,36,1)]"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,1)]"></span>
             </div>
             <div className="flex flex-col items-start text-left">
-              <span className="font-bold text-[17px] tracking-wide text-white drop-shadow-sm flex items-center gap-2">
+              <span className="font-bold text-sm tracking-wide text-white drop-shadow-sm flex items-center gap-2">
                 📢 Upcoming Events
               </span>
-              <span className="text-indigo-100 text-sm font-medium opacity-90 mt-0.5">
+              <span className="text-indigo-100 text-xs font-medium opacity-90 mt-0.5">
                 {eventSubtext}
               </span>
             </div>
           </div>
           
-          <div className="relative z-10 flex items-center gap-2 bg-white/10 hover:bg-white/20 px-5 py-2.5 rounded-xl backdrop-blur-sm transition-colors border border-white/10 shrink-0">
-            <span className="text-sm font-bold uppercase tracking-wider">Register Now</span>
-            <svg className="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+          <div className="relative z-10 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-lg backdrop-blur-sm transition-colors border border-white/10 shrink-0">
+            <span className="text-xs font-bold uppercase tracking-wider">Register Now</span>
+            <svg className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </div>
@@ -1465,31 +1467,31 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
 
       {/* ── Rejection Notices ── */}
       {rejectedInvites.map((inv: any) => (
-        <div key={inv.id} className="mb-8 relative group cursor-pointer">
+        <div key={inv.id} className="mb-3.5 relative group cursor-pointer">
           <Link 
             to="/dashboard/events" 
-            className="relative overflow-hidden w-full flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white p-5 rounded-2xl shadow-[0_8px_30px_-4px_rgba(220,38,38,0.3)] transition-all duration-300 border border-red-400/30"
+            className="relative overflow-hidden w-full flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white px-4 py-3 rounded-xl shadow-xs transition-all duration-300 border border-red-400/30"
           >
             {/* Subtle background pattern/texture */}
             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:20px_20px]"></div>
             
-            <div className="relative z-10 flex items-center gap-4">
-              <div className="flex h-10 w-10 relative items-center justify-center shrink-0 bg-white/20 rounded-full shadow-inner">
-                <AlertCircle className="w-5 h-5 text-white" />
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="flex h-8 w-8 relative items-center justify-center shrink-0 bg-white/20 rounded-full shadow-inner">
+                <AlertCircle className="w-4 h-4 text-white" />
               </div>
               <div className="flex flex-col items-start text-left">
-                <span className="font-bold text-[17px] tracking-wide text-white drop-shadow-sm flex items-center gap-2">
+                <span className="font-bold text-sm tracking-wide text-white drop-shadow-sm flex items-center gap-2">
                   Registration {inv.optInStatus === 'Declined' ? 'Declined' : 'Rejected'}: {inv.event?.name}
                 </span>
-                <span className="text-red-100 text-sm font-medium opacity-90 mt-0.5">
-                  <span className="font-black uppercase tracking-wider text-[11px] opacity-75">Reason:</span> {inv.rejectionReason || 'No reason provided'}
+                <span className="text-red-100 text-xs font-medium opacity-90 mt-0.5">
+                  <span className="font-black uppercase tracking-wider text-[10px] opacity-75">Reason:</span> {inv.rejectionReason || 'No reason provided'}
                 </span>
               </div>
             </div>
             
-            <div className="relative z-10 flex items-center gap-2 bg-white/10 hover:bg-white/20 px-5 py-2.5 rounded-xl backdrop-blur-sm transition-colors border border-white/10 shrink-0">
-              <span className="text-sm font-bold uppercase tracking-wider">Reapply Now</span>
-              <svg className="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            <div className="relative z-10 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-lg backdrop-blur-sm transition-colors border border-white/10 shrink-0">
+              <span className="text-xs font-bold uppercase tracking-wider">Reapply Now</span>
+              <svg className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </div>
@@ -1497,30 +1499,36 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
         </div>
       ))}
 
-      {/* ════ Pending Actions — Full Width Strip Above KPIs ════ */}
-      <div className="bg-white rounded-2xl border border-paa-navy/5 shadow-sm px-6 py-5 mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <AlertCircle className="w-5 h-5 text-amber-500 animate-pulse" aria-hidden="true" />
-          <h3 className="text-base font-serif font-semibold text-paa-navy">Pending Actions</h3>
-          {actionItems.length > 0 && actionItems[0].id !== 'act-none' && (
-            <span className="ml-1 text-xs font-bold bg-amber-100 text-amber-700 rounded-full px-2.5 py-0.5">{actionItems.length}</span>
-          )}
-        </div>
-        {actionItems.length === 0 || actionItems[0].id === 'act-none' ? (
-          <p className="text-sm text-paa-gray-text py-1">✓ All caught up — no pending actions.</p>
-        ) : (
-          <div className="flex flex-wrap gap-3">
+      {/* ════ Pending Actions — Compact, Space-Efficient, Rendered ONLY when there are active actions ════ */}
+      {actionItems.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-50/70 via-orange-50/40 to-amber-50/60 rounded-xl border border-amber-200/80 shadow-xs px-3.5 py-2.5 mb-3.5">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600 animate-pulse shrink-0" aria-hidden="true" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-amber-950 font-serif">Pending Actions</h3>
+              <span className="text-[10px] font-black bg-amber-200/80 text-amber-900 rounded-full px-2 py-0.2 shadow-xs">
+                {actionItems.length}
+              </span>
+            </div>
+            <span className="text-[10px] text-amber-800/70 font-semibold hidden sm:inline">
+              Action required to proceed
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {actionItems.map((item) => {
               const Icon = item.icon;
               return (
                 <div
                   key={item.id}
                   onClick={() => { if (item.link) navigate(item.link); }}
-                  className={`group relative flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 w-full sm:w-auto ${item.bg} ${item.color.replace('text-', 'border-').replace('600', '200')}`}
+                  className={`group relative flex items-center gap-2.5 px-3 py-1.5 rounded-lg border cursor-pointer transition-all hover:shadow-xs hover:border-amber-400 bg-white/90 ${item.color.replace('text-', 'border-').replace('600', '200')}`}
                 >
-                  <Icon size={18} aria-hidden="true" className={item.color} />
-                  <div className="leading-tight pr-2 flex-1 min-w-0">
-                    <p className="text-sm font-bold text-wrap break-words">{item.text}</p>
+                  <div className={`p-1.5 rounded-md shrink-0 ${item.bg}`}>
+                    <Icon size={14} aria-hidden="true" className={item.color} />
+                  </div>
+                  <div className="leading-tight pr-1 flex-1 min-w-0">
+                    <p className="text-xs font-bold text-gray-800 truncate group-hover:text-paa-navy transition-colors">{item.text}</p>
                   </div>
                   <button
                     aria-label={`Dismiss ${item.text}`}
@@ -1530,68 +1538,68 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
                       setDismissedActions(next);
                       localStorage.setItem('paa_author_dismissed', JSON.stringify(next));
                     }}
-                    className="ml-1 p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-black/10 transition-all"
+                    className="p-1 rounded-full text-gray-400 opacity-60 group-hover:opacity-100 hover:text-gray-700 hover:bg-black/5 transition-all shrink-0"
+                    title="Dismiss"
                   >
-                    <X size={13} aria-hidden="true" />
+                    <X size={12} aria-hidden="true" />
                   </button>
                 </div>
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-3.5">
         <div className="dash-kpi-card green">
-          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">Event Participation</p>
-          <h3 className="text-2xl font-bold text-paa-navy">{`${data?.authorProfile?.aggParticipatedEvents || 0}/${data?.authorProfile?.aggEligibleEvents || 0}`}</h3>
+          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-0.5">Event Participation</p>
+          <h3 className="text-xl font-black text-paa-navy">{`${data?.authorProfile?.aggParticipatedEvents || 0}/${data?.authorProfile?.aggEligibleEvents || 0}`}</h3>
         </div>
         <div className="dash-kpi-card blue">
-          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">Total Titles</p>
-          <h3 className="text-2xl font-bold text-paa-navy">{authorBooks.length}</h3>
+          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-0.5">Total Titles</p>
+          <h3 className="text-xl font-black text-paa-navy">{authorBooks.length}</h3>
         </div>
         
         <div className="dash-kpi-card amber lg:col-span-2 flex flex-col justify-center">
-          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">Total Sales</p>
-          <div className="flex items-end gap-3 mb-2">
-            <h3 className="text-2xl font-bold text-paa-navy leading-none">₹{grossSales.toFixed(0)}</h3>
+          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-0.5">Total Sales</p>
+          <div className="flex items-end gap-3 mb-1">
+            <h3 className="text-xl font-black text-paa-navy leading-none">₹{grossSales.toFixed(0)}</h3>
           </div>
-          <div className="flex flex-wrap items-center gap-2 mt-1">
-            <button onClick={() => navigate('/dashboard/orders')} className="text-[9px] font-bold text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 uppercase tracking-widest bg-blue-50/50 px-2.5 py-1 rounded-md transition-colors shadow-sm">
+          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+            <button onClick={() => navigate('/dashboard/orders')} className="text-[9px] font-bold text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 uppercase tracking-wider bg-blue-50/50 px-2 py-0.5 rounded transition-colors shadow-2xs">
               Web Orders: ₹{webSalesAmount.toFixed(0)}
             </button>
-            <button onClick={() => navigate('/dashboard/events')} className="text-[9px] font-bold text-amber-600 hover:text-white hover:bg-amber-500 border border-amber-200 uppercase tracking-widest bg-amber-50/50 px-2.5 py-1 rounded-md transition-colors shadow-sm">
+            <button onClick={() => navigate('/dashboard/events')} className="text-[9px] font-bold text-amber-600 hover:text-white hover:bg-amber-500 border border-amber-200 uppercase tracking-wider bg-amber-50/50 px-2 py-0.5 rounded transition-colors shadow-2xs">
               Event/Fair Sales: ₹{posSalesAmount.toFixed(0)}
             </button>
           </div>
         </div>
 
-        <button onClick={() => navigate('/dashboard/payments')} className="dash-kpi-card red text-left cursor-pointer hover:shadow-md hover:border-red-200 transition-all relative group">
+        <button onClick={() => navigate('/dashboard/payments')} className="dash-kpi-card red text-left cursor-pointer hover:shadow-md hover:border-red-200 transition-all relative group flex flex-col justify-between">
           <div className="flex justify-between items-start">
-            <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">Total Fees Paid</p>
-            <span className="text-red-400 bg-red-50 group-hover:bg-red-100 transition-colors p-1 rounded-full"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg></span>
+            <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-0.5">Total Fees Paid</p>
+            <span className="text-red-400 bg-red-50 group-hover:bg-red-100 transition-colors p-0.5 rounded-full"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg></span>
           </div>
-          <h3 className="text-2xl font-bold text-paa-navy">₹{totalFeesPaid}</h3>
+          <h3 className="text-xl font-black text-paa-navy">₹{totalFeesPaid}</h3>
         </button>
       </div>
 
-
       {/* ── Library Donations KPI Cards ── */}
       {data?.activeDonations?.length > 0 || donationRegistrations.length > 0 ? (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-paa-navy">Library Donations Overview</h3>
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-bold text-paa-navy">Library Donations Overview</h3>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
             {[
               { label: 'Pending Registrations', value: pendingRegistrations, colorClass: 'amber' },
               { label: 'Libraries Donated', value: uniqueLibraries, colorClass: 'teal' },
               { label: 'Books Donated', value: totalBooksDonated, colorClass: 'blue' },
             ].map((kpi, i) => (
               <div key={i} className={`dash-kpi-card ${kpi.colorClass}`}>
-                <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-1">{kpi.label}</p>
-                <h3 className="text-2xl font-bold text-paa-navy">{kpi.value}</h3>
+                <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-0.5">{kpi.label}</p>
+                <h3 className="text-xl font-black text-paa-navy">{kpi.value}</h3>
               </div>
             ))}
           </div>
@@ -2192,8 +2200,9 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
 
         {/* Chart 3: Distribution Activity */}
         <div className="bg-white border border-paa-navy/5 rounded-2xl shadow-sm overflow-hidden flex flex-col justify-between">
-          <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+          <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
             <h3 className="text-sm font-bold text-paa-navy uppercase tracking-widest">Distribution Activity Breakdown</h3>
+            <span className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">Per Title</span>
           </div>
           <div className="p-6">
             <div className="h-[250px] w-full">
@@ -2208,8 +2217,8 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
                   />
                   <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
                   <Bar dataKey="Web Sold" stackId="dist" fill="#16a34a" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="Airport Qty" stackId="dist" fill="#0284c7" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="Book Fair Qty" stackId="dist" fill="#9333ea" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="Event / Fair Sold" stackId="dist" fill="#f59e0b" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="Donated" stackId="dist" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -4584,9 +4593,16 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
     ...invites.filter((inv: any) => !inv.optInStatus?.includes('-Draft')).map((inv: any) => {
       const eventBooks = listedBooks.filter((lb: any) => lb.eventId === (inv.eventId || inv.event?.id));
       const hasGranular = eventBooks.some((lb: any) => (lb.soldStock > 0 || lb.returnedStock > 0));
+      const isAuthorFeeExempt = Boolean(
+        inv.isFeeExempt ||
+        inv.event?.isFeeExempt ||
+        (inv.event?.exemptAuthorIds && Array.isArray(inv.event.exemptAuthorIds) && inv.event.exemptAuthorIds.includes(dashboardData?.authorProfile?.id))
+      );
       let calcPaid = 0;
       if (inv.optInStatus === 'Registered' || inv.optInStatus === 'Approved' || inv.optInStatus === 'Pending Approval') {
-         if (inv.event?.feeType === 'Per Title') {
+         if (isAuthorFeeExempt) {
+             calcPaid = 0;
+         } else if (inv.event?.feeType === 'Per Title') {
              calcPaid = (inv.event?.registrationFee || 0) * eventBooks.length;
          } else {
              calcPaid = (inv.event?.registrationFee || 0);
@@ -4594,9 +4610,10 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
       }
       return {
         ...inv.event,
+        isFeeExempt: isAuthorFeeExempt,
         amountPaid: calcPaid,
         registration: inv.optInStatus,
-        paymentStatus: inv.paymentStatus,
+        paymentStatus: isAuthorFeeExempt ? 'Paid' : inv.paymentStatus,
         transactionId: inv.transactionId,
         paymentProofUrl: inv.paymentScreenshot || inv.paymentProofUrl || inv.paymentScreenshotUrl || inv.paymentProof,
         rejectionReason: inv.rejectionReason || null,
@@ -4610,13 +4627,20 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
         aggAuthors: inv.event?.aggAuthors || 0
       };
     }),
-    ...availableEvents.map((evt: any) => ({
-      ...evt,
-      registration: 'Pending',
-      paymentStatus: '-',
-      isPast: evt.status === 'Past' || (evt.date && new Date(evt.date) < new Date()),
-      isInvite: true
-    })),
+    ...availableEvents.map((evt: any) => {
+      const isAvailExempt = Boolean(
+        evt.isFeeExempt ||
+        (evt.exemptAuthorIds && Array.isArray(evt.exemptAuthorIds) && evt.exemptAuthorIds.includes(dashboardData?.authorProfile?.id))
+      );
+      return {
+        ...evt,
+        isFeeExempt: isAvailExempt,
+        registration: 'Pending',
+        paymentStatus: isAvailExempt ? 'Paid' : '-',
+        isPast: evt.status === 'Past' || (evt.date && new Date(evt.date) < new Date()),
+        isInvite: true
+      };
+    }),
     ...pastEvents.filter((pe: any) => pe.broadcastStatus === 'Published' && !invites.some((inv: any) => inv.eventId === pe.id && !inv.optInStatus?.includes('-Draft'))).map((evt: any) => ({
       ...evt,
       registration: 'Not Participated',
@@ -5010,7 +5034,17 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                        <div className="mt-auto pt-2 flex justify-between items-center relative z-10">
                          <div>
                            <div className="text-[9px] font-bold text-gray-700 uppercase tracking-widest mb-0.5">Registration Fee</div>
-                           <div className="text-sm font-black text-gray-900 drop-shadow-sm">{evt.registrationFee ? `₹${evt.registrationFee}${evt.feeType === 'Per Title' ? '/title' : ''}` : 'Free'}</div>
+                           <div className="text-sm font-black text-gray-900 drop-shadow-sm">
+                             {evt.isFeeExempt ? (
+                               <span className="text-emerald-700 font-black flex items-center gap-1">
+                                 Free <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded">Fee Waived</span>
+                               </span>
+                             ) : evt.registrationFee ? (
+                               `₹${evt.registrationFee}${evt.feeType === 'Per Title' ? '/title' : ''}`
+                             ) : (
+                               'Free'
+                             )}
+                           </div>
                          </div>
                          <button 
                            onClick={(e) => {
@@ -5401,7 +5435,13 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                       ) : (
                         <>
                           <td className="px-4 py-3 text-sm font-bold text-orange-700 text-right">
-                             {evt.amountPaid ? `₹${evt.amountPaid}` : (evt.isPast ? '-' : (evt.registrationFee ? `₹${evt.registrationFee}` : '-'))}
+                             {evt.isFeeExempt ? (
+                               <span className="text-emerald-700 font-bold">₹0 (Waived)</span>
+                             ) : evt.amountPaid ? (
+                               `₹${evt.amountPaid}`
+                             ) : (
+                               evt.isPast ? '-' : (evt.registrationFee ? `₹${evt.registrationFee}` : '-')
+                             )}
                           </td>
                           <td className="px-4 py-3 text-sm font-bold text-right">
                              {(() => {
@@ -5427,10 +5467,10 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                               let statusText = evt.registration;
                               let statusColors = 'bg-gray-100 text-gray-700';
                               
-                              if (evt.registration === 'Approved' && evt.paymentStatus === 'Rejected' && !evt.paymentProofUrl && !evt.isPast) {
+                              if (evt.registration === 'Approved' && !evt.isFeeExempt && evt.paymentStatus === 'Rejected' && !evt.paymentProofUrl && !evt.isPast) {
                                   statusText = 'REMAKE PAYMENT';
                                   statusColors = 'bg-red-500 text-white border-red-600 shadow-sm animate-pulse';
-                              } else if (evt.registration === 'Approved' && (evt.registrationFee > 0 || evt.charges > 0) && evt.paymentStatus !== 'Paid' && evt.paymentStatus !== 'Pending Verification' && !evt.paymentProofUrl && !evt.isPast) {
+                              } else if (evt.registration === 'Approved' && !evt.isFeeExempt && (evt.registrationFee > 0 || evt.charges > 0) && evt.paymentStatus !== 'Paid' && evt.paymentStatus !== 'Pending Verification' && !evt.paymentProofUrl && !evt.isPast) {
                                   statusText = 'MAKE PAYMENT';
                                   statusColors = 'bg-yellow-400 text-yellow-900 border-yellow-500 shadow-sm animate-pulse';
                               } else if (evt.registration === 'Approved' && (evt.paymentProofUrl || evt.paymentStatus === 'Pending Verification')) {
@@ -5578,35 +5618,45 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                                               </div>
                                             ))}
                                         </div>
-                                        {evt.registrationFee > 0 && (() => {
-                                          const selectedBooksCount = optInBooks.filter((b: any) => b.included).length;
-                                          const totalFee = evt.feeType === 'Per Title' ? evt.registrationFee * selectedBooksCount : evt.registrationFee;
-                                          return (
-                                          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 shadow-sm">
-                                            <div className="flex justify-between items-center mb-1">
-                                              <div className="font-bold">Total Registration Fee:</div>
-                                              <div className="text-xl font-black text-paa-navy">₹{totalFee}</div>
-                                            </div>
-                                            {evt.feeType === 'Per Title' && <div className="text-xs text-yellow-700 mb-3">(₹{evt.registrationFee} per title × {selectedBooksCount} selected)</div>}
-                                            
-                                            {totalFee > 0 && (
-                                              <div className="mt-2 text-xs font-bold text-yellow-900 bg-yellow-100 p-2 rounded">
-                                                Payment will be requested upon approval. You do not need to pay now.
-                                              </div>
-                                            )}
-                                          </div>
-                                          );
-                                        })()}
-                                        <div className="flex gap-2 shrink-0 mt-auto">
-                                            <button disabled={isSubmittingOptIn} onClick={() => handleOptInSubmit('reject')} className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50">Cancel</button>
-                                            <button disabled={isSubmittingOptIn} onClick={() => handleOptInSubmit('approve')} className="flex-1 px-4 py-2 bg-paa-navy text-paa-cream rounded-lg text-sm font-bold hover:bg-paa-gold hover:text-paa-navy transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-wait">
-                                              {isSubmittingOptIn ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Submitting...</> : 'Submit Opt-In'}
-                                            </button>
-                                        </div>
+                                         {evt.isFeeExempt ? (
+                                           <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800 shadow-sm">
+                                             <div className="flex justify-between items-center mb-1">
+                                               <div className="font-bold">Total Registration Fee:</div>
+                                               <div className="text-xl font-black text-emerald-700">₹0</div>
+                                             </div>
+                                             <div className="mt-1 text-xs font-bold text-emerald-900 bg-emerald-100 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+                                               <Sparkles className="w-3.5 h-3.5 text-emerald-700" /> Special Exemption: Your registration fee has been waived for this event!
+                                             </div>
+                                           </div>
+                                         ) : evt.registrationFee > 0 && (() => {
+                                           const selectedBooksCount = optInBooks.filter((b: any) => b.included).length;
+                                           const totalFee = evt.feeType === 'Per Title' ? evt.registrationFee * selectedBooksCount : evt.registrationFee;
+                                           return (
+                                           <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 shadow-sm">
+                                             <div className="flex justify-between items-center mb-1">
+                                               <div className="font-bold">Total Registration Fee:</div>
+                                               <div className="text-xl font-black text-paa-navy">₹{totalFee}</div>
+                                             </div>
+                                             {evt.feeType === 'Per Title' && <div className="text-xs text-yellow-700 mb-3">(₹{evt.registrationFee} per title × {selectedBooksCount} selected)</div>}
+                                             
+                                             {totalFee > 0 && (
+                                               <div className="mt-2 text-xs font-bold text-yellow-900 bg-yellow-100 p-2 rounded">
+                                                 Payment will be requested upon approval. You do not need to pay now.
+                                               </div>
+                                             )}
+                                           </div>
+                                           );
+                                         })()}
+                                         <div className="flex gap-2 shrink-0 mt-auto">
+                                             <button disabled={isSubmittingOptIn} onClick={() => handleOptInSubmit('reject')} className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50">Cancel</button>
+                                             <button disabled={isSubmittingOptIn} onClick={() => handleOptInSubmit('approve')} className="flex-1 px-4 py-2 bg-paa-navy text-paa-cream rounded-lg text-sm font-bold hover:bg-paa-gold hover:text-paa-navy transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-wait">
+                                               {isSubmittingOptIn ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Submitting...</> : 'Submit Opt-In'}
+                                             </button>
+                                         </div>
                                     </div>
                                 ) : (
                                 <div className="flex-1 min-w-[300px] flex flex-col animate-fade-in-up">
-                                   {evt.registration === 'Approved' && (evt.registrationFee > 0 || evt.charges > 0) && evt.paymentStatus !== 'Paid' && evt.paymentStatus !== 'Pending Verification' && !evt.paymentProofUrl && !evt.isPast && (
+                                   {evt.registration === 'Approved' && !evt.isFeeExempt && (evt.registrationFee > 0 || evt.charges > 0) && evt.paymentStatus !== 'Paid' && evt.paymentStatus !== 'Pending Verification' && !evt.paymentProofUrl && !evt.isPast && (
                                      <div className={`mb-4 p-4 rounded text-sm shadow-sm ${evt.paymentStatus === 'Rejected' ? 'bg-red-50 border border-red-200 text-red-800' : 'bg-yellow-50 border border-yellow-200 text-yellow-800'}`}>
                                        <h5 className="font-bold mb-2">{evt.paymentStatus === 'Rejected' ? 'Payment Rejected - Remake Payment' : 'Registration Approved - Pending Payment'}</h5>
                                        <p className="text-xs mb-3">{evt.paymentStatus === 'Rejected' ? 'Your previous payment was rejected. Please re-check the amount or transaction ID and remake the payment.' : `Please pay the fee of ₹${evt.registrationFee || evt.charges} to confirm participation.`}</p>
@@ -6345,7 +6395,12 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
               {selectedInvite.description && <div className="col-span-2"><span className="font-semibold">Description:</span> {selectedInvite.description}</div>}
             </div>
           </details>
-          {selectedInvite.registrationFee > 0 && (
+          {selectedInvite.isFeeExempt ? (
+            <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded text-sm text-emerald-800 font-medium flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Registration Fee: <strong>Free (₹0 Fee Waived by Admin)</strong></span>
+            </div>
+          ) : selectedInvite.registrationFee > 0 && (
             <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 font-medium">
               Registration Fee: ₹{selectedInvite.registrationFee}
               <div className="mt-2 text-xs">
