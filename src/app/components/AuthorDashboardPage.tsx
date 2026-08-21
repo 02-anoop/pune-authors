@@ -51,6 +51,10 @@ export function AuthorDashboardPage() {
   });
   const [isSubmittingReapply, setIsSubmittingReapply] = useState(false);
   const [buttonStates, setButtonStates] = useState<{ [key: string]: boolean }>({});
+  const [dismissAirport, setDismissAirport] = useState<string[]>(() => {
+    const saved = localStorage.getItem('paa_dismiss_airport');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [showNotifications, setShowNotifications] = useState(false);
   const [dismissedToastId, setDismissedToastId] = useState<string | null>(() => localStorage.getItem('paa_dismissed_toast'));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -516,10 +520,10 @@ export function AuthorDashboardPage() {
 
 
 
-      <div className="min-h-screen font-sans bg-paa-cream flex flex-col md:flex-row">
+      <div className="min-h-screen font-sans bg-[#F8FAFC] flex flex-col md:flex-row">
 
       {/* SIDEBAR — matches admin layout */}
-      <aside className={`w-64 flex flex-col shrink-0 h-screen fixed md:sticky top-0 bg-paa-cream z-50 transform transition-transform duration-300 border-r border-paa-navy/5 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+      <aside className={`w-64 flex flex-col shrink-0 h-screen fixed md:sticky top-0 bg-[#F8FAFC] z-50 transform transition-transform duration-300 border-r border-paa-navy/5 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="p-4 md:p-6 h-20 flex items-center justify-between shrink-0 border-b border-paa-navy/5">
           <div className="flex items-center gap-2">
             <img src="/logo.webp" alt="PAA Logo" className="h-8 w-auto object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
@@ -557,7 +561,7 @@ export function AuthorDashboardPage() {
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative" style={{ background: '#f5f5f3' }}>
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative" style={{ background: '#F8FAFC' }}>
 
         {/* Top Header — breadcrumb */}
         <header className="dash-header h-[68px] flex items-center justify-between px-6 md:px-8 shrink-0 relative z-50">
@@ -690,19 +694,28 @@ export function AuthorDashboardPage() {
         {(() => {
           const activeDonations = dashboardData?.activeDonations || [];
           const donationRegistrations = dashboardData?.authorProfile?.donationRegistrations || [];
-          const unregisteredDonations = activeDonations.filter((ad: any) => !donationRegistrations.find((dr: any) => dr.announcementId === ad.id));
+          const unregisteredDonations = activeDonations.filter((ad: any) => !donationRegistrations.find((dr: any) => dr.announcementId === ad.id) && !dismissAirport.includes(String(ad.id)));
           if (unregisteredDonations.length > 0) {
             return (
-              <div className="bg-gradient-to-r from-indigo-900 to-paa-navy text-white px-6 py-3 flex flex-col md:flex-row items-center justify-between shadow-sm relative z-[99] border-b border-indigo-950 gap-4">
+              <div className="bg-[#1e1b4b] text-white px-6 py-3 flex flex-col md:flex-row items-center justify-between shadow-sm relative z-[99] border-b border-indigo-950 gap-4">
                 <div className="flex items-center gap-3">
                   <MapPin className="w-5 h-5 text-indigo-300" />
                   <span className="text-sm font-semibold tracking-wide text-indigo-50">
                     You have been invited to participate in a new Airport Library Donation Campaign.
                   </span>
                 </div>
-                <button onClick={() => navigate('/dashboard/donations')} className="bg-white text-paa-navy px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-indigo-50 transition-colors shrink-0 shadow-sm">
-                  Register Now
-                </button>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => navigate('/dashboard/donations')} className="bg-white text-paa-navy px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-indigo-50 transition-colors shrink-0 shadow-sm">
+                    Register Now
+                  </button>
+                  <button onClick={() => {
+                      const next = [...dismissAirport, String(unregisteredDonations[0].id)];
+                      setDismissAirport(next);
+                      localStorage.setItem('paa_dismiss_airport', JSON.stringify(next));
+                    }} className="p-2 text-white/50 hover:text-white transition-colors rounded-full" aria-label="Dismiss">
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
             );
           }
@@ -831,6 +844,10 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
   const [editPhoto, setEditPhoto] = useState<File | null>(null);
   const [editCoverBookId, setEditCoverBookId] = useState<number | null>(null);
   const [newCoverFile, setNewCoverFile] = useState<File | null>(null);
+  const [dismissEventsBanner, setDismissEventsBanner] = useState<string[]>(() => {
+    const saved = localStorage.getItem('paa_dismissed_events_banner');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [dismissedActions, setDismissedActions] = useState<string[]>(() => {
     const saved = localStorage.getItem('paa_author_dismissed');
     return saved ? JSON.parse(saved) : [];
@@ -849,7 +866,12 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
   const titlesData = authorBooks.map((b: any, index: number) => {
     const webSales = authorOrders.filter((o: any) => (o.bookId === b.id || o.bookTitle === b.title) && ['Pending Verification', 'Completed', 'Processing', 'Delivered', 'Dispatched', 'Accepted', 'Paid'].includes(o.status || o.orderStatus)).reduce((acc: number, curr: any) => acc + (curr.quantity || 1), 0);
     const eventSales = (data.listedBooks || []).filter((lb: any) => lb.bookId === b.id).reduce((acc: number, curr: any) => acc + (curr.soldStock || 0), 0);
-    const donatedCopies = (data?.authorProfile?.donationRegistrations || []).reduce((acc: number, dr: any) => {
+    const libraryDonations = (data?.authorProfile?.donationRegistrations || []).filter((dr: any) => !dr.announcement?.title?.toLowerCase().includes('flybrary') && !dr.announcement?.type?.toLowerCase().includes('flybrary')).reduce((acc: number, dr: any) => {
+      const bookDonations = (dr.books || []).filter((db: any) => db.bookId === b.id);
+      return acc + bookDonations.reduce((dAcc: number, db: any) => dAcc + (db.quantityDonated || db.qtyReceived || db.qtyDispatched || 0), 0);
+    }, 0);
+
+    const flybraryDonations = (data?.authorProfile?.donationRegistrations || []).filter((dr: any) => dr.announcement?.title?.toLowerCase().includes('flybrary') || dr.announcement?.type?.toLowerCase().includes('flybrary')).reduce((acc: number, dr: any) => {
       const bookDonations = (dr.books || []).filter((db: any) => db.bookId === b.id);
       return acc + bookDonations.reduce((dAcc: number, db: any) => dAcc + (db.quantityDonated || db.qtyReceived || db.qtyDispatched || 0), 0);
     }, 0);
@@ -864,7 +886,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
       overpriced: b.overpriced ? 'Yes' : 'No',
       pub: 'Self-Published',
       genre: b.genre,
-      sold: { total: totalSold, web: webSales, events: eventSales, donated: donatedCopies },
+      sold: { total: totalSold, web: webSales, events: eventSales, donated: libraryDonations + flybraryDonations, libraryDonated: libraryDonations, flybraryDonated: flybraryDonations },
       status: b.status,
       rejectionReason: b.rejectionReason,
       stock: b.stock
@@ -873,34 +895,24 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
 
   const filteredTitles = filter === 'all' ? titlesData : titlesData.filter((t: any) => t.genre === filter);
 
-  const chartData = titlesData.map((t: any) => ({
-    name: t.title.length > 12 ? t.title.substring(0, 12) + '…' : t.title,
+  const comprehensiveBookData = titlesData.map((t: any) => ({
+    name: t.title,
     fullTitle: t.title,
-    sold: t.sold.total
+    'Web Orders': t.sold.web || 0,
+    'Library Donation': t.sold.libraryDonated || 0,
+    'Flybraries': t.sold.flybraryDonated || 0,
+    'Event Books Sold': t.sold.events || 0
   }));
 
-  const webOrdersPieData = titlesData
-    .filter((t: any) => t.sold.web > 0)
-    .map((t: any) => ({
-      name: t.title.length > 12 ? t.title.substring(0, 12) + '…' : t.title,
-      fullTitle: t.title,
-      value: t.sold.web
-    }));
+  const allDonationRegistrations = data.authorProfile?.donationRegistrations || [];
+  const libraryDrivesCount = allDonationRegistrations.filter((dr: any) => !dr.announcement?.title?.toLowerCase().includes('flybrary') && !dr.announcement?.type?.toLowerCase().includes('flybrary')).length;
+  const flybrariesCount = allDonationRegistrations.filter((dr: any) => dr.announcement?.title?.toLowerCase().includes('flybrary') || dr.announcement?.type?.toLowerCase().includes('flybrary')).length;
 
-  const distributionActivityData = titlesData.map((t: any) => {
-    return {
-      name: t.title.length > 14 ? t.title.substring(0, 14) + '…' : t.title,
-      fullTitle: t.title,
-      'Web Sold': t.sold.web || 0,
-      'Event / Fair Sold': t.sold.events || 0,
-      'Donated': t.sold.donated || 0
-    };
-  });
-
-  const participationsData = [
-    { name: 'Events Part.', count: data.eventInvites?.filter((inv: any) => inv.optInStatus === 'Registered' || inv.optInStatus === 'Approved').length || 0 },
-    { name: 'Donation Drives', count: data.authorProfile?.donationRegistrations?.length || 0 },
-    { name: 'Support Queries', count: data.queries?.length || 0 }
+  const activitySummaryData = [
+    { name: 'Events Participated', count: data.eventInvites?.filter((inv: any) => inv.optInStatus === 'Registered' || inv.optInStatus === 'Approved').length || 0 },
+    { name: 'Library Drives Joined', count: libraryDrivesCount },
+    { name: 'Flybraries Joined', count: flybrariesCount },
+    { name: 'Web Orders', count: authorOrders.length || 0 }
   ];
 
   const completedOrders = authorOrders.filter((o: any) => o.status === 'Completed' || o.status === 'Delivered' || o.orderStatus === 'Completed' || o.orderStatus === 'Delivered');
@@ -1362,7 +1374,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
             )}
           </div>
           <div>
-            <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-paa-gray-text mb-1">Author Portal &middot; Dashboard</p>
+            <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-paa-gray-text mb-1">AUTHOR</p>
             <h1 className="text-3xl font-serif font-bold text-paa-navy tracking-tight mb-1">{authorProfile.name || 'My Dashboard'}</h1>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-500 font-medium">
               <span className="flex items-center gap-1.5"><Mail size={12} /> {authorProfile.email}</span>
@@ -1371,6 +1383,9 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
           </div>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => setShowAddBook(true)} className="dash-btn dash-btn-primary py-1 px-4 text-xs font-bold uppercase tracking-widest bg-[#b44d28] hover:bg-[#9c4222] !border-[#b44d28]">
+            Add new Book
+          </button>
           <button onClick={handleEditProfileOpen} className="dash-btn dash-btn-ghost">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ display: 'inline', marginRight: 5 }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
             VIEW/EDIT PROFILE
@@ -1433,37 +1448,48 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
       })()}
 
       {/* ── CTA: Upcoming Event Registration ── */}
-      <div className="mb-3.5 relative group cursor-pointer">
-        <Link 
-          to="/dashboard/events" 
-          className="relative overflow-hidden w-full flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white px-4 py-3 rounded-xl shadow-xs transition-all duration-300 border border-indigo-400/30"
-        >
-          {/* Subtle background pattern/texture */}
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:20px_20px]"></div>
-          
-          <div className="relative z-10 flex items-center gap-3">
-            <div className="flex h-3.5 w-3.5 relative items-center justify-center shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-80"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,1)]"></span>
+      {!dismissEventsBanner.includes(String(latestUpcomingEvent?.id || 'none')) && (
+        <div className="mb-3.5 relative group cursor-pointer">
+          <div 
+            onClick={() => navigate('/dashboard/events')}
+            className="relative overflow-hidden w-full flex flex-col sm:flex-row items-center justify-between gap-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl shadow-xs transition-colors duration-300"
+          >
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="flex h-3.5 w-3.5 relative items-center justify-center shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-80"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,1)]"></span>
+              </div>
+              <div className="flex flex-col items-start text-left">
+                <span className="font-bold text-sm tracking-wide text-white drop-shadow-sm flex items-center gap-2">
+                  📢 Upcoming Events
+                </span>
+                <span className="text-indigo-100 text-xs font-medium opacity-90 mt-0.5">
+                  {eventSubtext}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col items-start text-left">
-              <span className="font-bold text-sm tracking-wide text-white drop-shadow-sm flex items-center gap-2">
-                📢 Upcoming Events
-              </span>
-              <span className="text-indigo-100 text-xs font-medium opacity-90 mt-0.5">
-                {eventSubtext}
-              </span>
+            
+            <div className="relative z-10 flex items-center gap-4 shrink-0">
+              {latestUpcomingEvent && (
+                <div className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-lg backdrop-blur-sm transition-colors border border-white/10">
+                  <span className="text-xs font-bold uppercase tracking-wider">Register Now</span>
+                  <svg className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              )}
+              <button onClick={(e) => { 
+                  e.stopPropagation(); 
+                  const next = [...dismissEventsBanner, String(latestUpcomingEvent?.id || 'none')];
+                  setDismissEventsBanner(next);
+                  localStorage.setItem('paa_dismissed_events_banner', JSON.stringify(next));
+                }} className="p-1.5 text-white/50 hover:text-white transition-colors rounded-full hover:bg-white/10" aria-label="Dismiss">
+                <X size={16} />
+              </button>
             </div>
           </div>
-          
-          <div className="relative z-10 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-lg backdrop-blur-sm transition-colors border border-white/10 shrink-0">
-            <span className="text-xs font-bold uppercase tracking-wider">Register Now</span>
-            <svg className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </Link>
-      </div>
+        </div>
+      )}
 
       {/* ── Rejection Notices ── */}
       {rejectedInvites.map((inv: any) => (
@@ -1515,20 +1541,21 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
             </span>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div className="flex flex-wrap gap-2">
             {actionItems.map((item) => {
               const Icon = item.icon;
+              const colorName = item.color.split('-')[1]; // e.g., 'yellow', 'red', 'emerald'
+              const containerClass = `bg-${colorName}-50 text-${colorName}-700 border-${colorName}-200`;
+              
               return (
                 <div
                   key={item.id}
                   onClick={() => { if (item.link) navigate(item.link); }}
-                  className={`group relative flex items-center gap-2.5 px-3 py-1.5 rounded-lg border cursor-pointer transition-all hover:shadow-xs hover:border-amber-400 bg-white/90 ${item.color.replace('text-', 'border-').replace('600', '200')}`}
+                  className={`group relative flex items-center gap-3 pl-4 pr-3 py-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 w-full sm:w-auto ${containerClass}`}
                 >
-                  <div className={`p-1.5 rounded-md shrink-0 ${item.bg}`}>
-                    <Icon size={14} aria-hidden="true" className={item.color} />
-                  </div>
-                  <div className="leading-tight pr-1 flex-1 min-w-0">
-                    <p className="text-xs font-bold text-gray-800 truncate group-hover:text-paa-navy transition-colors">{item.text}</p>
+                  <Icon size={18} aria-hidden="true" className={`text-${colorName}-600`} />
+                  <div className="leading-tight pr-2">
+                    <p className="text-[13px] font-bold transition-colors">{item.text}</p>
                   </div>
                   <button
                     aria-label={`Dismiss ${item.text}`}
@@ -1538,10 +1565,10 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
                       setDismissedActions(next);
                       localStorage.setItem('paa_author_dismissed', JSON.stringify(next));
                     }}
-                    className="p-1 rounded-full text-gray-400 opacity-60 group-hover:opacity-100 hover:text-gray-700 hover:bg-black/5 transition-all shrink-0"
+                    className={`p-1.5 rounded-full opacity-60 group-hover:opacity-100 hover:bg-black/5 transition-all shrink-0 ml-auto text-${colorName}-500 hover:text-${colorName}-700`}
                     title="Dismiss"
                   >
-                    <X size={12} aria-hidden="true" />
+                    <X size={14} aria-hidden="true" />
                   </button>
                 </div>
               );
@@ -1551,76 +1578,46 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
       )}
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-3.5">
-        <div className="dash-kpi-card green">
-          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-0.5">Event Participation</p>
-          <h3 className="text-xl font-black text-paa-navy">{`${data?.authorProfile?.aggParticipatedEvents || 0}/${data?.authorProfile?.aggEligibleEvents || 0}`}</h3>
+      <div className="flex flex-wrap justify-center lg:grid lg:grid-cols-7 gap-2 mb-5">
+        <div className="dash-kpi-card green px-3 py-4 text-center items-center flex flex-col justify-center">
+          <p className="text-[9px] font-bold tracking-widest uppercase text-white/80 mb-1">Event Participation</p>
+          <h3 className="text-lg font-black text-white leading-none">{`${data?.authorProfile?.aggParticipatedEvents || 0}/${data?.authorProfile?.aggEligibleEvents || 0}`}</h3>
         </div>
-        <div className="dash-kpi-card blue">
-          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-0.5">Total Titles</p>
-          <h3 className="text-xl font-black text-paa-navy">{authorBooks.length}</h3>
+        <div className="dash-kpi-card blue px-3 py-4 text-center items-center flex flex-col justify-center">
+          <p className="text-[9px] font-bold tracking-widest uppercase text-white/80 mb-1">Total Titles</p>
+          <h3 className="text-lg font-black text-white leading-none">{authorBooks.length}</h3>
         </div>
-        
-        <div className="dash-kpi-card amber lg:col-span-2 flex flex-col justify-center">
-          <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-0.5">Total Sales</p>
-          <div className="flex items-end gap-3 mb-1">
-            <h3 className="text-xl font-black text-paa-navy leading-none">₹{grossSales.toFixed(0)}</h3>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-            <button onClick={() => navigate('/dashboard/orders')} className="text-[9px] font-bold text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 uppercase tracking-wider bg-blue-50/50 px-2 py-0.5 rounded transition-colors shadow-2xs">
-              Web Orders: ₹{webSalesAmount.toFixed(0)}
-            </button>
-            <button onClick={() => navigate('/dashboard/events')} className="text-[9px] font-bold text-amber-600 hover:text-white hover:bg-amber-500 border border-amber-200 uppercase tracking-wider bg-amber-50/50 px-2 py-0.5 rounded transition-colors shadow-2xs">
-              Event/Fair Sales: ₹{posSalesAmount.toFixed(0)}
-            </button>
-          </div>
+        <div className="dash-kpi-card amber px-3 py-4 text-center items-center flex flex-col justify-center">
+          <p className="text-[9px] font-bold tracking-widest uppercase text-white/80 mb-1">Total Sales</p>
+          <h3 className="text-lg font-black text-white leading-none">₹{grossSales.toFixed(0)}</h3>
         </div>
-
-        <button onClick={() => navigate('/dashboard/payments')} className="dash-kpi-card red text-left cursor-pointer hover:shadow-md hover:border-red-200 transition-all relative group flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-0.5">Total Fees Paid</p>
-            <span className="text-red-400 bg-red-50 group-hover:bg-red-100 transition-colors p-0.5 rounded-full"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg></span>
-          </div>
-          <h3 className="text-xl font-black text-paa-navy">₹{totalFeesPaid}</h3>
+        <button onClick={() => navigate('/dashboard/payments')} className="dash-kpi-card red px-3 py-4 text-center items-center flex flex-col justify-center cursor-pointer hover:-translate-y-1 transition-transform border-none">
+          <p className="text-[9px] font-bold tracking-widest uppercase text-white/80 mb-1">Total Fees Paid</p>
+          <h3 className="text-lg font-black text-white leading-none">₹{totalFeesPaid}</h3>
         </button>
-      </div>
-
-      {/* ── Library Donations KPI Cards ── */}
-      {data?.activeDonations?.length > 0 || donationRegistrations.length > 0 ? (
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold text-paa-navy">Library Donations Overview</h3>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
-            {[
-              { label: 'Pending Registrations', value: pendingRegistrations, colorClass: 'amber' },
-              { label: 'Libraries Donated', value: uniqueLibraries, colorClass: 'teal' },
-              { label: 'Books Donated', value: totalBooksDonated, colorClass: 'blue' },
-            ].map((kpi, i) => (
-              <div key={i} className={`dash-kpi-card ${kpi.colorClass}`}>
-                <p className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mb-0.5">{kpi.label}</p>
-                <h3 className="text-xl font-black text-paa-navy">{kpi.value}</h3>
-              </div>
-            ))}
-          </div>
+        <div className="dash-kpi-card purple px-3 py-4 text-center items-center flex flex-col justify-center">
+          <p className="text-[9px] font-bold tracking-widest uppercase text-white/80 mb-1">Pending Reg.</p>
+          <h3 className="text-lg font-black text-white leading-none">{pendingRegistrations}</h3>
         </div>
-      ) : null}
-
-
-
-
-
-
-
-      {/* ── Genre Filter Pills ── */}
-      <div className="flex items-center gap-2 mb-5 flex-wrap">
-        <span className="text-[10px] font-bold tracking-widest uppercase text-paa-gray-text mr-1">Filter:</span>
-        {['all', 'Fiction', 'Non-Fiction', 'Children', 'Poetry'].map(g => (
-          <button key={g} onClick={() => setFilter(g)} className={`dash-pill ${filter === g ? 'active' : ''}`}>
-            {g === 'all' ? 'All Genres' : g}
-          </button>
-        ))}
+        <div className="dash-kpi-card cyan px-3 py-4 text-center items-center flex flex-col justify-center">
+          <p className="text-[9px] font-bold tracking-widest uppercase text-white/80 mb-1">Libraries Donated</p>
+          <h3 className="text-lg font-black text-white leading-none">{uniqueLibraries}</h3>
+        </div>
+        <div className="dash-kpi-card teal px-3 py-4 text-center items-center flex flex-col justify-center">
+          <p className="text-[9px] font-bold tracking-widest uppercase text-white/80 mb-1">Books Donated</p>
+          <h3 className="text-lg font-black text-white leading-none">{totalBooksDonated}</h3>
+        </div>
       </div>
+
+
+
+
+
+
+
+
+
+
 
       {/* ── Edit Profile Modal ── */}
       {showEditProfile && (
@@ -2056,31 +2053,38 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
 
 
       {/* ── Books Table ── */}
-      <div className="dash-panel overflow-hidden mb-7">
+      <div className="bg-white border-y border-gray-200 overflow-hidden mb-7">
         <div className="dash-panel-header">
           <h2 className="dash-panel-title">Your Titles</h2>
           <div className="flex items-center gap-4">
             <span className="dash-badge info">{filteredTitles.length} titles</span>
-            <button onClick={() => setShowAddBook(true)} className="dash-btn dash-btn-primary py-1 px-3 text-xs">Add new Book</button>
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="dash-table">
-            <thead className="bg-indigo-50 border-b-2 border-indigo-100"><tr>
-              <th className="!text-[14px] !text-indigo-800 !bg-transparent">#</th><th className="!text-[14px] !text-indigo-800 !bg-transparent">Cover</th><th className="!text-[14px] !text-indigo-800 !bg-transparent">Title</th><th className="!text-[14px] !text-indigo-800 !bg-transparent">Status</th>
-              <th className="!text-[14px] !text-indigo-800 !bg-transparent">Genre</th><th className="!text-[14px] !text-indigo-800 !bg-transparent">MRP</th><th className="!text-[14px] !text-indigo-800 !bg-transparent">Current Stock</th><th className="!text-[14px] !text-indigo-800 !bg-transparent">Sold Details</th><th className="!text-[14px] !text-indigo-800 !bg-transparent">Listing Date</th><th className="text-center !text-[14px] !text-indigo-800 !bg-transparent">Actions</th>
+          <table className="dash-table border-collapse">
+            <thead className="border-b-2 border-yellow-500 shadow-sm"><tr>
+              <th className="!text-[11px] font-bold uppercase tracking-wider !text-black !bg-[#facc15]">#</th>
+              <th className="!text-[11px] font-bold uppercase tracking-wider !text-black !bg-[#facc15]">Cover</th>
+              <th className="!text-[11px] font-bold uppercase tracking-wider !text-black !bg-[#facc15]">Title</th>
+              <th className="!text-[11px] font-bold uppercase tracking-wider !text-black !bg-[#facc15]">Status</th>
+              <th className="!text-[11px] font-bold uppercase tracking-wider !text-black !bg-[#facc15]">Genre</th>
+              <th className="!text-[11px] font-bold uppercase tracking-wider !text-black !bg-[#facc15]">MRP</th>
+              <th className="!text-[11px] font-bold uppercase tracking-wider !text-black !bg-[#facc15]">Current Stock</th>
+              <th className="!text-[11px] font-bold uppercase tracking-wider !text-black !bg-[#facc15]">Sold Details</th>
+              <th className="!text-[11px] font-bold uppercase tracking-wider !text-black !bg-[#facc15]">Listing Date</th>
+              <th className="text-center !text-[11px] font-bold uppercase tracking-wider !text-black !bg-[#facc15]">Actions</th>
             </tr></thead>
             <tbody>
               {filteredTitles.length === 0 ? (
                 <tr><td colSpan={10} className="text-center py-10 text-paa-gray-text italic text-sm">No titles for this filter.</td></tr>
               ) : filteredTitles.map((row: any, idx: number) => (
-                <tr key={row.id} className={`transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-[#ebd8c0]'} `}>
-                  <td className="text-paa-gray-text text-xs text-center">{idx + 1}</td>
-                  <td>{authorBooks.find((b: any) => b.id === row.id)?.coverUrl
+                <tr key={row.id} className="transition-colors hover:brightness-95 border-b border-gray-200">
+                  <td className="text-paa-gray-text text-xs text-center bg-green-100/60">{idx + 1}</td>
+                  <td className="bg-blue-100/60">{authorBooks.find((b: any) => b.id === row.id)?.coverUrl
                     ? <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${authorBooks.find((b: any) => b.id === row.id)?.coverUrl}${authorBooks.find((b: any) => b.id === row.id)?.updatedAt ? `?t=${new Date(authorBooks.find((b: any) => b.id === row.id).updatedAt).getTime()}` : ''}`} alt="cover" className="w-9 h-12 object-cover rounded-lg shadow-sm" />
-                    : <div className="w-9 h-12 bg-gray-100 rounded-lg border flex items-center justify-center text-[9px] text-gray-400">No cover</div>}
+                    : <div className="w-9 h-12 bg-white/50 rounded-lg border flex items-center justify-center text-[9px] text-gray-500">No cover</div>}
                   </td>
-                  <td className="font-semibold text-paa-navy">
+                  <td className="font-semibold text-paa-navy bg-amber-100/60">
                     {row.title}
                     {(() => {
                       const bk = authorBooks.find((b: any) => b.id === row.id);
@@ -2105,22 +2109,22 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
                       return null;
                     })()}
                   </td>
-                  <td><span className={`dash-badge ${row.status === 'Approved' ? 'approved' : row.status === 'Rejected' ? 'rejected' : 'pending'}`}>{row.status}</span>
+                  <td className="bg-red-100/60"><span className={`dash-badge ${row.status === 'Approved' ? 'approved' : row.status === 'Rejected' ? 'rejected' : 'pending'}`}>{row.status}</span>
                     {row.status === 'Rejected' && row.rejectionReason && <div className="mt-1 text-[10px] text-red-600">{row.rejectionReason}</div>}
                   </td>
-                  <td className="text-paa-gray-text text-xs">{row.genre}</td>
-                  <td className="font-semibold">{row.mrp}</td>
-                  <td><span className={`font-bold ${row.stock < 10 ? 'text-red-500' : 'text-paa-navy'}`}>{row.stock}</span>{row.stock < 10 && <div className="text-[9px] text-red-400 font-bold">LOW</div>}</td>
-                  <td>
+                  <td className="text-paa-gray-text text-xs bg-purple-100/60">{row.genre}</td>
+                  <td className="font-semibold bg-cyan-100/60">{row.mrp}</td>
+                  <td className="bg-teal-100/60"><span className={`font-bold ${row.stock < 10 ? 'text-red-500' : 'text-paa-navy'}`}>{row.stock}</span>{row.stock < 10 && <div className="text-[9px] text-red-400 font-bold">LOW</div>}</td>
+                  <td className="bg-emerald-100/60">
                     <div className="flex flex-col">
-                      <span className="font-semibold text-emerald-700 text-sm">{row.sold.total} Total</span>
-                      <span className="text-[10px] text-paa-gray-text font-bold uppercase tracking-widest">{row.sold.events} Events | {row.sold.web} Web</span>
+                      <span className="font-semibold text-emerald-800 text-sm">{row.sold.total} Total</span>
+                      <span className="text-[10px] text-emerald-700/70 font-bold uppercase tracking-widest">{row.sold.events} Events | {row.sold.web} Web</span>
                     </div>
                   </td>
-                  <td className="text-paa-gray-text text-xs whitespace-nowrap">{row.date}</td>
-                  <td>
+                  <td className="text-paa-gray-text text-xs whitespace-nowrap bg-rose-100/60">{row.date}</td>
+                  <td className="bg-indigo-100/60">
                     <div className="flex items-center justify-center">
-                      <button onClick={() => navigate('/dashboard/profile', { state: { action: 'edit_book', bookId: row.id } })} className="p-2 text-paa-navy hover:text-paa-gold bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200" title="Edit Details">
+                      <button onClick={() => navigate('/dashboard/profile', { state: { action: 'edit_book', bookId: row.id } })} className="p-2 text-indigo-900 hover:text-indigo-700 bg-white/70 hover:bg-white rounded-lg transition-colors border border-indigo-200" title="Edit Details">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-edit"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                       </button>
                     </div>
@@ -2131,123 +2135,89 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
           </table>
         </div>
       </div>
-      {/* ── Charts Grid (2x2 Grid) ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 animate-fade-in-up">
+      {/* ── Charts Grid (4 Pie Charts Inline Layout) ── */}
+      <div className="bg-white border border-paa-navy/5 rounded-2xl shadow-sm overflow-hidden mb-8 animate-fade-in-up p-6">
+        <h3 className="text-[12px] font-bold text-paa-navy uppercase tracking-widest mb-6 text-center">Book Performance Breakdown</h3>
         
-        {/* Chart 1: Books (Books Sold per Title) */}
-        <div className="bg-white border border-paa-navy/5 rounded-2xl shadow-sm overflow-hidden flex flex-col justify-between">
-          <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
-            <h3 className="text-sm font-bold text-paa-navy uppercase tracking-widest">Books Sold per Title</h3>
-          </div>
-          <div className="p-6">
-            <div className="h-[250px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorBooks" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.9}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0.2}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" fontSize={10} tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} />
-                  <YAxis fontSize={10} tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    cursor={{ fill: 'rgba(99,102,241,0.03)' }} 
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }} 
-                    formatter={(value: any, name: any, props: any) => [`${value} copies`, props.payload?.fullTitle || props.name]}
-                  />
-                  <Bar dataKey="sold" fill="url(#colorBooks)" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+        {/* Shared Unified Legend */}
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 mb-8 px-4 py-4 bg-gray-50/50 rounded-xl">
+          {comprehensiveBookData.map((book: any, idx: number) => (
+            <div key={idx} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: ['#0ea5e9', '#d97706', '#ec4899', '#8b5cf6', '#10b981', '#3b82f6', '#f43f5e', '#a855f7', '#14b8a6', '#d946ef', '#06b6d4', '#f97316'][idx % 12] }}></div>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">{book.name}</span>
             </div>
-          </div>
+          ))}
         </div>
 
-        {/* Chart 2: Title Web Orders (Web Orders Distribution) */}
-        <div className="bg-white border border-paa-navy/5 rounded-2xl shadow-sm overflow-hidden flex flex-col justify-between">
-          <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
-            <h3 className="text-sm font-bold text-paa-navy uppercase tracking-widest">Title Web Orders Distribution</h3>
-          </div>
-          <div className="p-6">
-            <div className="h-[250px] w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          {/* Chart 1: Web Orders */}
+          <div className="flex flex-col items-center">
+            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Web Orders</h4>
+            <div className="h-[200px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                {webOrdersPieData.length > 0 ? (
-                  <PieChart>
-                    <Pie 
-                      data={webOrdersPieData} 
-                      cx="50%" cy="50%" 
-                      innerRadius={55} outerRadius={80} 
-                      paddingAngle={3} dataKey="value"
-                    >
-                      {webOrdersPieData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'][index % 6]} />
-                      ))}
+                {comprehensiveBookData.filter((d: any) => d['Web Orders'] > 0).length > 0 ? (
+                  <PieChart margin={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+                    <Pie data={comprehensiveBookData.filter((d: any) => d['Web Orders'] > 0)} dataKey="Web Orders" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
+                      {comprehensiveBookData.filter((d: any) => d['Web Orders'] > 0).map((entry, index) => <Cell key={`cell-${index}`} fill={['#0ea5e9', '#d97706', '#ec4899', '#8b5cf6', '#10b981', '#3b82f6', '#f43f5e', '#a855f7', '#14b8a6', '#d946ef', '#06b6d4', '#f97316'][comprehensiveBookData.findIndex((b: any) => b.name === entry.name) % 12]} />)}
                     </Pie>
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                      formatter={(value: any, name: any, props: any) => [`${value} web orders`, props.payload?.fullTitle || props.name]}
-                    />
-                    <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
                   </PieChart>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-sm text-gray-400 italic">No web orders yet.</div>
-                )}
+                ) : <div className="h-full flex items-center justify-center text-xs text-gray-400 italic">No Data</div>}
               </ResponsiveContainer>
             </div>
           </div>
-        </div>
 
-        {/* Chart 3: Books Sold and Donated */}
-        <div className="bg-white border border-paa-navy/5 rounded-2xl shadow-sm overflow-hidden flex flex-col justify-between">
-          <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-paa-navy uppercase tracking-widest">Books Sold and Donated</h3>
-            <span className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">Per Title</span>
-          </div>
-          <div className="p-6">
-            <div className="h-[250px] w-full">
+          {/* Chart 2: Event Books Sold */}
+          <div className="flex flex-col items-center">
+            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Event Books Sold</h4>
+            <div className="h-[200px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={distributionActivityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" fontSize={10} tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} />
-                  <YAxis fontSize={10} tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }} 
-                    formatter={(value: any, name: any, props: any) => [`${value} copies`, `${name} (${props.payload?.fullTitle || props.name})`]}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                  <Bar dataKey="Web Sold" stackId="dist" fill="#16a34a" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="Event / Fair Sold" stackId="dist" fill="#f59e0b" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="Donated" stackId="dist" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
-                </BarChart>
+                {comprehensiveBookData.filter((d: any) => d['Event Books Sold'] > 0).length > 0 ? (
+                  <PieChart margin={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+                    <Pie data={comprehensiveBookData.filter((d: any) => d['Event Books Sold'] > 0)} dataKey="Event Books Sold" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
+                      {comprehensiveBookData.filter((d: any) => d['Event Books Sold'] > 0).map((entry, index) => <Cell key={`cell-${index}`} fill={['#0ea5e9', '#d97706', '#ec4899', '#8b5cf6', '#10b981', '#3b82f6', '#f43f5e', '#a855f7', '#14b8a6', '#d946ef', '#06b6d4', '#f97316'][comprehensiveBookData.findIndex((b: any) => b.name === entry.name) % 12]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                  </PieChart>
+                ) : <div className="h-full flex items-center justify-center text-xs text-gray-400 italic">No Data</div>}
               </ResponsiveContainer>
             </div>
           </div>
-        </div>
 
-        {/* Chart 4: Participations */}
-        <div className="bg-white border border-paa-navy/5 rounded-2xl shadow-sm overflow-hidden flex flex-col justify-between">
-          <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
-            <h3 className="text-sm font-bold text-paa-navy uppercase tracking-widest">Ecosystem Activity Participation</h3>
-          </div>
-          <div className="p-6">
-            <div className="h-[250px] w-full">
+          {/* Chart 3: Library Donation */}
+          <div className="flex flex-col items-center">
+            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Library Donation</h4>
+            <div className="h-[200px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={participationsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" fontSize={10} tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} />
-                  <YAxis fontSize={10} tick={{ fill: '#64748b' }} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    cursor={{ stroke: '#C0A062', strokeWidth: 1, strokeDasharray: '3 3' }} 
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }} 
-                  />
-                  <Line type="linear" dataKey="count" name="Participations" stroke="#C0A062" strokeWidth={3} dot={{ r: 4, fill: "#fff", stroke: "#C0A062", strokeWidth: 2 }} activeDot={{ r: 6 }} />
-                </LineChart>
+                {comprehensiveBookData.filter((d: any) => d['Library Donation'] > 0).length > 0 ? (
+                  <PieChart margin={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+                    <Pie data={comprehensiveBookData.filter((d: any) => d['Library Donation'] > 0)} dataKey="Library Donation" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
+                      {comprehensiveBookData.filter((d: any) => d['Library Donation'] > 0).map((entry, index) => <Cell key={`cell-${index}`} fill={['#0ea5e9', '#d97706', '#ec4899', '#8b5cf6', '#10b981', '#3b82f6', '#f43f5e', '#a855f7', '#14b8a6', '#d946ef', '#06b6d4', '#f97316'][comprehensiveBookData.findIndex((b: any) => b.name === entry.name) % 12]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                  </PieChart>
+                ) : <div className="h-full flex items-center justify-center text-xs text-gray-400 italic">No Data</div>}
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Chart 4: Flybraries */}
+          <div className="flex flex-col items-center">
+            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Flybraries</h4>
+            <div className="h-[200px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                {comprehensiveBookData.filter((d: any) => d['Flybraries'] > 0).length > 0 ? (
+                  <PieChart margin={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+                    <Pie data={comprehensiveBookData.filter((d: any) => d['Flybraries'] > 0)} dataKey="Flybraries" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
+                      {comprehensiveBookData.filter((d: any) => d['Flybraries'] > 0).map((entry, index) => <Cell key={`cell-${index}`} fill={['#0ea5e9', '#d97706', '#ec4899', '#8b5cf6', '#10b981', '#3b82f6', '#f43f5e', '#a855f7', '#14b8a6', '#d946ef', '#06b6d4', '#f97316'][comprehensiveBookData.findIndex((b: any) => b.name === entry.name) % 12]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                  </PieChart>
+                ) : <div className="h-full flex items-center justify-center text-xs text-gray-400 italic">No Data</div>}
               </ResponsiveContainer>
             </div>
           </div>
         </div>
-
       </div>
 
       {/* ── Edit Book Modal (Reapply) ── */}
