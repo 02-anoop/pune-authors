@@ -31,7 +31,7 @@ export function BrowseAuthorsPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
+  const itemsPerPage = 6;
 
   useEffect(() => {
     const fetchAuthors = async () => {
@@ -148,10 +148,10 @@ export function BrowseAuthorsPage() {
       </section>
 
       {/* Main Content */}
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "10rem 2rem" }} className="browse-container">
+      <div style={{ maxWidth: 1350, margin: "0 auto", padding: "4rem 2rem" }} className="browse-container">
         
         {/* Horizontal Filter Bar */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "center", background: "#fff", padding: "1rem", border: `1px solid ${C.border}`, marginBottom: "3rem" }} className="filter-bar">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "center", background: "#fff", padding: "1rem", border: `1px solid ${C.border}`, marginBottom: "1.5rem" }} className="filter-bar">
           
           <div style={{ flex: "1 1 250px", display: "flex", gap: "0.5rem", padding: "0 1rem" }}>
             <div style={{ display: "flex", alignItems: "center", color: C.muted }}>
@@ -205,7 +205,7 @@ export function BrowseAuthorsPage() {
 
         {/* Authors Grid */}
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <div style={{ fontSize: 15, color: C.muted, fontWeight: 500 }}>
               Showing <span style={{ color: C.dark, fontWeight: 700 }}>{filteredAuthors.length}</span> author{filteredAuthors.length !== 1 && "s"}
             </div>
@@ -267,52 +267,47 @@ export function BrowseAuthorsPage() {
                       className="author-card"
                     >
                       {/* Top Banner */}
-                      <div style={{ height: "80px", background: "linear-gradient(135deg, rgba(0, 51, 255, 0.06) 0%, rgba(255, 107, 0, 0.06) 100%)", borderBottom: `1px solid ${C.border}`, backgroundImage: "linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)", backgroundSize: "16px 16px" }}></div>
+                      <div style={{ height: "40px", background: "linear-gradient(135deg, rgba(0, 51, 255, 0.06) 0%, rgba(255, 107, 0, 0.06) 100%)", borderBottom: `1px solid ${C.border}`, backgroundImage: "linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)", backgroundSize: "16px 16px" }}></div>
                       
                       {/* Avatar overlapping banner */}
-                      <div style={{ padding: "0 1.5rem", marginTop: "-60px", display: "flex", alignItems: "flex-end", gap: "1rem", position: "relative", zIndex: 2 }}>
+                      <div style={{ padding: "0 1rem", marginTop: "-25px", display: "flex", flexDirection: "row", alignItems: "flex-end", gap: "0.8rem", position: "relative", zIndex: 2 }}>
                         <div style={{
-                          width: 120, height: 120, borderRadius: "50%", background: C.white, border: `4px solid ${C.white}`,
+                          width: 54, height: 54, borderRadius: "50%", background: C.white, border: `3px solid ${C.white}`,
                           display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", 
-                          boxShadow: "0 4px 10px rgba(0,0,0,0.05)", flexShrink: 0
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.05)", flexShrink: 0
                         }}>
                           {author.photoUrl ? (
                             <img src={author.photoUrl.startsWith('http') ? author.photoUrl : `${API}${author.photoUrl.startsWith('/') ? author.photoUrl : '/' + author.photoUrl}`} alt={author.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                           ) : (
-                            <span style={{ fontSize: 36, fontWeight: 800, color: C.gold, fontFamily: "var(--font-display)" }}>{author.name.charAt(0)}</span>
+                            <span style={{ fontSize: 20, fontWeight: 800, color: C.gold, fontFamily: "var(--font-display)" }}>{author.name.charAt(0)}</span>
                           )}
                         </div>
                         
-                        <div style={{ paddingBottom: "0.4rem" }}>
-                          <p style={{ fontSize: 11, color: C.amber, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.2rem" }}>{author.city || "Pune"}</p>
-                          <h3 style={{ fontSize: 21, fontWeight: 800, color: C.dark, fontFamily: "var(--font-display)", lineHeight: 1.1 }}>{author.name}</h3>
+                        <div style={{ paddingBottom: "0.2rem", flex: 1, overflow: "hidden" }}>
+                          <p style={{ fontSize: 9, color: C.amber, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.1rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{author.city || "Pune"}</p>
+                          <h3 style={{ fontSize: 16, fontWeight: 800, color: C.dark, fontFamily: "var(--font-display)", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{author.name}</h3>
                         </div>
                       </div>
                       
                       {/* Details & Footer */}
-                      <div style={{ padding: "1.5rem", flex: 1, display: "flex", flexDirection: "column" }}>
+                      <div style={{ padding: "0.8rem 1rem", flex: 1, display: "flex", flexDirection: "column" }}>
                         
                         {/* Qualifications & Skills */}
-                        <div style={{ marginBottom: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        <div style={{ marginBottom: "0.8rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                           {parsedQuals.length > 0 && (
                             <div>
-                              <div style={{ fontSize: 12, fontWeight: 800, color: C.amber, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                              <div style={{ fontSize: 9, fontWeight: 800, color: C.amber, marginBottom: "0.2rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                                 Education
                               </div>
-                              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                                {parsedQuals.map((q: any, i) => {
+                              <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                                {parsedQuals.slice(0, 1).map((q: any, i) => {
                                   const degreeText = q.qualification || q.degree || "";
                                   const subjectText = q.subject || "";
                                   let displayStr = degreeText;
                                   if (subjectText) displayStr += (displayStr ? ` in ${subjectText}` : subjectText);
                                   return (
-                                    <div key={i} style={{ fontSize: 13, color: C.muted, lineHeight: 1.4, marginBottom: "0.4rem" }}>
-                                      <div>• <span style={{ fontWeight: 600, color: C.text }}>{displayStr}</span>{q.institution || q.college ? ` from ${q.institution || q.college}` : ""}{q.year ? ` (${q.year})` : ""}</div>
-                                      {q.mode && (
-                                        <div style={{ marginLeft: "0.6rem", fontSize: 11, fontWeight: 800, color: C.primary, marginTop: "0.1rem", textTransform: "uppercase", letterSpacing: "0.03em" }}>
-                                          {q.mode}
-                                        </div>
-                                      )}
+                                    <div key={i} style={{ fontSize: 11, color: C.muted, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                      <span style={{ fontWeight: 600, color: C.text }}>{displayStr}</span>{q.institution || q.college ? ` from ${q.institution || q.college}` : ""}
                                     </div>
                                   );
                                 })}
@@ -322,12 +317,12 @@ export function BrowseAuthorsPage() {
 
                           {parsedSkills.length > 0 && (
                             <div>
-                              <div style={{ fontSize: 12, fontWeight: 800, color: C.amber, marginBottom: "0.6rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                              <div style={{ fontSize: 9, fontWeight: 800, color: C.amber, marginBottom: "0.3rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                                 Skills
                               </div>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem", height: "18px", overflow: "hidden" }}>
                                 {parsedSkills.map((s, i) => (
-                                  <span key={i} style={{ fontSize: 11, fontWeight: 700, color: C.amber, background: `${C.amber}15`, padding: "0.3rem 0.6rem", borderRadius: 4 }}>
+                                  <span key={i} style={{ fontSize: 10, fontWeight: 700, color: C.amber, background: `${C.amber}15`, padding: "0.15rem 0.4rem", borderRadius: 4, whiteSpace: "nowrap" }}>
                                     {s}
                                   </span>
                                 ))}
@@ -337,24 +332,21 @@ export function BrowseAuthorsPage() {
                         </div>
 
                         {/* Bio */}
-                        <div style={{ marginBottom: "1.5rem", flex: 1 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: C.amber, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                            About the Author
-                          </div>
-                          <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        <div style={{ marginBottom: "0.8rem", flex: 1 }}>
+                          <p style={{ fontSize: 12, color: C.muted, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                             {author.bio || "No biography provided."}
                           </p>
                         </div>
                         
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "1.2rem", borderTop: `1px solid ${C.border}` }}>
-                          <div style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", background: C.white, padding: "0.4rem 0.8rem", borderRadius: 30, border: `1px solid ${C.border}` }}>
-                            <BookOpen size={14} color={C.muted} />
-                            <span style={{ fontSize: 12, fontWeight: 700, color: C.dark }}>{author.books?.length || 0}</span>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>Books</span>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "0.8rem", borderTop: `1px solid ${C.border}` }}>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", background: C.white, padding: "0.3rem 0.6rem", borderRadius: 30, border: `1px solid ${C.border}` }}>
+                            <BookOpen size={12} color={C.muted} />
+                            <span style={{ fontSize: 11, fontWeight: 700, color: C.dark }}>{author.books?.length || 0}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: C.muted }}>Books</span>
                           </div>
                           
-                          <div style={{ fontSize: 13, fontWeight: 700, color: C.white, background: C.amber, padding: "0.5rem 1rem", borderRadius: 30, display: "flex", alignItems: "center", gap: "0.2rem", transition: "all 0.2s" }} className="view-profile-btn">
-                            View Profile <ChevronRight size={14} />
+                          <div style={{ fontSize: 11, fontWeight: 700, color: C.white, background: C.amber, padding: "0.4rem 0.8rem", borderRadius: 30, display: "flex", alignItems: "center", gap: "0.2rem", transition: "all 0.2s" }} className="view-profile-btn">
+                            View Profile <ChevronRight size={12} />
                           </div>
                         </div>
                       </div>
@@ -429,7 +421,7 @@ export function BrowseAuthorsPage() {
           border-radius: 100px;
         }
         .author-grid {
-          grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
         }
         .filter-select {
           border-radius: 50px;
@@ -445,6 +437,7 @@ export function BrowseAuthorsPage() {
             background: #f8f9fa;
             border-radius: 50px;
             padding: 0.8rem 1rem !important;
+            flex-basis: auto !important;
           }
           .filter-select {
             width: 100%;
