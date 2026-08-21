@@ -1837,7 +1837,7 @@ export function LibraryDonationsTab() {
       {/* Header Actions */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-serif font-bold text-paa-navy">Library Donations Ecosystem</h2>
+          <h2 className="text-2xl font-serif font-bold text-paa-navy">Library Donations</h2>
           <p className="text-sm text-gray-500">Manage libraries and organize donation drives for authors</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1908,10 +1908,10 @@ export function LibraryDonationsTab() {
       {activeMainTab !== 'Libraries' ? (
         <>
 
-      {/* Ecosystem Summary Heading & Edit Stats Button */}
+      {/* Summary Heading & Edit Stats Button */}
       <div className="mb-3 flex justify-between items-center mt-6">
         <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">
-          Ecosystem Summary {activeMainTab === 'Airport' ? '— Airport Libraries' : activeMainTab === 'Other' ? '— Other Partner Libraries' : '— All Libraries'}
+          Summary {activeMainTab === 'Airport' ? '— Airport Libraries' : activeMainTab === 'Other' ? '— Other Partner Libraries' : '— All Libraries'}
         </span>
         {isEditingStats ? (
           <div className="flex gap-2">
