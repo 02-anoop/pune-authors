@@ -237,15 +237,21 @@ export function EventsPage() {
           ) : (
             <div className="events-grid">
               {displayedUpcoming.map((event, i) => {
-                const bgColors = [C.white, C.cream];
-                const cardBg = bgColors[i % bgColors.length];
+                const cardPalettes = [
+                  { cardBg: "#FEF9C3", authorsBg: "#DBEAFE", booksBg: "#DCFCE7", dateBg: "#FFE066" }, // Soft Yellow
+                  { cardBg: "#E0F2FE", authorsBg: "#FEF08A", booksBg: "#DCFCE7", dateBg: "#93C5FD" }, // Soft Sky Blue
+                  { cardBg: "#F0FDF4", authorsBg: "#DBEAFE", booksBg: "#FEF08A", dateBg: "#86EFAC" }, // Soft Mint Green
+                  { cardBg: "#FAF5FF", authorsBg: "#DBEAFE", booksBg: "#FED7AA", dateBg: "#D8B4FE" }, // Soft Lavender
+                  { cardBg: "#FFF7ED", authorsBg: "#DBEAFE", booksBg: "#DCFCE7", dateBg: "#FDBA74" }, // Soft Warm Peach
+                ];
+                const palette = cardPalettes[i % cardPalettes.length];
                 return (
                 <FadeIn key={event.id} delay={i * 50}>
-                  <div className="event-card" style={{ display: "flex", flexDirection: "column", height: "100%", border: `2px solid ${C.dark}`, background: cardBg, borderRadius: 24, padding: "2rem", boxShadow: "4px 4px 0px #000", transition: "transform 0.2s ease, box-shadow 0.2s ease", cursor: "pointer" }}
+                  <div className="event-card" style={{ display: "flex", flexDirection: "column", height: "100%", border: `2px solid ${C.dark}`, background: palette.cardBg, borderRadius: 24, padding: "2rem", boxShadow: "4px 4px 0px #000", transition: "transform 0.2s ease, box-shadow 0.2s ease", cursor: "pointer" }}
                        onMouseEnter={e => { e.currentTarget.style.transform = "translate(-2px, -2px)"; e.currentTarget.style.boxShadow = "6px 6px 0px #000"; }}
                        onMouseLeave={e => { e.currentTarget.style.transform = "translate(0px, 0px)"; e.currentTarget.style.boxShadow = "4px 4px 0px #000"; }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
-                      <span style={{ fontSize: 12, fontWeight: 800, background: C.primary, padding: "0.2rem 0.8rem", borderRadius: 50, border: `2px solid ${C.dark}`, color: C.dark }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, background: palette.dateBg, padding: "0.2rem 0.8rem", borderRadius: 50, border: `2px solid ${C.dark}`, color: C.dark }}>
                         {event.date}
                       </span>
                       <span style={{ fontSize: 12, fontWeight: 700, color: C.text, display: "flex", alignItems: "center", gap: "0.3rem" }}>
@@ -260,13 +266,13 @@ export function EventsPage() {
                     {((event._count?.eventAuthors > 0) || (event._count?.eventBooks > 0)) && (
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", borderTop: `2px dashed ${C.dark}`, paddingTop: "1.5rem" }}>
                         {event._count?.eventAuthors > 0 ? (
-                          <div style={{ background: C.white, border: `2px solid ${C.dark}`, borderRadius: 12, padding: "0.5rem 1rem", textAlign: "center" }}>
+                          <div style={{ background: palette.authorsBg, border: `2px solid ${C.dark}`, borderRadius: 12, padding: "0.5rem 1rem", textAlign: "center" }}>
                             <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", marginBottom: "0.2rem", color: C.dark }}>Authors</div>
                             <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 900, color: C.dark }}>{event._count.eventAuthors}</div>
                           </div>
                         ) : <div />}
                         {event._count?.eventBooks > 0 ? (
-                          <div style={{ background: C.white, border: `2px solid ${C.dark}`, borderRadius: 12, padding: "0.5rem 1rem", textAlign: "center" }}>
+                          <div style={{ background: palette.booksBg, border: `2px solid ${C.dark}`, borderRadius: 12, padding: "0.5rem 1rem", textAlign: "center" }}>
                             <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", marginBottom: "0.2rem", color: C.dark }}>Books</div>
                             <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 900, color: C.dark }}>{event._count.eventBooks}</div>
                           </div>
