@@ -2198,10 +2198,10 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
           </div>
         </div>
 
-        {/* Chart 3: Distribution Activity */}
+        {/* Chart 3: Books Sold and Donated */}
         <div className="bg-white border border-paa-navy/5 rounded-2xl shadow-sm overflow-hidden flex flex-col justify-between">
           <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-paa-navy uppercase tracking-widest">Distribution Activity Breakdown</h3>
+            <h3 className="text-sm font-bold text-paa-navy uppercase tracking-widest">Books Sold and Donated</h3>
             <span className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">Per Title</span>
           </div>
           <div className="p-6">
