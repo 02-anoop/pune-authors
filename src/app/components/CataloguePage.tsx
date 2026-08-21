@@ -345,15 +345,15 @@ export async function downloadCataloguePDF(label: string, books: CatalogueBook[]
          `;
   
         const bookChunks = [];
-        for (let i = 0; i < author.books.length; i += 2) {
-           bookChunks.push(author.books.slice(i, i + 2));
+        for (let i = 0; i < author.books.length; i += 3) {
+           bookChunks.push(author.books.slice(i, i + 3));
         }
   
         const bookPagesHtml = bookChunks.map((chunk) => {
            const booksHtml = chunk.map((b, bIdx) => `
-           <div style="display: flex; gap: 22px; padding-bottom: ${chunk.length > 1 && bIdx === 0 ? '22px' : '0'}; border-bottom: ${chunk.length > 1 && bIdx === 0 ? '1px solid #cbd5e1' : 'none'}; break-inside: avoid;">
+           <div style="display: flex; gap: 22px; padding-bottom: ${chunk.length > 1 && bIdx < chunk.length - 1 ? '22px' : '0'}; border-bottom: ${chunk.length > 1 && bIdx < chunk.length - 1 ? '1px solid #cbd5e1' : 'none'}; break-inside: avoid;">
              <div style="flex-shrink: 0; width: 155px;">
-               ${b.coverUrl ? `<img src="${b.coverUrl.startsWith('http') ? b.coverUrl : (import.meta.env.VITE_API_URL || 'http://localhost:3001').trim() + (b.coverUrl.startsWith('/') ? b.coverUrl : '/' + b.coverUrl)}" crossorigin="anonymous" style="width: 100%; height: 240px; object-fit: cover; border-radius: 4px; box-shadow: 10px 10px 20px rgba(0,0,0,0.1); border: 1px solid #94a3b8;" onerror="this.style.opacity='0';" />` : `<div style="width: 100%; height: 240px; background: #e2e8f0; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px dashed #94a3b8;"><span style="color:#64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">No Cover</span></div>`}
+               ${b.coverUrl ? `<img src="${b.coverUrl.startsWith('http') ? b.coverUrl : (import.meta.env.VITE_API_URL || 'http://localhost:3001').trim() + (b.coverUrl.startsWith('/') ? b.coverUrl : '/' + b.coverUrl)}" crossorigin="anonymous" style="width: 100%; height: 220px; object-fit: cover; border-radius: 4px; box-shadow: 10px 10px 20px rgba(0,0,0,0.1); border: 1px solid #94a3b8;" onerror="this.style.opacity='0';" />` : `<div style="width: 100%; height: 220px; background: #e2e8f0; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px dashed #94a3b8;"><span style="color:#64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">No Cover</span></div>`}
              </div>
              <div style="flex: 1; display: flex; flex-direction: column;">
                <div style="margin-bottom: 6px;">
