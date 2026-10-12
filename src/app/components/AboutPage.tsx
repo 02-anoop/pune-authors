@@ -38,7 +38,7 @@ const goals = [
   {
     img: "/goal_reading.webp",
     title: "Revive Reading Culture",
-    desc: "Promote and revive book reading as a habit . An effort to keep book reading alive.",
+    desc: "Promote and revive book reading as a habit. An effort to keep book reading alive.",
   },
   {
     img: "/goal_creativity.webp",
@@ -73,7 +73,7 @@ const initiatives = [
     color: "#f16522",
     bg: "#fff3e6",
     title: "Literary Events",
-    desc: "The group has been organising Literary Events at an average rate of 3-4 events per month, in housing societies, educational institutions and corporate offices. Prominent places where these events were organised tare like NOFRA Navy Nagar, Mumbai; AFMC, Pune; Tata Motors, HCL technologies, Persistent Systems, a few prominent housing societies, and many more.",
+    desc: "The group has been organising Literary Events at an average rate of 3-4 events per month, in housing societies, educational institutions and corporate offices. Prominent places where these events were organised are like NOFRA Navy Nagar, Mumbai; AFMC, Pune; Tata Motors, HCL technologies, Persistent Systems, a few prominent housing societies, and many more.",
   },
   {
     icon: "📚",
