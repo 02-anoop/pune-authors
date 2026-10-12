@@ -260,7 +260,7 @@ export function AboutPage() {
                 </h2>
                 <div style={{ width: 60, height: 4, background: "#f16522", borderRadius: 2, marginBottom: "2rem" }} />
                 <p style={{ fontSize: 16, color: "#475569", lineHeight: 1.8, fontWeight: 500, marginBottom: "1.2rem", textAlign: "justify" }}>
-                  Pune Authors' Association is an informal group of authors. This group was formed in <strong style={{ color: "#0f172a" }}>December 2024</strong>. Founder of the group is Cdr <strong style={{ color: "#0f172a" }}>Cdr (Retd) Shiv Mathur</strong>. The group started with around 25 authors from Pune.
+                  Pune Authors' Association is an informal group of authors. This group was formed in <strong style={{ color: "#0f172a" }}>December 2024</strong>. Founder of the group is <strong style={{ color: "#0f172a" }}>Cdr (Retd) Shiv Mathur</strong>. The group started with around 25 authors from Pune.
                 </p>
                 <p style={{ fontSize: 16, color: "#475569", lineHeight: 1.8, fontWeight: 500, textAlign: "justify" }}>
                   Then we also included a few from Mumbai, and with time authors from other parts of India have also been joining us. Generally, the strength of the group hovers around 50. The number of titles is three times the number of authors on an average, and the books cover a wide variety of genres.
@@ -338,7 +338,7 @@ export function AboutPage() {
               </ul>
 
               <p style={{ marginBottom: "1.2rem", marginTop: "2rem" }}>
-                Since inception the group has been organising Literary Events at an average rate of 3-4 events per month, in housing societies, educational institutions and corporate offices. Prominent places where these events were organised tare like NOFRA Navy Nagar, Mumbai; AFMC, Pune; Tata Motors, HCL technologies, Persistent Systems, a few prominent housing societies, etc.
+                Since inception the group has been organising Literary Events at an average rate of 3-4 events per month, in housing societies, educational institutions and corporate offices. Prominent places where these events were organised are like NOFRA Navy Nagar, Mumbai; AFMC, Pune; Tata Motors, HCL technologies, Persistent Systems, a few prominent housing societies, etc.
               </p>
               <p style={{ marginBottom: "1.2rem" }}>
                 The group has helped setup Flybraries at six of the prominent airports in India and donated till date 1600 copies of books to the airport Flybraries. They are Pune, Chennai, Kolkata, Mangalore, Thiruvananthapuram, &amp; Bhubaneshwar airports.
