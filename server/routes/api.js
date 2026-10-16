@@ -1940,26 +1940,19 @@ router.get('/api/impact-stats', async (req, res) => {
     let totalLiteraryBooks = 0;
 
     events.forEach(evt => {
-      let booksSold = evt.aggSold || 0;
-
-      if (evt.eventAuthors) {
-        evt.eventAuthors.forEach(ea => {
-          if (ea.manualTotalSold) booksSold += ea.manualTotalSold;
-        });
-      }
-
-      if (evt.posOrders) {
-        evt.posOrders.forEach(order => {
-          if (order.items) {
-            order.items.forEach(item => {
-              booksSold += item.quantity;
-            });
-          }
-        });
-      }
+      let booksSold = evt.aggSold != null
+        ? evt.aggSold
+        : ((evt.eventBooks?.reduce((s, eb) => s + (eb.soldStock || 0), 0) || 0) ||
+           (evt.eventAuthors?.reduce((s, ea) => s + (ea.manualTotalSold || 0), 0) || 0) ||
+           (evt.posOrders?.reduce((s, o) => s + (o.items?.reduce((is, it) => is + (it.quantity || 0), 0) || 0), 0) || 0));
 
       const name = (evt.name || '').toLowerCase();
-      const isBookFair = name.includes('book fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
+      const isBookFair = evt.category === 'Book Fair' ||
+        name.includes('book fair') ||
+        name.includes('srinagar') ||
+        name.includes('dehradun') ||
+        name.includes('bengali mela') ||
+        name.includes('diwali stall');
 
       if (isBookFair) {
         totalFairs++;
@@ -7273,23 +7266,11 @@ router.get('/api/admin/events/export', verifyToken, isAdmin, async (req, res) =>
 
     events.forEach((evt, idx) => {
       const numAuthors = evt.eventAuthors.length;
-      let booksSold = evt.aggSold || 0;
-
-      if (evt.eventAuthors && evt.eventAuthors.length > 0) {
-        evt.eventAuthors.forEach(ea => {
-          if (ea.manualTotalSold) booksSold += ea.manualTotalSold;
-        });
-      }
-
-      if (evt.posOrders && evt.posOrders.length > 0) {
-        evt.posOrders.forEach(order => {
-          if (order.items) {
-            order.items.forEach(item => {
-              booksSold += item.quantity;
-            });
-          }
-        });
-      }
+      let booksSold = evt.aggSold != null
+        ? evt.aggSold
+        : ((evt.eventBooks?.reduce((s, eb) => s + (eb.soldStock || 0), 0) || 0) ||
+           (evt.eventAuthors?.reduce((s, ea) => s + (ea.manualTotalSold || 0), 0) || 0) ||
+           (evt.posOrders?.reduce((s, o) => s + (o.items?.reduce((is, it) => is + (it.quantity || 0), 0) || 0), 0) || 0));
 
       let year = new Date().getFullYear();
       let monthStr = '';

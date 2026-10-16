@@ -5,7 +5,7 @@ import qrCode from "./data/qr_code.jpeg";
 import charterPdf from "./data/Group Activities and Charter.pdf";
 import pastEvents from "./data/past_events.json";
 import { bookCategories } from "../data/categories";
-import { CheckCircle, Upload, CreditCard, User, BookOpen, FileText, Shield, ChevronRight, ChevronLeft, Plus, Eye, EyeOff, X, Edit, Instagram, Facebook, Linkedin, Youtube, Link as LinkIcon, ArrowLeft, Info, CalendarDays, Briefcase, MapPin, Clock, LogOut } from "lucide-react";
+import { CheckCircle, Upload, CreditCard, User, BookOpen, FileText, Shield, ChevronRight, ChevronLeft, Plus, Eye, EyeOff, X, Edit, Instagram, Facebook, Linkedin, Youtube, Link as LinkIcon, ArrowLeft, Info, CalendarDays, Briefcase, MapPin, Clock, LogOut, Search } from "lucide-react";
 import { compressImage } from "../utils/imageUtils";
 
 const indianStates = [
@@ -80,35 +80,130 @@ function WizardAboutStep() {
 }
 
 function WizardEventsStep() {
-  const [currentPastEventIndex, setCurrentPastEventIndex] = useState(0);
   const [stats, setStats] = useState<any>(null);
+  const [pastEventsList, setPastEventsList] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 10;
+
+  const deriveClassification = (name: string, eventType?: string) => {
+    const combined = ((name || '') + ' ' + (eventType || '')).toLowerCase();
+    if (combined.includes('book fair') || eventType === 'Book Fair') {
+      return { format: 'Stall', category: 'Book Fair' };
+    }
+    if (combined.includes('fair') || combined.includes('mela') || combined.includes('stall')) {
+      return { format: 'Stall', category: 'Book Fair' };
+    }
+    if (
+      combined.includes('housing') || combined.includes('estate') ||
+      combined.includes('vihar') || combined.includes('windchimes') ||
+      combined.includes('highlands') || combined.includes('kalpatru') ||
+      combined.includes('residential') || combined.includes('naval officer') ||
+      combined.includes('prolife') || combined.includes('clover') || combined.includes('undri') || combined.includes('estaben')
+    ) {
+      return { format: 'Meet the Authors', category: 'Housing Society' };
+    }
+    if (combined.includes('college') || combined.includes('afmc') || combined.includes('engineering')) {
+      return { format: 'Meet the Authors', category: 'College' };
+    }
+    if (combined.includes('university') || combined.includes('iit') || combined.includes('institute')) {
+      return { format: 'Meet the Authors', category: 'University' };
+    }
+    if (
+      combined.includes('corporate') || combined.includes('tata') ||
+      combined.includes('persistent') || combined.includes('hcl') ||
+      combined.includes('systems') || combined.includes('motors')
+    ) {
+      return { format: 'Stall', category: 'Corporate Office' };
+    }
+    if (combined.includes('army') || combined.includes('military') || combined.includes('defence') || combined.includes('law')) {
+      return { format: 'Meet the Authors', category: 'College' };
+    }
+    return { format: 'Meet the Authors', category: 'Housing Society' };
+  };
+
+  const loadFallbackPastEvents = () => {
+    const fallback = (pastEvents || []).map((evt: any) => {
+      const classification = deriveClassification(evt.name, evt.eventType);
+      return {
+        ...evt,
+        eventType: evt.eventType || classification.format,
+        category: evt.category || classification.category,
+        location: evt.location || evt.address,
+        aggAuthors: evt.authorsParticipated,
+        aggSold: evt.booksSold,
+      };
+    });
+    setPastEventsList(fallback);
+  };
 
   useEffect(() => {
     axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/impact-stats`)
       .then(res => setStats(res.data))
       .catch(console.error);
+
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/public/events`);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        const past = (res.data || []).filter((e: any) => {
+          if (e.eventType === 'Flybraries') return false;
+          const d = new Date(e.date || e.startDate);
+          if (isNaN(d.getTime())) return e.status !== 'Upcoming' && e.status !== 'Live';
+          return d < now;
+        }).sort((a: any, b: any) => {
+          const dA = new Date(a.date || a.startDate).getTime();
+          const dB = new Date(b.date || b.startDate).getTime();
+          if (isNaN(dA) && isNaN(dB)) return (a.id || 0) - (b.id || 0);
+          if (isNaN(dA)) return 1;
+          if (isNaN(dB)) return -1;
+          return dA - dB;
+        });
+
+        if (past && past.length > 0) {
+          setPastEventsList(past);
+        } else {
+          loadFallbackPastEvents();
+        }
+      } catch (err) {
+        loadFallbackPastEvents();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
   }, []);
 
-  const nextPastEvent = () => setCurrentPastEventIndex((prev) => (prev + 1) % pastEvents.length);
-  const prevPastEvent = () => setCurrentPastEventIndex((prev) => (prev - 1 + pastEvents.length) % pastEvents.length);
+  const totalFairs = stats ? stats.totalFairs : 8;
+  const totalFairsBooks = stats ? stats.totalFairsBooks : 1125;
 
-  const fairs = pastEvents.filter(e => {
-    const name = (e.name || '').toLowerCase();
-    return name.includes('book fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
-  });
-  const literaryEvents = pastEvents.filter(e => {
-    const name = (e.name || '').toLowerCase();
-    return !name.includes('book fair') && !name.includes('srinagar') && !name.includes('dehradun') && !name.includes('bengali mela') && !name.includes('diwali stall');
-  });
-
-  const totalFairs = stats ? stats.totalFairs : 6;
-  const totalFairsBooks = stats ? stats.totalFairsBooks : 1171;
-
-  const totalLiteraryEvents = stats ? stats.totalLiteraryEvents : 31;
-  const totalLiteraryBooks = stats ? stats.totalLiteraryBooks : 1777;
+  const totalLiteraryEvents = stats ? stats.totalLiteraryEvents : 34;
+  const totalLiteraryBooks = stats ? stats.totalLiteraryBooks : 2590;
 
   const totalLibraries = stats ? (stats.totalAirportLibraries !== undefined ? stats.totalAirportLibraries : stats.totalLibraries) : 6;
   const totalLibraryBooks = stats ? stats.totalLibraryBooks : 1500;
+
+  const filteredEvents = pastEventsList.filter((e: any) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      (e.name || "").toLowerCase().includes(term) ||
+      (e.location || e.address || "").toLowerCase().includes(term) ||
+      (e.eventType || "").toLowerCase().includes(term) ||
+      (e.category || "").toLowerCase().includes(term)
+    );
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / itemsPerPage));
+  const displayedEvents = filteredEvents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -157,49 +252,193 @@ function WizardEventsStep() {
             </div>
           </div>
 
-          <h3 className="font-serif text-xl text-paa-navy mb-6 border-b border-gray-100 pb-2">Event Highlights</h3>
-          <div className="relative min-h-[420px] md:min-h-[450px] flex justify-center perspective-[1000px]">
-              {pastEvents.map((event, index) => {
-                const diff = (index - currentPastEventIndex + pastEvents.length) % pastEvents.length;
-                if (diff > 2 && diff < pastEvents.length - 1) return null;
-                let style: React.CSSProperties = { position: "absolute", top: 0, width: "100%", maxWidth: "380px", transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)" };
-                if (diff === 0) { style = { ...style, transform: "translateY(0) scale(1)", zIndex: 30, opacity: 1, pointerEvents: "auto" }; }
-                else if (diff === 1) { style = { ...style, transform: "translateY(25px) scale(0.92)", zIndex: 20, opacity: 0.8, pointerEvents: "none" }; }
-                else if (diff === 2) { style = { ...style, transform: "translateY(50px) scale(0.84)", zIndex: 10, opacity: 0.4, pointerEvents: "none" }; }
-                else if (diff === pastEvents.length - 1) { style = { ...style, transform: "translateY(-40px) scale(1.05)", zIndex: 40, opacity: 0, pointerEvents: "none" }; }
-
-                return (
-                  <div key={index} style={style} className="bg-white rounded-2xl border border-paa-navy/10 shadow-lg overflow-hidden flex flex-col">
-                    <div className="h-40 bg-gray-100 relative">
-                      {(event as any).photoUrl ? (
-                        <img src={(event as any).photoUrl.match(/^(http|data:)/) ? (event as any).photoUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${(event as any).photoUrl}`} alt={event.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center p-4 text-center bg-paa-navy/5">
-                           <h3 className="font-serif text-lg text-gray-400 leading-tight">{event.name}</h3>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-5 flex-1 flex flex-col bg-white">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-[9px] font-bold text-paa-navy uppercase tracking-widest bg-paa-navy/5 px-2 py-1 rounded">{event.date}</span>
-                        <span className="text-[10px] text-gray-500 flex items-center gap-1"><Clock size={10} /> {event.duration}</span>
-                      </div>
-                      <h4 className="font-serif text-lg text-gray-900 font-medium mb-1 line-clamp-1">{event.name}</h4>
-                      <p className="text-xs text-gray-500 flex items-center gap-1.5 mb-4 line-clamp-1"><MapPin size={12} className="shrink-0" /> {event.address}</p>
-                      
-                      <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-3 mt-auto">
-                        <div><div className="text-[9px] text-gray-400 uppercase tracking-widest mb-0.5">Authors</div><div className="font-serif text-lg text-paa-navy">{event.authorsParticipated}</div></div>
-                        <div><div className="text-[9px] text-gray-400 uppercase tracking-widest mb-0.5">Books Sold</div><div className="font-serif text-lg text-paa-navy">{event.booksSold !== null ? event.booksSold : "TBA"}</div></div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              <div className="absolute -bottom-2 md:bottom-2 z-50 flex gap-3">
-                 <button onClick={prevPastEvent} className="p-3 bg-white rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 shadow-md transition-all active:scale-95"><ChevronLeft size={20} /></button>
-                 <button onClick={nextPastEvent} className="p-3 bg-paa-navy rounded-full text-white hover:bg-paa-navy/90 shadow-md transition-all active:scale-95"><ChevronRight size={20} /></button>
-              </div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+            <h3 className="font-serif text-xl text-paa-navy pb-1">Past Events</h3>
+            <div className="relative w-full sm:w-72">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search events by name or location..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-xs border border-black rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white font-medium"
+              />
+            </div>
           </div>
+
+          {loading ? (
+            <div className="p-8 text-center text-sm text-gray-500 font-medium">Loading past events...</div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="p-8 text-center text-sm text-gray-500 font-medium border border-black rounded-xl bg-white">
+              No events found matching "{searchTerm}"
+            </div>
+          ) : (
+            <div className="border border-black overflow-hidden shadow-sm rounded-xl">
+              <div className="w-full overflow-x-auto">
+                <table className="w-full text-left text-[11px] border-collapse border-[1.5px] border-black">
+                  <thead className="bg-[#FFE600] border-b-2 border-black">
+                    <tr>
+                      <th className="w-12 p-2.5 text-center text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle">
+                        S.No
+                      </th>
+                      <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize align-middle min-w-[180px]">
+                        Event Name
+                      </th>
+                      <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                        Format
+                      </th>
+                      <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                        Category
+                      </th>
+                      <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle min-w-[160px]">
+                        Address
+                      </th>
+                      <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                        Month
+                      </th>
+                      <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                        Year
+                      </th>
+                      <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                        Duration
+                      </th>
+                      <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                        No. Of Authors
+                      </th>
+                      <th className="p-2.5 text-[13px] font-bold text-black bg-[#FFE600] border-[1.5px] border-black capitalize text-center align-middle whitespace-nowrap">
+                        Books Sold
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white text-[11px]">
+                    {displayedEvents.map((evt: any, i: number) => {
+                      const sNo = (currentPage - 1) * itemsPerPage + i + 1;
+                      const rowBg = i % 2 === 0 ? "bg-[#FFFFFF]" : "bg-[#FCFCFC]";
+
+                      let cleanDuration = evt.duration || (evt.durationDays ? `${evt.durationDays} Days` : "-");
+                      if (cleanDuration && cleanDuration !== "-") {
+                        cleanDuration = cleanDuration.replace(/0(\d)/g, '$1');
+                        cleanDuration = cleanDuration.replace(/\b0 Hours\b/gi, '').trim();
+                        cleanDuration = cleanDuration.replace(/Days/gi, 'days').replace(/Hrs?/gi, 'hrs').replace(/Mins?/gi, 'mins');
+                      }
+
+                      const startDate = new Date(evt.date || evt.startDate);
+                      let month = "-";
+                      let year = "-";
+                      if (!isNaN(startDate.getTime())) {
+                        month = startDate.toLocaleString('default', { month: 'short' });
+                        year = String(startDate.getFullYear());
+                      } else if (evt.date && typeof evt.date === 'string') {
+                        const parts = evt.date.split(/[\s-]+/);
+                        if (parts.length >= 2) {
+                          month = parts[1] ? parts[1].slice(0, 3) : parts[0].slice(0, 3);
+                          const yrMatch = evt.date.match(/\d{4}/);
+                          if (yrMatch) year = yrMatch[0];
+                        }
+                      }
+
+                      const addressStr = evt.location || evt.address || "-";
+
+                      const formatColor = (evt.eventType === "Meet the Authors" || evt.eventType === "Meet The Authors")
+                        ? "bg-[#AFC6E9] text-black"
+                        : evt.eventType === "Stall"
+                          ? "bg-[#8EE88C] text-black"
+                          : "bg-gray-100 text-black";
+
+                      const categoryColor = evt.category === "Housing Society" ? "bg-[#F3C29E] text-black"
+                        : evt.category === "School" ? "bg-[#C7D2FE] text-black"
+                        : evt.category === "Corporate Office" ? "bg-[#FFE066] text-black"
+                        : evt.category === "Book Fair" ? "bg-[#6FEF59] text-black"
+                        : evt.category === "College" ? "bg-[#F6C6C6] text-black"
+                        : evt.category === "University" ? "bg-[#FFF176] text-black"
+                        : "bg-gray-100 text-black";
+
+                      const evtAuthors = evt.aggAuthors != null
+                        ? evt.aggAuthors
+                        : evt.authorsParticipated != null
+                          ? evt.authorsParticipated
+                          : evt.isLegacy
+                            ? "NA"
+                            : (evt._count?.eventAuthors || 0);
+
+                      const books = evt.aggSold != null
+                        ? evt.aggSold
+                        : evt.booksSold != null
+                          ? evt.booksSold
+                          : evt.isLegacy
+                            ? "NA"
+                            : (evt.eventBooks?.reduce((s: number, eb: any) => s + (eb.soldStock || 0), 0) || 0);
+
+                      return (
+                        <tr key={evt.id || i} className={`text-[13px] font-medium text-black border-[1.5px] border-black ${rowBg} hover:bg-yellow-50/50 transition-colors`}>
+                          <td className="p-2 text-center align-middle border-[1.5px] border-black font-semibold">
+                            {sNo}
+                          </td>
+                          <td className="p-2 text-left align-middle border-[1.5px] border-black font-semibold">
+                            {evt.name}
+                          </td>
+                          <td className={`p-2 text-center align-middle border-[1.5px] border-black capitalize ${formatColor}`}>
+                            {evt.eventType || "-"}
+                          </td>
+                          <td className={`p-2 text-center align-middle border-[1.5px] border-black capitalize ${categoryColor}`}>
+                            {evt.category || "-"}
+                          </td>
+                          <td className="p-2 text-center align-middle border-[1.5px] border-black capitalize">
+                            {addressStr}
+                          </td>
+                          <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                            {month}
+                          </td>
+                          <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                            {year}
+                          </td>
+                          <td className="p-2 text-center align-middle border-[1.5px] border-black">
+                            {cleanDuration}
+                          </td>
+                          <td className="p-2 text-center font-bold align-middle border-[1.5px] border-black">
+                            {evtAuthors}
+                          </td>
+                          <td className="p-2 text-center font-bold align-middle border-[1.5px] border-black">
+                            {books}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center mt-4">
+              <span className="text-xs text-gray-500 font-semibold">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredEvents.length)} of {filteredEvents.length} events
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1.5 rounded-lg border border-black text-xs font-bold transition-all ${currentPage === 1 ? 'opacity-40 cursor-not-allowed bg-gray-100' : 'bg-white hover:bg-gray-50 shadow-sm active:scale-95'}`}
+                >
+                  Previous
+                </button>
+                <span className="text-xs font-bold text-paa-navy px-2">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-1.5 rounded-lg border border-black text-xs font-bold transition-all ${currentPage === totalPages ? 'opacity-40 cursor-not-allowed bg-gray-100' : 'bg-white hover:bg-gray-50 shadow-sm active:scale-95'}`}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
