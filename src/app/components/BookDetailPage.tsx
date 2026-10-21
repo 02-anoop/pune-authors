@@ -514,24 +514,57 @@ export function BookDetailPage() {
                         }
                         if (!ed || typeof ed !== 'object') return null;
 
-                        const excludedKeys = [
-                          'bundleRules', 'bundleRule', 'lowStockAlerts', 'lateFines', 
-                          'isPublishedByPublisher', 'whyJoining', 'conflictOfInterestSignature', 
-                          'agreedToGuidelines', 'agreedToInfoDoc', 'isReapplied', 'hasPendingEdits', 
-                          'editedProfileFields', 'fineHistory', 'lateNotificationDate', 'fineDate', 
-                          'fineStatus', 'finePaymentScreenshot', 'finePaymentDate', 'lastFinePaidAt'
-                        ];
+                        const excludedKeyNames = new Set([
+                          'bundlerules', 'bundlerule', 'lowstockalerts', 'latefines', 
+                          'ispublishedbypublisher', 'whyjoining', 'conflictofinterestsignature', 
+                          'agreedtoguidelines', 'agreedtoinfodoc', 'isreapplied', 'haspendingedits', 
+                          'editedprofilefields', 'finehistory', 'latenotificationdate', 'finedate', 
+                          'finestatus', 'finepaymentscreenshot', 'finepaymentdate', 'lastfinepaidat',
+                          'draftqrurl', 'draftphotourl', 'draftpaymenturl', 'draftcoverurl', 'draftbackcoverurl',
+                          'originalprofiledata', 'qrcodeurl', 'photourl', 'paymentscreenshot', 'certificateurl',
+                          'organizedeventscount'
+                        ]);
+
+                        const socialKeys = new Set([
+                          'youtube', 'linkedin', 'instagram', 'facebook', 'twitter', 'x', 
+                          'social', 'website', 'blog', 'goodreads', 'threads', 'github'
+                        ]);
 
                         return Object.entries(ed)
-                          .filter(([k, v]) => typeof v !== 'object' && v !== null && v !== '' && !excludedKeys.includes(k))
+                          .filter(([k, v]) => {
+                            if (typeof v === 'object' || v === null || v === '') return false;
+                            const lowerKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            if (excludedKeyNames.has(lowerKey)) return false;
+                            if (lowerKey.includes('draft')) return false;
+
+                            const valStr = String(v).trim();
+                            // Exclude any internal file upload paths
+                            if (valStr.startsWith('/uploads/') || valStr.startsWith('/upload/') || /\.(webp|jpg|jpeg|png|gif|pdf|svg)$/i.test(valStr)) {
+                              return false;
+                            }
+
+                            // If it's a URL, only show links to social media profiles / websites
+                            const isUrl = valStr.startsWith('http://') || valStr.startsWith('https://');
+                            if (isUrl) {
+                              const isSocial = Array.from(socialKeys).some(s => lowerKey.includes(s));
+                              if (!isSocial) return false;
+                            }
+
+                            return true;
+                          })
                           .map(([k, v]) => {
                             const valStr = String(v);
                             const isUrl = valStr.startsWith('http://') || valStr.startsWith('https://');
-                            const isLongField = isUrl || valStr.length > 30 || ['youtube', 'linkedin', 'instagram', 'facebook', 'website', 'social'].includes(k.toLowerCase());
+                            const lowerKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            const isSocial = Array.from(socialKeys).some(s => lowerKey.includes(s));
+                            const isLongField = isUrl || valStr.length > 30 || isSocial;
+                            const formattedLabel = k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim().toUpperCase();
 
                             return (
                               <div key={k} style={{ gridColumn: isLongField ? '1 / -1' : 'auto' }}>
-                                <span style={{ display: 'block', fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>{k}</span>
+                                <span style={{ display: 'block', fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                                  {formattedLabel}
+                                </span>
                                 {isUrl ? (
                                   <a 
                                     href={valStr} 

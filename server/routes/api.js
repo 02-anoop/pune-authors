@@ -215,7 +215,14 @@ router.get('/api/books', async (req, res) => {
   const cached = getCache(cacheKey);
   if (cached) return res.json(cached);
 
-  const where = { status: 'Approved', isArchived: false, author: { isArchived: false } };
+  const where = {
+    status: 'Approved',
+    isArchived: false,
+    author: {
+      isArchived: false,
+      status: { notIn: ['Archived', 'Rejected', 'Deletion Requested'] }
+    }
+  };
   if (genre) where.genre = genre;
 
   const books = await prisma.book.findMany({
@@ -224,7 +231,7 @@ router.get('/api/books', async (req, res) => {
   });
 
   const filteredBooks = books.filter(b => {
-    if (!b.author || b.author.status === 'Rejected' || b.author.isArchived) return false;
+    if (!b.author || b.author.isArchived || ['Archived', 'Rejected', 'Deletion Requested'].includes(b.author.status)) return false;
     const extraData = b.author?.extraData;
     if (extraData && extraData.lateFines > 0 && extraData.fineDate) {
       const diffDays = (new Date().getTime() - new Date(extraData.fineDate).getTime()) / (1000 * 3600 * 24);
@@ -550,6 +557,11 @@ router.post('/api/authors/register', upload.any(), async (req, res) => {
           qualificationsJson: qualificationsArray,
           extraData: (() => {
             let parsed = extraData ? JSON.parse(extraData) : {};
+            delete parsed.draftQrUrl;
+            delete parsed.draftPhotoUrl;
+            delete parsed.draftPaymentUrl;
+            delete parsed.draftCoverUrl;
+            delete parsed.draftBackCoverUrl;
             parsed.linkedin = linkedin || "";
             parsed.youtube = youtube || "";
             parsed.conflictOfInterestSignature = conflictOfInterestSignature || "NA";
@@ -809,7 +821,16 @@ router.delete('/api/author/account', verifyToken, async (req, res) => {
       data: { status: 'Deletion Requested' }
     });
 
+    // Remove books immediately from the catalogue
+    await prisma.book.updateMany({
+      where: { authorId: author.id },
+      data: { isArchived: true, status: 'Archived' }
+    });
+
     if (typeof deleteCatalogueCache === 'function') deleteCatalogueCache();
+    invalidateCache('books');
+    invalidateCache('adminAuthors');
+    invalidateCache('public-stats');
 
     // Notify admin team
     if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
@@ -1295,16 +1316,28 @@ router.post('/api/admin/authors/:id/approve-deletion', verifyToken, isAdmin, asy
     const author = await prisma.author.findUnique({ where: { id: authorId } });
     if (!author) return res.status(404).json({ error: 'Author not found' });
 
+    // Mark author as archived but preserve all historical details, past events, sales, etc.
     await prisma.author.update({ where: { id: authorId }, data: { isArchived: true, status: 'Archived' } });
+    
+    // Only books are removed/archived from the public catalogue
     await prisma.book.updateMany({ where: { authorId }, data: { isArchived: true, status: 'Archived' } });
+    
+    // Only remove unconfirmed pending invites so they aren't kept on upcoming event rosters
+    await prisma.eventAuthor.deleteMany({ where: { authorId, optInStatus: { in: ['Pending', 'Draft'] } } });
 
     if (typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
       sendNotificationEmail(
         [author.email],
         'Account Deletion Approved - Pune Authors',
-        emailWrap('Account Deleted', `<p>Hi ${author.name},</p><p>Your request to delete your account has been approved and processed. Your profile and books have been permanently archived.</p>`)
+        emailWrap('Account Deleted', `<p>Hi ${author.name},</p><p>Your request to delete your account has been approved and processed. Your books have been removed from the portal.</p>`)
       ).catch(e => console.error(e));
     }
+
+    // Delete pre-generated catalogue.pdf if it exists so that it gets regenerated
+    deleteCatalogueCache();
+    invalidateCache('books');
+    invalidateCache('adminAuthors');
+    invalidateCache('public-stats');
 
     res.json({ success: true });
   } catch (err) {
@@ -1341,12 +1374,24 @@ router.post('/api/admin/authors/:id/reject-deletion', verifyToken, isAdmin, asyn
 router.delete('/api/admin/authors/:id', verifyToken, isAdmin, async (req, res) => {
   try {
     const authorId = parseInt(req.params.id);
-    await prisma.author.update({ where: { id: authorId }, data: { isArchived: true } });
+    const author = await prisma.author.findUnique({ where: { id: authorId } });
+    if (!author) return res.status(404).json({ error: 'Author not found' });
 
-    // Also archive their books
+    // Preserve author details, past event participation, sales, etc. Mark as Archived
+    await prisma.author.update({
+      where: { id: authorId },
+      data: { isArchived: true, status: 'Archived' }
+    });
+
+    // Only their books are removed/archived from the public website
     await prisma.book.updateMany({
       where: { authorId },
       data: { isArchived: true, status: 'Archived' }
+    });
+
+    // Remove only unconfirmed pending event invites so author is never emailed or kept on new event rosters
+    await prisma.eventAuthor.deleteMany({
+      where: { authorId, optInStatus: { in: ['Pending', 'Draft'] } }
     });
 
     // Delete pre-generated catalogue.pdf if it exists so that it gets regenerated
@@ -6688,7 +6733,12 @@ router.post('/api/admin/events', verifyToken, isAdmin, upload.single('banner'), 
     });
 
     const exemptSet = new Set(exemptAuthorIds);
-    const activeAuthors = await prisma.author.findMany({ where: { status: 'Active' } });
+    const activeAuthors = await prisma.author.findMany({
+      where: {
+        status: { in: ['Active', 'Approved'] },
+        isArchived: false
+      }
+    });
     const eventAuthorsData = activeAuthors.map(a => {
       const isExempt = exemptSet.has(a.id);
       return {

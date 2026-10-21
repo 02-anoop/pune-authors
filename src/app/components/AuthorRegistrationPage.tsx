@@ -2578,8 +2578,15 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                         }
                       }));
 
-                      if (Object.keys(extraDataState).length > 0) {
-                        formData.append("extraData", JSON.stringify(extraDataState));
+                      const cleanedExtraData = { ...extraDataState };
+                      delete (cleanedExtraData as any).draftPhotoUrl;
+                      delete (cleanedExtraData as any).draftQrUrl;
+                      delete (cleanedExtraData as any).draftPaymentUrl;
+                      delete (cleanedExtraData as any).draftCoverUrl;
+                      delete (cleanedExtraData as any).draftBackCoverUrl;
+
+                      if (Object.keys(cleanedExtraData).length > 0) {
+                        formData.append("extraData", JSON.stringify(cleanedExtraData));
                       }
 
                       let res;

@@ -85,6 +85,8 @@ router.post('/login', async (req, res) => {
       });
       if (!author) {
         hasCompletedRegistration = false;
+      } else if (author.isArchived || author.status === 'Archived') {
+        return res.status(403).json({ error: 'This author profile has been archived. Please contact support if you need assistance.' });
       } else if (author.status === 'Rejected') {
         // We still allow login if rejected, we will show rejected status in AuthorDashboardPage
       }
