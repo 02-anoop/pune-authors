@@ -2369,7 +2369,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
                   <td className="text-paa-gray-text font-medium whitespace-nowrap bg-rose-100/60">{row.date}</td>
                   <td className="bg-indigo-100/60">
                     <div className="flex items-center justify-center">
-                      <button onClick={() => navigate('/dashboard/profile', { state: { action: 'edit_book', bookId: row.id } })} className="p-2 text-indigo-900 hover:text-indigo-700 bg-white/70 hover:bg-white rounded-lg transition-colors border border-indigo-200" title="Edit Details">
+                      <button onClick={() => handleEditBookOpen(row.id)} className="p-2 text-indigo-900 hover:text-indigo-700 bg-white/70 hover:bg-white rounded-lg transition-colors border border-indigo-200" title="Edit Details">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-edit"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                       </button>
                     </div>

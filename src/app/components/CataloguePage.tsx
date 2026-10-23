@@ -407,13 +407,15 @@ export async function downloadCataloguePDF(label: string, books: CatalogueBook[]
     }).join("");
 
     const container = document.createElement('div');
+    container.id = 'pdf-capture-container';
     container.style.position = 'fixed';
-    container.style.left = '0';
+    container.style.left = '-10000px';
     container.style.top = '0';
     container.style.width = '802px';
     container.style.height = '1120px';
     container.style.overflow = 'hidden';
     container.style.zIndex = '-9999';
+    container.style.pointerEvents = 'none';
     document.body.appendChild(container);
 
     container.innerHTML = `
@@ -536,7 +538,14 @@ export async function downloadCataloguePDF(label: string, books: CatalogueBook[]
         width: 802,
         height: 1120,
         windowWidth: 802,
-        windowHeight: 1120
+        windowHeight: 1120,
+        onclone: (clonedDoc: any) => {
+          const c = clonedDoc.getElementById('pdf-capture-container');
+          if (c) {
+            c.style.left = '0px';
+            c.style.top = '0px';
+          }
+        }
       });
       const imgData = canvas.toDataURL('image/jpeg', 0.80);
 
@@ -561,17 +570,24 @@ export async function downloadCataloguePDF(label: string, books: CatalogueBook[]
       await axios.post(endpoint, formData, { headers }).catch(console.error);
 
       // Save locally only if not silent
-      if (!silentSave) pdf.save(`PAA_${label.replace(/s+/g, '_')}_Catalogue.pdf`);
+      if (!silentSave) pdf.save(`PAA_${label.replace(/\s+/g, '_')}_Catalogue.pdf`);
     } else {
-      if (!silentSave) pdf.save(`PAA_${label.replace(/s+/g, '_')}_Catalogue.pdf`);
+      if (!silentSave) pdf.save(`PAA_${label.replace(/\s+/g, '_')}_Catalogue.pdf`);
     }
 
-    document.body.removeChild(container);
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
     setDownloading(null);
   } catch (err) {
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
     console.error("PDF Generation failed", err);
     setDownloading(null);
-    alert("Failed to generate PDF. Please try again.");
+    if (!silentSave) {
+      alert("Failed to generate PDF. Please try again.");
+    }
   }
 }
 
