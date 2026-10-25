@@ -1782,7 +1782,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                     </button>
                   ) : (
                     <>
-                      {books.length > 0 && <h3 className="font-serif text-lg font-medium text-paa-navy mb-2">Add Another Book</h3>}
+                      {books.length > 0 && <h3 className="font-serif text-lg font-medium text-paa-navy mb-2">{editingBookIndexRef.current !== null ? 'Edit Book Details' : 'Add Another Book'}</h3>}
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="md:col-span-2">
@@ -1804,27 +1804,45 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       <select value={form.genre} onChange={(e) => { update("genre", e.target.value); update("subcategory", ""); update("subSubcategory", ""); }} className={`dash-input w-full ${errors.genre ? '!border-red-500' : ''}`}>
                         <option value="">Select Category</option>
                         {Object.keys(bookCategories).sort((a, b) => a.localeCompare(b)).map(c => <option key={c} value={c}>{c}</option>)}
-<option value="Other">Other</option>
+                        <option value="Other">Other</option>
+                        {form.genre && !Object.keys(bookCategories).includes(form.genre) && form.genre !== "Other" && (
+                          <option value={form.genre}>{form.genre}</option>
+                        )}
                       </select>
                       {errors.genre && <div className="text-red-500 text-xs mt-1 font-medium">{errors.genre}</div>}
                       {getBookDiffUi("genre")}
                     </div>
-                    {form.genre && Object.keys(bookCategories[form.genre as keyof typeof bookCategories] || {}).length > 0 && (
+                    {form.genre && Object.keys(bookCategories[form.genre as keyof typeof bookCategories] || {}).length > 0 ? (
                       <div>
                         <label className="dash-label">Subcategory</label>
                         <select value={form.subcategory} onChange={(e) => { update("subcategory", e.target.value); update("subSubcategory", ""); }} className="dash-input w-full">
                           <option value="">Select Subcategory</option>
                           {Object.keys(bookCategories[form.genre as keyof typeof bookCategories] || {}).sort((a, b) => a.localeCompare(b)).map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                          {form.subcategory && !Object.keys(bookCategories[form.genre as keyof typeof bookCategories] || {}).includes(form.subcategory) && (
+                            <option value={form.subcategory}>{form.subcategory}</option>
+                          )}
                         </select>
                         {getBookDiffUi("subcategory")}
                       </div>
-                    )}
-                    {form.genre && form.subcategory && ((bookCategories[form.genre as keyof typeof bookCategories] as any)[form.subcategory] || []).length > 0 && (
+                    ) : (form.genre === 'Other' || (form.genre && !bookCategories[form.genre as keyof typeof bookCategories])) ? (
+                      <div>
+                        <label className="dash-label">Subcategory</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. NA or custom subcategory"
+                          value={form.subcategory}
+                          onChange={(e) => update("subcategory", e.target.value)}
+                          className="dash-input w-full"
+                        />
+                        {getBookDiffUi("subcategory")}
+                      </div>
+                    ) : null}
+                    {form.genre && form.subcategory && (((bookCategories[form.genre as keyof typeof bookCategories] as any)?.[form.subcategory]) || []).length > 0 && (
                       <div>
                         <label className="dash-label">Specific Genre</label>
                         <select value={form.subSubcategory} onChange={(e) => update("subSubcategory", e.target.value)} className="dash-input w-full">
                           <option value="">Select Specific Genre</option>
-                          {[...((bookCategories[form.genre as keyof typeof bookCategories] as any)[form.subcategory] || [])].sort((a, b) => a.localeCompare(b)).map((ssc: string) => <option key={ssc} value={ssc}>{ssc}</option>)}
+                          {[...(((bookCategories[form.genre as keyof typeof bookCategories] as any)?.[form.subcategory]) || [])].sort((a, b) => a.localeCompare(b)).map((ssc: string) => <option key={ssc} value={ssc}>{ssc}</option>)}
                         </select>
                         {getBookDiffUi("subSubcategory")}
                       </div>
@@ -2111,7 +2129,7 @@ export function AuthorRegistrationPage({ initialData, isReapply = false, onReapp
                       }}
                       className="px-4 py-2 bg-[#ebd8c0] text-emerald-700 border border-emerald-200 hover:bg-[#ebd8c0] hover:border-emerald-300 transition-colors rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-2"
                     >
-                      <Plus className="w-3 h-3" /> Save & Add Another Book
+                      <Plus className="w-3 h-3" /> {editingBookIndexRef.current !== null ? 'Save Book Changes' : 'Save & Add Another Book'}
                     </button>
                   </div>
                 </>

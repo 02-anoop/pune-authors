@@ -1381,13 +1381,13 @@ export function CataloguePage() {
                       color={getCategoryColor(activeCategory).color} filled={true}
                     />
 
-                    {activeSubcategory !== "All" && ((bookCategories[activeCategory as keyof typeof bookCategories] as any)[activeSubcategory] || []).length > 0 && (
+                    {activeSubcategory !== "All" && (((bookCategories[activeCategory as keyof typeof bookCategories] as any)?.[activeSubcategory]) || []).length > 0 && (
                       <CustomSelect
                         value={activeSubSubcategory}
                         onChange={setActiveSubSubcategory}
                         options={[
                           { label: "All Specific Genres", value: "All" },
-                          ...["All", ...((bookCategories[activeCategory as keyof typeof bookCategories] as any)[activeSubcategory] || []).filter((ssc: string) => allBooks.some(b => b.genre === activeCategory && b.subGenre && b.subGenre.split(" > ")[0].trim() === activeSubcategory && b.subGenre.split(" > ")[1]?.trim() === ssc))].filter(ssc => ssc !== "All").map(ssc => ({ label: ssc, value: ssc }))
+                          ...["All", ...(((bookCategories[activeCategory as keyof typeof bookCategories] as any)?.[activeSubcategory]) || []).filter((ssc: string) => allBooks.some(b => b.genre === activeCategory && b.subGenre && b.subGenre.split(" > ")[0].trim() === activeSubcategory && b.subGenre.split(" > ")[1]?.trim() === ssc))].filter(ssc => ssc !== "All").map(ssc => ({ label: ssc, value: ssc }))
                         ]}
                         color={getCategoryColor(activeCategory).color} filled={true}
                       />

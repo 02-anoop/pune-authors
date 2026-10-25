@@ -2082,23 +2082,40 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
                   <option value="">Select Category</option>
                   {Object.keys(bookCategories).sort((a, b) => a.localeCompare(b)).map(c => <option key={c} value={c}>{c}</option>)}
                   <option value="Other">Other</option>
+                  {newBook.genre && !Object.keys(bookCategories).includes(newBook.genre) && newBook.genre !== "Other" && (
+                    <option value={newBook.genre}>{newBook.genre}</option>
+                  )}
                 </select>
               </div>
-              {newBook.genre && Object.keys(bookCategories[newBook.genre as keyof typeof bookCategories] || {}).length > 0 && (
+              {newBook.genre && Object.keys(bookCategories[newBook.genre as keyof typeof bookCategories] || {}).length > 0 ? (
                 <div>
                   <label className="dash-label">Subcategory</label>
                   <select className="dash-input w-full" value={newBook.subcategory} onChange={e => setNewBook({ ...newBook, subcategory: e.target.value, subSubcategory: '' })}>
                     <option value="">Select Subcategory</option>
                     {Object.keys(bookCategories[newBook.genre as keyof typeof bookCategories] || {}).sort((a, b) => a.localeCompare(b)).map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                    {newBook.subcategory && !Object.keys(bookCategories[newBook.genre as keyof typeof bookCategories] || {}).includes(newBook.subcategory) && (
+                      <option value={newBook.subcategory}>{newBook.subcategory}</option>
+                    )}
                   </select>
                 </div>
-              )}
-              {newBook.genre && newBook.subcategory && ((bookCategories[newBook.genre as keyof typeof bookCategories] as any)[newBook.subcategory] || []).length > 0 && (
+              ) : (newBook.genre === 'Other' || (newBook.genre && !bookCategories[newBook.genre as keyof typeof bookCategories])) ? (
+                <div>
+                  <label className="dash-label">Subcategory</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. NA or custom subcategory"
+                    value={newBook.subcategory}
+                    onChange={e => setNewBook({ ...newBook, subcategory: e.target.value })}
+                    className="dash-input w-full"
+                  />
+                </div>
+              ) : null}
+              {newBook.genre && newBook.subcategory && (((bookCategories[newBook.genre as keyof typeof bookCategories] as any)?.[newBook.subcategory]) || []).length > 0 && (
                 <div>
                   <label className="dash-label">Specific Genre</label>
                   <select className="dash-input w-full" value={newBook.subSubcategory} onChange={e => setNewBook({ ...newBook, subSubcategory: e.target.value })}>
                     <option value="">Select Specific Genre</option>
-                    {[...((bookCategories[newBook.genre as keyof typeof bookCategories] as any)[newBook.subcategory] || [])].sort((a, b) => a.localeCompare(b)).map((ssc: string) => <option key={ssc} value={ssc}>{ssc}</option>)}
+                    {[...(((bookCategories[newBook.genre as keyof typeof bookCategories] as any)?.[newBook.subcategory]) || [])].sort((a, b) => a.localeCompare(b)).map((ssc: string) => <option key={ssc} value={ssc}>{ssc}</option>)}
                   </select>
                 </div>
               )}
