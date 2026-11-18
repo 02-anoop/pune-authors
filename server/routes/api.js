@@ -3092,6 +3092,28 @@ router.put('/api/author/profile/bio', verifyToken, upload.single('photo'), async
     invalidateCache(`author:dashboard:${req.user.email}`);
     invalidateCache(`authorData_${req.user.email}`);
     invalidateCache('adminAuthors');
+
+    if (editedFields.length > 0 && typeof sendNotificationEmail === 'function' && typeof emailWrap === 'function') {
+      try {
+        const fieldsList = editedFields
+          .map(f => f.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()))
+          .join(', ');
+        const adminContent = `
+          <p>Author <strong>${updated.name || author.name}</strong> (${author.email}) has updated their profile details.</p>
+          <p><strong>Updated Fields:</strong> ${fieldsList}</p>
+          <p>The profile is now marked as <strong>Edited</strong> and requires admin review.</p>
+          <p>Please log in to the admin portal to review and approve the changes.</p>
+        `;
+        sendNotificationEmail(
+          getAdminEmails(),
+          `Author Profile Edits Pending Review: ${updated.name || author.name}`,
+          emailWrap("Profile Edits Submitted", adminContent)
+        );
+      } catch (emailErr) {
+        console.error('Failed to send admin notification for profile edit:', emailErr);
+      }
+    }
+
     res.json(updated);
   } catch (err) {
     console.error(err);
