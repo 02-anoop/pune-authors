@@ -14,8 +14,9 @@ const { sendNotificationEmail, emailWrap } = require('../utils/email');
 
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, phone, address, interests, role } = req.body;
-    const existing = await prisma.user.findUnique({ where: { email } });
+    let { name, email, password, phone, address, interests, role } = req.body;
+    email = email ? email.trim().toLowerCase() : email;
+    const existing = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
     if (existing) return res.status(400).json({ error: 'Email already exists' });
     
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -38,7 +39,7 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Invalid credentials' });
 
-    const normalizedEmail = email.trim();
+    const normalizedEmail = email.trim().toLowerCase();
     const user = await prisma.user.findFirst({
       where: { email: { equals: normalizedEmail, mode: 'insensitive' } }
     });
@@ -109,11 +110,12 @@ router.post('/login', async (req, res) => {
 
 router.post('/send-otp', async (req, res) => {
   try {
-    const { email } = req.body;
+    let { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email is required' });
+    email = email.trim().toLowerCase();
     
-    // Prevent signing up again if the user account already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    // Prevent signing up again if the user account already exists (case-insensitive)
+    const existingUser = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
     if (existingUser) return res.status(400).json({ error: 'Email already exists' });
     
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -137,18 +139,19 @@ router.post('/send-otp', async (req, res) => {
 
 router.post('/verify-otp', async (req, res) => {
   try {
-    const { email, otp, password } = req.body;
+    let { email, otp, password } = req.body;
     if (!email || !otp || !password) return res.status(400).json({ error: 'Missing required fields' });
+    email = email.trim().toLowerCase();
     
     const verification = await prisma.otpVerification.findUnique({ where: { email } });
     if (!verification || verification.otp !== otp || verification.expiresAt < new Date()) {
       return res.status(400).json({ error: 'Invalid or expired OTP' });
     }
     
-    // Create user and draft
+    // Create user and draft — use case-insensitive check to prevent duplicates
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
     let user;
     if (!existingUser) {
       user = await prisma.user.create({
@@ -156,7 +159,7 @@ router.post('/verify-otp', async (req, res) => {
       });
     } else {
       user = await prisma.user.update({
-        where: { email },
+        where: { id: existingUser.id },
         data: { password: hashedPassword, role: 'AUTHOR' }
       });
     }
