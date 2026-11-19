@@ -20,6 +20,7 @@ import { AuthorLibrarySalesTab } from './AuthorLibrarySalesTab';
 import { AuthorInvitationsView } from './AuthorInvitationsView';
 import { checkIsPastEvent, isEventLiveToday } from '../utils/eventUtils';
 import BookPerformance from './BookPerformance';
+import { AuthorGroupPerformanceView } from './AuthorGroupPerformanceView';
 export function AuthorDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -931,6 +932,7 @@ const languages = [
 
 function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data: any, onRefresh: () => void, buttonStates: any, setButtonStates: any }) {
   const [filter, setFilter] = useState('all');
+  const [overviewMode, setOverviewMode] = useState<'my' | 'group'>('my');
   const [showAddBook, setShowAddBook] = useState(false);
   const [newBook, setNewBook] = useState({
     title: '',
@@ -1584,6 +1586,32 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
         </div>
       </div>
 
+      {/* ── Mode Toggle: My Performance vs Association / Group Stats ── */}
+      <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-xl w-max mb-6 border border-gray-200/80 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setOverviewMode('my')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            overviewMode === 'my'
+              ? 'bg-white text-paa-navy shadow-sm'
+              : 'text-gray-500 hover:text-paa-navy'
+          }`}
+        >
+          <User size={14} /> My Performance
+        </button>
+        <button
+          type="button"
+          onClick={() => setOverviewMode('group')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            overviewMode === 'group'
+              ? 'bg-paa-navy text-white shadow-sm'
+              : 'text-gray-500 hover:text-paa-navy'
+          }`}
+        >
+          <Users size={14} /> Association / Group Stats
+        </button>
+      </div>
+
       {/* ── CTA: Live POS Events ── */}
       {(() => {
          const livePosEvents = (data.eventInvites || [])
@@ -1635,6 +1663,10 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
          );
       })()}
 
+      {overviewMode === 'group' ? (
+        <AuthorGroupPerformanceView />
+      ) : (
+        <>
       {/* ── CTA: Upcoming Event Registration ── */}
       {latestUpcomingEvent && !dismissEventsBanner.includes(String(latestUpcomingEvent.id)) && (
         <div className="mb-3.5 relative group cursor-pointer">
@@ -2046,6 +2078,9 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
             </div>
           </div>
         </div>
+      )}
+
+        </>
       )}
 
       {showAddBook && (

@@ -6341,6 +6341,217 @@ router.get('/api/author/book-performance', verifyToken, async (req, res) => {
   }
 });
 
+router.get('/api/author/group-analytics', verifyToken, async (req, res) => {
+  const cacheKey = 'author:group-analytics';
+  const cached = getCache(cacheKey);
+  if (cached) return res.json(cached);
+
+  try {
+    const [allAuthors, allBooks, allEvents, libraries, webAgg, webItemsAgg, orders, posItems] = await Promise.all([
+      prisma.author.findMany({
+        where: { isArchived: false, status: { notIn: ['Archived', 'Rejected'] } },
+        select: {
+          id: true,
+          name: true,
+          createdAt: true,
+          groupJoiningDate: true,
+          aggParticipatedEvents: true,
+          aggEligibleEvents: true,
+          eventAuthors: {
+            select: { id: true, eventId: true, optInStatus: true }
+          }
+        }
+      }),
+      prisma.book.findMany({
+        where: { isArchived: false, status: 'Approved' },
+        select: { id: true, genre: true, mrp: true }
+      }),
+      prisma.event.findMany({
+        where: { isArchived: false },
+        select: {
+          id: true,
+          name: true,
+          date: true,
+          duration: true,
+          eventType: true,
+          category: true,
+          aggSold: true,
+          aggRevenue: true,
+          status: true,
+          createdAt: true,
+          eventBooks: { select: { soldStock: true } }
+        },
+        orderBy: { id: 'asc' }
+      }),
+      prisma.library.findMany({
+        where: { isArchived: false },
+        select: { id: true, name: true, type: true }
+      }),
+      prisma.order.aggregate({
+        _sum: { amount: true },
+        where: { status: { in: ['Completed', 'Delivered', 'Shipped', 'Dispatched'] } }
+      }),
+      prisma.orderItem.aggregate({
+        _sum: { quantity: true },
+        where: {
+          order: { status: { in: ['Completed', 'Delivered', 'Shipped', 'Dispatched'] } },
+          status: { notIn: ['Cancelled', 'Rejected'] }
+        }
+      }),
+      prisma.order.findMany({
+        where: { isArchived: false, isBulk: false, status: { not: 'Cancelled' } },
+        select: { id: true, status: true, createdAt: true, items: { select: { status: true, createdAt: true } } }
+      }),
+      prisma.posOrderItem.findMany({
+        where: { posOrder: { paymentStatus: 'CONFIRMED' } },
+        select: {
+          quantity: true,
+          price: true,
+          book: { select: { genre: true } }
+        }
+      })
+    ]);
+
+    let totalAirportLibraries = 0;
+    let totalOtherLibraries = 0;
+    libraries.forEach(l => {
+      const isAirport = l.type === 'Airport Library' || (l.type || '').toLowerCase().includes('airport') || (l.name || '').toLowerCase().includes('airport');
+      if (isAirport) totalAirportLibraries++;
+      else totalOtherLibraries++;
+    });
+
+    let totalBookFairs = 0;
+    let totalLiteraryEvents = 0;
+    let eventsBooksSold = 0;
+    let eventsRevenue = 0;
+
+    const eventsChartData = allEvents.map(evt => {
+      const name = (evt.name || '').toLowerCase();
+      const isBookFair = evt.eventType === 'Book Fair' || name.includes('book fair') || name.includes('fair') || name.includes('srinagar') || name.includes('dehradun') || name.includes('bengali mela') || name.includes('diwali stall');
+      if (isBookFair) totalBookFairs++;
+      else totalLiteraryEvents++;
+
+      const books = evt.aggSold != null
+        ? evt.aggSold
+        : (evt.eventBooks?.reduce((s, eb) => s + (eb.soldStock || 0), 0) || 0);
+      const rev = evt.aggRevenue != null ? evt.aggRevenue : (Number(books) * 200);
+
+      eventsBooksSold += (Number(books) || 0);
+      eventsRevenue += (Number(rev) || 0);
+
+      return {
+        id: evt.id,
+        name: evt.name,
+        date: evt.date,
+        eventType: evt.eventType || (isBookFair ? 'Book Fair' : 'Literary Event'),
+        category: evt.category || 'Other',
+        booksSold: Number(books) || 0,
+        revenue: Number(rev) || 0
+      };
+    });
+
+    const webRevenue = webAgg._sum.amount || 0;
+    const webBooksSold = webItemsAgg._sum.quantity || 0;
+    const totalRevenue = webRevenue + eventsRevenue;
+    const totalBooksSold = webBooksSold + eventsBooksSold;
+
+    const activeOrders = orders.filter(o => o.status !== 'Completed' && o.status !== 'Dispatched' && o.status !== 'Delivered');
+    let delayedOrdersCount = 0;
+    const now = Date.now();
+    orders.forEach(o => {
+      if (o.status === 'Completed' || o.status === 'Dispatched' || o.status === 'Delivered') return;
+      const hours = (now - new Date(o.createdAt).getTime()) / (1000 * 3600);
+      if (o.items && o.items.length > 0) {
+        if (o.items.some(it => {
+          const iHours = (now - new Date(it.createdAt || o.createdAt).getTime()) / (1000 * 3600);
+          if ((it.status === 'Pending Verification' || it.status === 'Pending') && iHours > 24) return true;
+          if (it.status === 'Accepted' && iHours > 48) return true;
+          return false;
+        })) {
+          delayedOrdersCount++;
+        }
+      } else if (hours > 24) {
+        delayedOrdersCount++;
+      }
+    });
+    const delayedOrdersRate = orders.length ? Math.round((delayedOrdersCount / orders.length) * 100) : 0;
+    const pendingOrdersCount = activeOrders.length;
+
+    const topParticipatingAuthors = allAuthors.map(author => {
+      const joinDate = author.groupJoiningDate
+        ? new Date(author.groupJoiningDate)
+        : (author.createdAt ? new Date(author.createdAt) : new Date(0));
+      const joinDayStart = new Date(joinDate);
+      if (!isNaN(joinDayStart.getTime())) joinDayStart.setHours(0, 0, 0, 0);
+
+      const eligibleEvents = allEvents.filter(ev => {
+        const evDateStr = ev.date || ev.createdAt;
+        if (!evDateStr) return true;
+        const evTime = parseEventDateHelper(evDateStr)?.getTime() || 0;
+        return isNaN(joinDayStart.getTime()) || evTime >= joinDayStart.getTime() || evTime === 0;
+      });
+
+      let participatedCount = 0;
+      if (typeof author.aggParticipatedEvents === 'number' && author.aggParticipatedEvents > 0) {
+        participatedCount = author.aggParticipatedEvents;
+      } else {
+        participatedCount = (author.eventAuthors || []).filter(ea =>
+          ea && !['Pending', 'Rejected', 'Awaiting Approval', 'Pending Approval'].includes(ea.optInStatus)
+        ).length;
+      }
+
+      const total = (typeof author.aggEligibleEvents === 'number' && author.aggEligibleEvents > 0)
+        ? author.aggEligibleEvents
+        : (eligibleEvents.length || allEvents.length || 1);
+
+      const percentage = total === 0 ? 0 : Math.min(100, Math.round((participatedCount / total) * 100));
+      return { name: author.name, percentage, participated: participatedCount, total };
+    })
+    .sort((a, b) => b.percentage - a.percentage || b.participated - a.participated)
+    .slice(0, 20);
+
+    const genreCount = {};
+    allBooks.forEach(b => {
+      const g = b.genre || 'Other';
+      genreCount[g] = (genreCount[g] || 0) + 1;
+    });
+    posItems.forEach(pi => {
+      const g = pi.book?.genre || 'Other';
+      genreCount[g] = (genreCount[g] || 0) + pi.quantity;
+    });
+
+    const categoryChartData = Object.entries(genreCount)
+      .filter(([name]) => !['Others', 'Uncategorized', 'N/A', 'Unknown'].includes(name))
+      .map(([name, sales]) => ({ name, sales }))
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, 6);
+
+    const result = {
+      kpis: {
+        totalAuthors: allAuthors.length,
+        totalBooks: allBooks.length,
+        totalBookFairs,
+        totalLiteraryEvents,
+        totalAirportLibraries,
+        totalOtherLibraries,
+        totalRevenue,
+        delayedOrdersRate,
+        pendingOrdersCount,
+        totalBooksSold
+      },
+      topParticipatingAuthors,
+      categoryChartData,
+      eventsChartData
+    };
+
+    setCache(cacheKey, result, 60 * 1000);
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching group analytics for author:', err);
+    res.status(500).json({ error: 'Failed to fetch group analytics' });
+  }
+});
+
 router.put('/api/author/book-performance/:eventId/investment', verifyToken, async (req, res) => {
   try {
     const author = await prisma.author.findUnique({ where: { email: req.user.email } });
