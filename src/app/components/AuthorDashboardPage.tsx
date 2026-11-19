@@ -1592,7 +1592,7 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
                if (!evt) return false;
                const isPast = evt.isPast || evt.status === 'Past' || evt.status === 'Legacy Archive' || checkIsPastEvent(evt.startDate || evt.date, evt.duration || '1 Day');
                const isLive = evt.status === 'Live' || isEventLiveToday(evt.startDate || evt.date, evt.duration || '1 Day');
-               return !isPast && evt.livePosEnabled && (isLive || evt.status === 'Upcoming') && (inv.optInStatus === 'Registered' || inv.optInStatus === 'Approved');
+               return !isPast && evt.livePosEnabled && isLive && (inv.optInStatus === 'Registered' || inv.optInStatus === 'Approved');
             })
             .map((inv: any) => inv.event);
             
@@ -5205,7 +5205,7 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
               const livePosEvents = allEvents.filter((evt: any) => {
                 const isEvtPast = evt.isPast || evt.status === 'Past' || evt.status === 'Legacy Archive' || checkIsPastEvent(evt.startDate || evt.date, evt.duration || '1 Day');
                 const isLive = evt.status === 'Live' || isEventLiveToday(evt.startDate || evt.date, evt.duration || '1 Day');
-                return !isEvtPast && evt.livePosEnabled && (isLive || evt.status === 'Upcoming') && (evt.registration === 'Registered' || evt.registration === 'Approved');
+                return !isEvtPast && evt.livePosEnabled && isLive && (evt.registration === 'Registered' || evt.registration === 'Approved');
               });
              if (livePosEvents.length === 0) return null;
              return (
@@ -5728,7 +5728,8 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                                    {(() => {
                                      const isEvtPast = evt.isPast || evt.status === 'Past' || evt.status === 'Legacy Archive' || checkIsPastEvent(evt.startDate || evt.date, evt.duration || '1 Day');
                                      if (isEvtPast) return null;
-                                     const canLaunchPos = evt.livePosEnabled && (evt.registration === 'Registered' || evt.registration === 'Approved');
+                                     const isLive = evt.status === 'Live' || isEventLiveToday(evt.startDate || evt.date, evt.duration || '1 Day');
+                                     const canLaunchPos = evt.livePosEnabled && isLive && (evt.registration === 'Registered' || evt.registration === 'Approved');
                                      return canLaunchPos && (
                                        <button onClick={(e) => { e.stopPropagation(); window.open('/dashboard/pos/' + evt.id, '_blank'); }} className="mt-1 w-full max-w-[110px] flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 whitespace-nowrap cursor-pointer active:scale-95" title="Launch Point of Sale System">
                                          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span> LAUNCH POS
