@@ -66,6 +66,40 @@ const isEventPastHelper = (evt) => {
   return Date.now() > endDate.getTime();
 };
 
+const isEventLiveToday = (evt) => {
+  if (!evt || evt.dateType === 'tentative' || (!evt.date && !evt.startDate)) return false;
+
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${year}-${month}-${day}`;
+
+  const evtDateStr = evt.date || evt.startDate;
+  if (evtDateStr === todayStr) return true;
+
+  const startDate = parseEventDateHelper(evtDateStr);
+  if (!startDate) return false;
+
+  startDate.setHours(0, 0, 0, 0);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  let durationDays = 1;
+  if (typeof evt.duration === 'string') {
+    const match = evt.duration.match(/(\d+)\s*Days?/i);
+    if (match && parseInt(match[1]) > 0) {
+      durationDays = parseInt(match[1]);
+    }
+  }
+
+  const endDate = new Date(startDate.getTime());
+  endDate.setDate(endDate.getDate() + Math.max(1, durationDays) - 1);
+  endDate.setHours(23, 59, 59, 999);
+
+  return now.getTime() >= startDate.getTime() && now.getTime() <= endDate.getTime();
+};
+
 // --- PUBLIC FORMS --- //
 
 // Author Event Request (from Author Landing Page)
@@ -2792,8 +2826,12 @@ router.get('/api/author/dashboard-data', verifyToken, async (req, res) => {
     });
     if (eventInvites) {
       eventInvites.forEach(ei => {
-        if (ei.event && isEventPastHelper(ei.event) && ei.event.status !== 'Legacy Archive') {
-          ei.event.status = 'Past';
+        if (ei.event) {
+          if (isEventPastHelper(ei.event) && ei.event.status !== 'Legacy Archive') {
+            ei.event.status = 'Past';
+          } else if (ei.event.status === 'Upcoming' && isEventLiveToday(ei.event)) {
+            ei.event.status = 'Live';
+          }
         }
       });
     }
@@ -6117,6 +6155,9 @@ router.get('/api/author/events', verifyToken, async (req, res) => {
 
     pastEvents.forEach(attachParticipation);
     availableEvents.forEach(ae => {
+      if (ae.status === 'Upcoming' && isEventLiveToday(ae)) {
+        ae.status = 'Live';
+      }
       attachParticipation(ae);
       const isAvailExempt = Boolean(Array.isArray(ae.exemptAuthorIds) && ae.exemptAuthorIds.includes(author.id));
       ae.isFeeExempt = isAvailExempt;
@@ -6127,6 +6168,8 @@ router.get('/api/author/events', verifyToken, async (req, res) => {
       if (ei.event) {
         if (isEventPastHelper(ei.event) && ei.event.status !== 'Legacy Archive') {
           ei.event.status = 'Past';
+        } else if (ei.event.status === 'Upcoming' && isEventLiveToday(ei.event)) {
+          ei.event.status = 'Live';
         }
         attachParticipation(ei.event);
         ei.event.isFeeExempt = isExempt;
@@ -6559,44 +6602,6 @@ router.post('/api/author/events/:eventId/opt-out', verifyToken, async (req, res)
 
 
 
-const isEventLiveToday = (evt) => {
-  if (!evt || evt.dateType === 'tentative' || !evt.date) return false;
-
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  const todayStr = `${year}-${month}-${day}`;
-
-  if (evt.date === todayStr) return true;
-
-  const parseDt = (dStr) => {
-    if (!dStr) return null;
-    const dt = new Date(String(dStr).replace(/-/g, ' '));
-    return isNaN(dt.getTime()) ? null : dt;
-  };
-
-  const startDate = parseDt(evt.date);
-  if (!startDate) return false;
-
-  startDate.setHours(0, 0, 0, 0);
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  let durationDays = 1;
-  if (typeof evt.duration === 'string') {
-    const match = evt.duration.match(/(\d+)\s*Days?/i);
-    if (match && parseInt(match[1]) > 0) {
-      durationDays = parseInt(match[1]);
-    }
-  }
-
-  const endDate = new Date(startDate.getTime());
-  endDate.setDate(endDate.getDate() + Math.max(1, durationDays) - 1);
-  endDate.setHours(23, 59, 59, 999);
-
-  return now.getTime() >= startDate.getTime() && now.getTime() <= endDate.getTime();
-};
 
 // PUBLIC EVENTS ENDPOINT
 router.get('/api/public/events', async (req, res) => {

@@ -51,3 +51,34 @@ export const checkIsPastEvent = (eventDate: string | Date | null | undefined, du
   return Date.now() > endDate.getTime();
 };
 
+export const isEventLiveToday = (eventDate: string | Date | null | undefined, duration?: string | null): boolean => {
+  if (!eventDate) return false;
+  const startDate = parseEventDate(eventDate);
+  if (!startDate) return false;
+
+  startDate.setHours(0, 0, 0, 0);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  let totalDays = 1;
+  if (duration) {
+    const daysMatch = String(duration).match(/(\d+)\s*Days?/i);
+    const hoursMatch = String(duration).match(/(\d+)\s*Hours?/i);
+
+    let days = daysMatch ? parseInt(daysMatch[1], 10) : 0;
+    let hours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
+
+    if (days === 0 && hours > 0) {
+      totalDays = 1;
+    } else if (days > 0) {
+      totalDays = days;
+    }
+  }
+
+  const endDate = new Date(startDate.getTime());
+  endDate.setDate(endDate.getDate() + (totalDays - 1));
+  endDate.setHours(23, 59, 59, 999);
+
+  return now.getTime() >= startDate.getTime() && now.getTime() <= endDate.getTime();
+};
+

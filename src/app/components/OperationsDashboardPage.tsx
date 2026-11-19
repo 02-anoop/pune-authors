@@ -10822,6 +10822,7 @@ const totalAuthorsBase = eventRegistrations.length;
                         }
                       >
                         <option value="Upcoming">Upcoming</option>
+                        <option value="Live">Live</option>
                         <option value="Past">Past</option>
                         <option value="Legacy Archive">Legacy Archive</option>
                       </select>

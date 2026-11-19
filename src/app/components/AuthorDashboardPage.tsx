@@ -18,7 +18,7 @@ import { QueryThreadDisplay } from './QueryThreadDisplay';
 import { AuthorDonationsTab } from './AuthorDonationsTab';
 import { AuthorLibrarySalesTab } from './AuthorLibrarySalesTab';
 import { AuthorInvitationsView } from './AuthorInvitationsView';
-import { checkIsPastEvent } from '../utils/eventUtils';
+import { checkIsPastEvent, isEventLiveToday } from '../utils/eventUtils';
 import BookPerformance from './BookPerformance';
 export function AuthorDashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -1586,13 +1586,13 @@ function OverviewTab({ data, onRefresh, buttonStates, setButtonStates }: { data:
 
       {/* ── CTA: Live POS Events ── */}
       {(() => {
-         const isSpecialAuthor = data?.authorProfile?.email === 'arvindpuri1492@gmail.com';
          const livePosEvents = (data.eventInvites || [])
             .filter((inv: any) => {
                const evt = inv.event;
                if (!evt) return false;
                const isPast = evt.isPast || evt.status === 'Past' || evt.status === 'Legacy Archive' || checkIsPastEvent(evt.startDate || evt.date, evt.duration || '1 Day');
-               return !isPast && ((evt.livePosEnabled && evt.status === 'Live') || isSpecialAuthor) && (inv.optInStatus === 'Registered' || inv.optInStatus === 'Approved');
+               const isLive = evt.status === 'Live' || isEventLiveToday(evt.startDate || evt.date, evt.duration || '1 Day');
+               return !isPast && evt.livePosEnabled && (isLive || evt.status === 'Upcoming') && (inv.optInStatus === 'Registered' || inv.optInStatus === 'Approved');
             })
             .map((inv: any) => inv.event);
             
@@ -4852,7 +4852,11 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
         manualTotalSold: inv.manualTotalSold,
         manualTotalRevenue: inv.manualTotalRevenue,
         isPast: inv.event?.status === 'Past' || inv.event?.status === 'Legacy Archive' || checkIsPastEvent(inv.event?.startDate || inv.event?.date, inv.event?.duration || '1 Day'),
-        status: (inv.event?.status === 'Past' || inv.event?.status === 'Legacy Archive' || checkIsPastEvent(inv.event?.startDate || inv.event?.date, inv.event?.duration || '1 Day')) && inv.event?.status !== 'Legacy Archive' ? 'Past' : inv.event?.status,
+        status: (inv.event?.status === 'Past' || inv.event?.status === 'Legacy Archive' || checkIsPastEvent(inv.event?.startDate || inv.event?.date, inv.event?.duration || '1 Day')) && inv.event?.status !== 'Legacy Archive'
+          ? 'Past'
+          : (!checkIsPastEvent(inv.event?.startDate || inv.event?.date, inv.event?.duration || '1 Day') && (inv.event?.status === 'Live' || isEventLiveToday(inv.event?.startDate || inv.event?.date, inv.event?.duration || '1 Day'))
+            ? 'Live'
+            : inv.event?.status),
         isInvite: true,
         isDataUpdated: inv.manualTotalSold !== null || hasGranular || inv.event?.broadcastStatus === 'Published',
         aggSold: inv.event?.aggSold || 0,
@@ -4865,13 +4869,18 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
         evt.isFeeExempt ||
         (evt.exemptAuthorIds && Array.isArray(evt.exemptAuthorIds) && evt.exemptAuthorIds.includes(dashboardData?.authorProfile?.id))
       );
+      const isEvtPast = evt.status === 'Past' || evt.status === 'Legacy Archive' || checkIsPastEvent(evt.startDate || evt.date, evt.duration || '1 Day');
       return {
         ...evt,
-        status: (evt.status === 'Past' || evt.status === 'Legacy Archive' || checkIsPastEvent(evt.startDate || evt.date, evt.duration || '1 Day')) && evt.status !== 'Legacy Archive' ? 'Past' : evt.status,
+        status: isEvtPast && evt.status !== 'Legacy Archive'
+          ? 'Past'
+          : (!isEvtPast && (evt.status === 'Live' || isEventLiveToday(evt.startDate || evt.date, evt.duration || '1 Day'))
+            ? 'Live'
+            : evt.status),
         isFeeExempt: isAvailExempt,
         registration: 'Pending',
         paymentStatus: isAvailExempt ? 'Paid' : '-',
-        isPast: evt.status === 'Past' || evt.status === 'Legacy Archive' || checkIsPastEvent(evt.startDate || evt.date, evt.duration || '1 Day'),
+        isPast: isEvtPast,
         isInvite: true
       };
     }),
@@ -5193,10 +5202,10 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
             </div>
           </div>
           {(() => {
-             const isSpecialAuthor = dashboardData?.authorProfile?.email === 'arvindpuri1492@gmail.com';
               const livePosEvents = allEvents.filter((evt: any) => {
                 const isEvtPast = evt.isPast || evt.status === 'Past' || evt.status === 'Legacy Archive' || checkIsPastEvent(evt.startDate || evt.date, evt.duration || '1 Day');
-                return !isEvtPast && ((evt.livePosEnabled && evt.status === 'Live') || isSpecialAuthor) && (evt.registration === 'Registered' || evt.registration === 'Approved');
+                const isLive = evt.status === 'Live' || isEventLiveToday(evt.startDate || evt.date, evt.duration || '1 Day');
+                return !isEvtPast && evt.livePosEnabled && (isLive || evt.status === 'Upcoming') && (evt.registration === 'Registered' || evt.registration === 'Approved');
               });
              if (livePosEvents.length === 0) return null;
              return (
@@ -5719,7 +5728,8 @@ function EventsDashboard({ registrations, dashboardData, initialView = 'events' 
                                    {(() => {
                                      const isEvtPast = evt.isPast || evt.status === 'Past' || evt.status === 'Legacy Archive' || checkIsPastEvent(evt.startDate || evt.date, evt.duration || '1 Day');
                                      if (isEvtPast) return null;
-                                     return (((evt.livePosEnabled && evt.status === 'Live') || dashboardData?.authorProfile?.email === 'arvindpuri1492@gmail.com') && (evt.registration === 'Registered' || evt.registration === 'Approved')) && (
+                                     const canLaunchPos = evt.livePosEnabled && (evt.registration === 'Registered' || evt.registration === 'Approved');
+                                     return canLaunchPos && (
                                        <button onClick={(e) => { e.stopPropagation(); window.open('/dashboard/pos/' + evt.id, '_blank'); }} className="mt-1 w-full max-w-[110px] flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 whitespace-nowrap cursor-pointer active:scale-95" title="Launch Point of Sale System">
                                          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span> LAUNCH POS
                                        </button>
