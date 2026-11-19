@@ -134,30 +134,6 @@ export const AuthorGroupPerformanceView: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* ── Group Performance Banner ── */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-5 text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-white backdrop-blur-sm">
-              Community Intelligence
-            </span>
-          </div>
-          <h2 className="text-xl md:text-2xl font-serif font-bold tracking-tight text-white mt-1">
-            Pune Authors' Association — Performance Overview
-          </h2>
-          <p className="text-xs text-blue-200 mt-1 max-w-2xl font-medium">
-            Comparing book sales and author participation across all events.
-          </p>
-        </div>
-        <button
-          onClick={fetchData}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold transition-all shrink-0 border border-white/15"
-          title="Refresh statistics"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> Refresh Stats
-        </button>
-      </div>
-
       {/* ── 1. Top 20 by Participation (Full Width) ── */}
       <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
@@ -169,9 +145,18 @@ export const AuthorGroupPerformanceView: React.FC = () => {
               Ranked by percentage of eligible events attended since joining the association.
             </p>
           </div>
-          <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-200/60">
-            Top 20 Authors
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-200/60">
+              Top 20 Authors
+            </span>
+            <button
+              onClick={fetchData}
+              className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:text-paa-navy hover:bg-gray-50 transition-all"
+              title="Refresh statistics"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
         <div className="w-full h-[320px]">
           {data.topParticipatingAuthors && data.topParticipatingAuthors.length > 0 ? (
