@@ -1010,6 +1010,7 @@ export function OperationsDashboardPage() {
   const [selectedPosEventId, setSelectedPosEventId] = useState<number | "">("");
   const [isCheckingOutPos, setIsCheckingOutPos] = useState(false);
   const [posPaymentMethod, setPosPaymentMethod] = useState("UPI");
+  const [posMobileTab, setPosMobileTab] = useState<"catalog" | "cart">("catalog");
 
   useEffect(() => {
     if (sidebarOpen) {
@@ -4657,6 +4658,7 @@ const totalAuthorsBase = eventRegistrations.length;
                         onChange={(e) => setCreateEventStatus(e.target.value)}
                       >
                         <option value="Upcoming">Upcoming</option>
+                        <option value="Live">Live</option>
                         <option value="Past">Past (Granular Data)</option>
                         <option value="Legacy Archive">
                           Legacy Archive (Aggregate Data)
@@ -9269,6 +9271,7 @@ const totalAuthorsBase = eventRegistrations.length;
             onClick={() => { 
               console.log("POS Button Clicked!"); 
               setIsPosOpen(true); 
+              setPosMobileTab("catalog");
               if (!events || events.length === 0) fetchEvents(true);
               if (!books || books.length === 0) fetchBooks(true);
             }}
@@ -10138,25 +10141,52 @@ const totalAuthorsBase = eventRegistrations.length;
       {/* GLOBAL ADMIN POS MODAL */}
       {isPosOpen && (
         <div 
-          className="fixed z-[99999] bg-[#f5f5f3] flex flex-col overflow-hidden shadow-2xl"
-          style={{ top: 0, left: 0, right: 0, bottom: 0, width: "100vw", height: "100vh", position: "fixed", display: "flex" }}
+          className="fixed inset-0 z-[99999] bg-[#f5f5f3] flex flex-col overflow-hidden shadow-2xl"
+          style={{ width: "100vw", height: "100vh", position: "fixed", display: "flex" }}
         >
           {/* Header */}
-          <div className="bg-paa-navy text-paa-cream px-6 py-4 flex items-center justify-between shrink-0 shadow-md relative z-10">
-            <div className="flex items-center gap-4">
-              <button onClick={() => setIsPosOpen(false)} className="text-paa-cream/70 hover:text-white transition-colors">
-                <ArrowLeft size={24} />
-              </button>
-              <div>
-                <h2 className="text-xl font-bold tracking-widest uppercase">Global Admin POS</h2>
-                <p className="text-xs text-paa-cream/60 tracking-wider">Sell any book on the platform</p>
+          <div className="bg-paa-navy text-paa-cream px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 shrink-0 shadow-md relative z-10">
+            <div className="flex items-center justify-between w-full sm:w-auto">
+              <div className="flex items-center gap-2.5 sm:gap-4">
+                <button 
+                  onClick={() => {
+                    if (posMobileTab === "cart") {
+                      setPosMobileTab("catalog");
+                    } else {
+                      setIsPosOpen(false);
+                    }
+                  }} 
+                  className="text-paa-cream/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 active:scale-95"
+                  title="Back"
+                >
+                  <ArrowLeft size={22} />
+                </button>
+                <div>
+                  <h2 className="text-sm sm:text-xl font-bold tracking-wider sm:tracking-widest uppercase">Global Admin POS</h2>
+                  <p className="text-[10px] sm:text-xs text-paa-cream/60 tracking-wider">Sell any book on the platform</p>
+                </div>
               </div>
+
+              {/* Mobile Cart Toggle Pill */}
+              <button
+                onClick={() => setPosMobileTab(posMobileTab === "cart" ? "catalog" : "cart")}
+                className={`md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs active:scale-95 ${
+                  posMobileTab === "cart"
+                    ? "bg-paa-gold text-paa-navy ring-2 ring-paa-gold/40"
+                    : "bg-white/10 hover:bg-white/20 text-white border border-white/15"
+                }`}
+              >
+                <ShoppingCart size={15} className={posMobileTab === "cart" ? "text-paa-navy" : "text-paa-gold"} />
+                <span>{(posCart || []).reduce((s, i) => s + (i?.quantity || 0), 0)}</span>
+                <span className="text-[10px] uppercase font-semibold text-white/80">{posMobileTab === "cart" ? "Books" : "Cart"}</span>
+              </button>
             </div>
-            <div className="flex items-center gap-4">
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
                <select
                  value={selectedPosEventId}
                  onChange={(e) => setSelectedPosEventId(e.target.value ? parseInt(e.target.value) : "")}
-                 className="bg-white/10 text-white border border-white/20 rounded px-3 py-1.5 outline-none focus:border-paa-gold"
+                 className="w-full sm:w-auto bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 text-xs sm:text-sm outline-none focus:border-paa-gold truncate"
                >
                  <option value="" className="text-black">-- Select Event Context --</option>
                  {(events || []).filter(e => e?.status !== "Past").map(e => (
@@ -10167,22 +10197,31 @@ const totalAuthorsBase = eventRegistrations.length;
           </div>
 
           {/* Body */}
-          <div className="flex flex-1 min-h-0">
-            {/* Catalog (Left) */}
-            <div className="flex-1 flex flex-col bg-white border-r border-gray-200">
-              <div className="p-4 border-b border-gray-100 shrink-0">
+          <div className="flex flex-1 min-h-0 relative overflow-hidden flex-col md:flex-row">
+            {/* Catalog Section */}
+            <div className={`${posMobileTab === "cart" ? "hidden md:flex" : "flex"} flex-1 flex-col bg-white border-r border-gray-200 min-h-0 overflow-hidden`}>
+              <div className="p-3 sm:p-4 border-b border-gray-100 shrink-0">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
                   <input
                     type="text"
                     placeholder="Search by Title, Author, or ISBN..."
                     value={posSearchQuery}
                     onChange={(e) => setPosSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-paa-gold outline-none transition-colors text-sm"
+                    className="w-full pl-9 sm:pl-10 pr-8 py-2 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-paa-gold outline-none transition-colors text-xs sm:text-sm"
                   />
+                  {posSearchQuery && (
+                    <button 
+                      onClick={() => setPosSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+
+              <div className="flex-1 overflow-y-auto p-2.5 sm:p-4 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
                 {(books || [])
                   .filter(b => b?.status === "Approved")
                   .filter(b => {
@@ -10195,61 +10234,131 @@ const totalAuthorsBase = eventRegistrations.length;
                     );
                   })
                   .slice(0, 100)
-                  .map(b => (
-                    <div key={b?.id} onClick={() => {
-                      setPosCart(prev => {
-                        const ex = (prev || []).find(i => i?.book?.id === b?.id);
-                        if (ex) return prev.map(i => i?.book?.id === b?.id ? { ...i, quantity: i.quantity + 1 } : i);
-                        return [...(prev || []), { book: b, quantity: 1 }];
-                      });
-                    }} className="bg-white border border-gray-100 p-3 rounded-xl shadow-sm hover:shadow-md cursor-pointer hover:border-paa-gold/30 transition-all flex flex-col gap-2 group">
-                      <div className="aspect-[3/4] bg-gray-50 rounded-lg overflow-hidden relative border border-gray-100">
-                        {b?.coverUrl ? (
-                          <img 
-                            src={b.coverUrl.match(/^(http|data:)/) ? b.coverUrl : `${API}${b.coverUrl.startsWith('/') ? '' : '/'}${b.coverUrl}`} 
-                            alt={b?.title || ''} 
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300">No Cover</div>
+                  .map(b => {
+                    const inCartItem = (posCart || []).find(i => i?.book?.id === b?.id);
+                    const inCartQty = inCartItem ? inCartItem.quantity : 0;
+                    return (
+                      <div 
+                        key={b?.id} 
+                        onClick={() => {
+                          setPosCart(prev => {
+                            const ex = (prev || []).find(i => i?.book?.id === b?.id);
+                            if (ex) return prev.map(i => i?.book?.id === b?.id ? { ...i, quantity: i.quantity + 1 } : i);
+                            return [...(prev || []), { book: b, quantity: 1 }];
+                          });
+                        }} 
+                        className={`bg-white border p-2.5 sm:p-3 rounded-xl shadow-2xs hover:shadow-md cursor-pointer transition-all flex flex-col gap-2 group relative select-none active:scale-[0.98] ${
+                          inCartQty > 0 ? "border-paa-gold/70 ring-1 ring-paa-gold/40" : "border-gray-200 hover:border-paa-gold/40"
+                        }`}
+                      >
+                        {inCartQty > 0 && (
+                          <div className="absolute top-2 right-2 z-10 bg-paa-navy text-paa-gold text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-full shadow-md border border-paa-gold/40 flex items-center gap-0.5">
+                            <span>×{inCartQty}</span>
+                          </div>
                         )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                          <div className="opacity-0 group-hover:opacity-100 bg-white text-paa-navy font-bold text-xs px-3 py-1.5 rounded-full shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
-                            Add to Cart
+                        <div className="aspect-[3/4] bg-gray-50 rounded-lg overflow-hidden relative border border-gray-100 shrink-0">
+                          {b?.coverUrl ? (
+                            <img 
+                              src={b.coverUrl.match(/^(http|data:)/) ? b.coverUrl : `${API}${b.coverUrl.startsWith('/') ? '' : '/'}${b.coverUrl}`} 
+                              alt={b?.title || ''} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs font-medium">No Cover</div>
+                          )}
+                          <div className="hidden sm:flex absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors items-center justify-center">
+                            <div className="opacity-0 group-hover:opacity-100 bg-white text-paa-navy font-bold text-xs px-3 py-1.5 rounded-full shadow-lg transform translate-y-3 group-hover:translate-y-0 transition-all duration-300">
+                              + Add to Cart
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex-1 flex flex-col justify-between min-w-0">
+                          <div>
+                            <h4 className="font-bold text-xs sm:text-sm text-gray-900 line-clamp-1 leading-snug">{b?.title || 'Unknown Title'}</h4>
+                            <p className="text-[10px] sm:text-xs text-gray-500 line-clamp-1 mt-0.5">{b?.author?.name || 'Unknown Author'}</p>
+                          </div>
+                          <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-gray-100">
+                            <p className="text-xs sm:text-sm font-bold text-paa-gold">₹{b?.mrp || 0}</p>
+                            <span className="sm:hidden text-[10px] font-bold text-paa-navy bg-gray-100 px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-0.5">
+                              <Plus size={10} /> Add
+                            </span>
                           </div>
                         </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-sm text-gray-900 line-clamp-1">{b?.title || 'Unknown Title'}</h4>
-                        <p className="text-xs text-gray-500 line-clamp-1">{b?.author?.name || 'Unknown Author'}</p>
-                        <p className="text-sm font-bold text-paa-gold mt-1">₹{b?.mrp || 0}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
+
+              {/* Mobile Sticky Floating Cart Bar */}
+              {(posCart || []).length > 0 && (
+                <div className="md:hidden p-3 bg-white border-t border-gray-200 shadow-xl shrink-0 flex items-center justify-between gap-3 z-20 animate-fade-in-up">
+                  <div>
+                    <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">
+                      {(posCart || []).reduce((s, i) => s + (i?.quantity || 0), 0)} Item{((posCart || []).reduce((s, i) => s + (i?.quantity || 0), 0) > 1) ? 's' : ''}
+                    </span>
+                    <p className="text-lg font-black text-paa-navy leading-none">
+                      ₹{(posCart || []).reduce((s, i) => s + ((i?.book?.mrp || 0) * (i?.quantity || 0)), 0)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setPosMobileTab("cart")}
+                    className="flex-1 max-w-[210px] py-2.5 px-3 bg-[#d4a017] hover:bg-[#b08510] active:scale-95 text-white text-xs font-bold tracking-widest uppercase rounded-xl flex items-center justify-center gap-2 shadow-md transition-all"
+                  >
+                    <ShoppingCart size={15} />
+                    View Cart
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Cart (Right) */}
-            <div className="w-96 bg-gray-50 flex flex-col shrink-0">
-              <div className="p-4 border-b border-gray-200 bg-white shrink-0">
-                <h3 className="font-bold uppercase tracking-widest text-paa-navy flex items-center gap-2">
-                  <ShoppingCart size={18} className="text-paa-gold" />
-                  Cart ({(posCart || []).reduce((s, i) => s + (i?.quantity || 0), 0)} items)
-                </h3>
+            {/* Cart Section */}
+            <div className={`${posMobileTab === "cart" ? "flex" : "hidden md:flex"} w-full md:w-80 lg:w-96 bg-gray-50 flex-col shrink-0 min-h-0 overflow-hidden`}>
+              <div className="p-3 sm:p-4 border-b border-gray-200 bg-white shrink-0 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPosMobileTab("catalog")}
+                    className="md:hidden flex items-center gap-1 text-xs font-bold text-paa-navy hover:text-paa-gold px-2.5 py-1.5 bg-gray-100 rounded-lg transition-colors mr-1 active:scale-95"
+                  >
+                    <ArrowLeft size={14} /> Back
+                  </button>
+                  <h3 className="font-bold uppercase tracking-wider sm:tracking-widest text-paa-navy flex items-center gap-2 text-xs sm:text-sm">
+                    <ShoppingCart size={17} className="text-paa-gold" />
+                    Cart ({(posCart || []).reduce((s, i) => s + (i?.quantity || 0), 0)} items)
+                  </h3>
+                </div>
+                {(posCart || []).length > 0 && (
+                  <button
+                    onClick={() => setPosCart([])}
+                    className="text-[10px] sm:text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-wider px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                  >
+                    Clear All
+                  </button>
+                )}
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+
+              <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5">
                 {!(posCart?.length) ? (
-                  <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2">
-                    <Package size={32} className="opacity-50" />
+                  <div className="h-full min-h-[180px] flex flex-col items-center justify-center text-gray-400 gap-2">
+                    <Package size={36} className="opacity-40" />
                     <p className="text-sm font-medium">Cart is empty</p>
+                    <button
+                      onClick={() => setPosMobileTab("catalog")}
+                      className="md:hidden mt-2 px-4 py-2 bg-paa-navy text-white text-xs font-bold uppercase tracking-wider rounded-lg active:scale-95 transition-all"
+                    >
+                      Browse Books
+                    </button>
                   </div>
                 ) : (
                   posCart.map(item => (
-                    <div key={item?.book?.id} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm flex gap-3 relative group">
-                      <button onClick={() => setPosCart(prev => prev.filter(i => i?.book?.id !== item?.book?.id))} className="absolute -top-2 -right-2 w-6 h-6 bg-red-50 text-red-500 rounded-full flex items-center justify-center shadow-sm hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100">
-                        <X size={12} />
+                    <div key={item?.book?.id} className="bg-white p-2.5 sm:p-3 rounded-xl border border-gray-200 shadow-2xs flex gap-3 relative group">
+                      <button 
+                        onClick={() => setPosCart(prev => prev.filter(i => i?.book?.id !== item?.book?.id))} 
+                        className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-red-50 text-red-500 rounded-full flex items-center justify-center shadow-xs hover:bg-red-500 hover:text-white transition-colors opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+                        title="Remove item"
+                      >
+                        <X size={13} />
                       </button>
-                      <div className="w-12 h-16 bg-gray-50 rounded shrink-0 overflow-hidden">
+                      <div className="w-12 h-16 bg-gray-50 rounded-lg shrink-0 overflow-hidden border border-gray-100">
                          {item?.book?.coverUrl ? (
                            <img 
                              src={item.book.coverUrl.match(/^(http|data:)/) ? item.book.coverUrl : `${API}${item.book.coverUrl.startsWith('/') ? '' : '/'}${item.book.coverUrl}`} 
@@ -10263,12 +10372,22 @@ const totalAuthorsBase = eventRegistrations.length;
                           <p className="text-xs font-bold text-gray-900 line-clamp-1">{item?.book?.title || 'Unknown Title'}</p>
                           <p className="text-[10px] text-gray-500 truncate">{item?.book?.author?.name || 'Unknown Author'}</p>
                         </div>
-                        <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center justify-between mt-2 pt-1 border-t border-gray-50">
                           <p className="text-xs font-bold text-paa-navy">₹{(item?.book?.mrp || 0) * (item?.quantity || 0)}</p>
                           <div className="flex items-center bg-gray-50 rounded-full border border-gray-200 overflow-hidden">
-                            <button onClick={() => setPosCart(p => p.map(i => i?.book?.id === item?.book?.id ? { ...i, quantity: Math.max(1, i.quantity - 1) } : i))} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:bg-gray-100">-</button>
+                            <button 
+                              onClick={() => setPosCart(p => p.map(i => i?.book?.id === item?.book?.id ? { ...i, quantity: Math.max(1, i.quantity - 1) } : i))} 
+                              className="w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:scale-95 transition-colors font-bold text-sm"
+                            >
+                              -
+                            </button>
                             <span className="w-6 text-center text-xs font-bold">{item?.quantity || 0}</span>
-                            <button onClick={() => setPosCart(p => p.map(i => i?.book?.id === item?.book?.id ? { ...i, quantity: (i.quantity || 0) + 1 } : i))} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:bg-gray-100">+</button>
+                            <button 
+                              onClick={() => setPosCart(p => p.map(i => i?.book?.id === item?.book?.id ? { ...i, quantity: (i.quantity || 0) + 1 } : i))} 
+                              className="w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:scale-95 transition-colors font-bold text-sm"
+                            >
+                              +
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -10276,19 +10395,40 @@ const totalAuthorsBase = eventRegistrations.length;
                   ))
                 )}
               </div>
-              <div className="p-4 bg-white border-t border-gray-200 shrink-0 space-y-4">
+
+              {/* Cart Footer */}
+              <div className="p-3.5 sm:p-4 bg-white border-t border-gray-200 shrink-0 space-y-3.5 shadow-lg md:shadow-none">
                 <div className="flex justify-between items-end">
-                  <span className="text-sm text-gray-500 font-medium">Total Amount</span>
-                  <span className="text-2xl font-bold text-paa-navy">₹{(posCart || []).reduce((s, i) => s + ((i?.book?.mrp || 0) * (i?.quantity || 0)), 0)}</span>
+                  <span className="text-xs sm:text-sm text-gray-500 font-medium">Total Amount</span>
+                  <span className="text-xl sm:text-2xl font-black text-paa-navy">
+                    ₹{(posCart || []).reduce((s, i) => s + ((i?.book?.mrp || 0) * (i?.quantity || 0)), 0)}
+                  </span>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-2">
-                  {['UPI', 'Cash', 'Card'].map(m => (
-                    <button key={m} onClick={() => setPosPaymentMethod(m)} className={`py-2 text-xs font-bold tracking-widest uppercase rounded-lg border transition-colors ${posPaymentMethod === m ? 'bg-paa-navy text-white border-paa-navy' : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'}`}>
-                      {m}
-                    </button>
-                  ))}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Payment Method</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['UPI', 'Cash', 'Card'].map(m => (
+                      <button 
+                        key={m} 
+                        onClick={() => setPosPaymentMethod(m)} 
+                        className={`py-2 text-xs font-bold tracking-wider uppercase rounded-lg border transition-all active:scale-95 ${
+                          posPaymentMethod === m 
+                            ? "bg-paa-navy text-white border-paa-navy shadow-xs" 
+                            : "bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                {!selectedPosEventId && (
+                  <p className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 p-2 rounded-lg text-center">
+                    ⚠️ Please select an Event Context above before checkout
+                  </p>
+                )}
 
                 <button
                   disabled={!(posCart?.length) || isCheckingOutPos || !selectedPosEventId}
@@ -10304,13 +10444,14 @@ const totalAuthorsBase = eventRegistrations.length;
                       toast.success("Checkout successful!");
                       setPosCart([]);
                       setIsPosOpen(false);
+                      setPosMobileTab("catalog");
                     } catch (e: any) {
                       toast.error(e.response?.data?.error || "Checkout failed");
                     } finally {
                       setIsCheckingOutPos(false);
                     }
                   }}
-                  className="w-full py-3.5 bg-[#d4a017] hover:bg-[#b08510] text-white text-sm font-bold tracking-widest uppercase rounded-xl shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-3 sm:py-3.5 bg-[#d4a017] hover:bg-[#b08510] active:scale-95 text-white text-xs sm:text-sm font-bold tracking-widest uppercase rounded-xl shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isCheckingOutPos ? "Processing..." : !selectedPosEventId ? "Select Event Context" : "Complete Checkout"}
                 </button>
